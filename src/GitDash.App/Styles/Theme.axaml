@@ -25,7 +25,7 @@
   <Style Selector="TextBlock.big">
     <Setter Property="FontSize" Value="52" />
     <Setter Property="FontWeight" Value="Bold" />
-    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="TextBlock.clock">
     <Setter Property="FontSize" Value="44" />

@@ -64,7 +64,7 @@
               <TextBlock Text="{Binding Clock}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
                          Foreground="{DynamicResource TextBrush}" />
               <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="4" MinHeight="4" CornerRadius="2"
-                           Background="#22FFFFFF" Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                           Background="{DynamicResource TrackBrush}" Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
