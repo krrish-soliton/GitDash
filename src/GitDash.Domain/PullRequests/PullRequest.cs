@@ -120,6 +120,9 @@ public sealed record PullRequest
     /// <summary>PRs that sit on the viewer's desk right now.</summary>
     public bool IsOnViewersDesk => IsAssignedToViewer || NeedsViewerApproval;
 
+    /// <summary>Sort priority for every list: 0 = assigned to the viewer, 1 = viewer is a requested reviewer, 2 = everything else.</summary>
+    public int ViewerRank => IsAssignedToViewer ? 0 : NeedsViewerApproval ? 1 : 2;
+
     /// <summary>When the PR most recently landed on the viewer's desk (assignment or review request).</summary>
     public DateTimeOffset? ArrivedAt => (AssignedToViewerAt, ReviewRequestedFromViewerAt) switch
     {

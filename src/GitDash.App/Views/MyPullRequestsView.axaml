@@ -138,14 +138,32 @@
                     </StackPanel>
 
                     <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
-                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                        <TextBlock Classes="label" Text="{Binding ArrivedLabel}" />
-                        <TextBlock Grid.Row="1" Text="{Binding Arrived}" FontSize="14" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}" Margin="0,3,0,0" />
-                        <TextBlock Grid.Column="1" Classes="label" Text="{Binding WaitingLabel}" HorizontalAlignment="Right" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Waiting}" FontSize="14"
-                                   FontWeight="SemiBold" Foreground="{StaticResource AmberBrush}" Margin="0,3,0,0"
-                                   HorizontalAlignment="Right" />
+                      <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="label" Text="{Binding ArrivedLabel}" />
+                          <TextBlock Text="{Binding Arrived}" FontSize="14" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource TextBrush}" Margin="0,3,0,0" />
+                        </StackPanel>
+                        <!-- Waiting time by status: cyan = assigned to me, amber = awaiting my review, plain = just its age -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="18" HorizontalAlignment="Right">
+                          <StackPanel IsVisible="{Binding HasAssigned}" HorizontalAlignment="Right">
+                            <TextBlock Classes="label" Text="ASSIGNED" Foreground="{StaticResource Accent2Brush}"
+                                       HorizontalAlignment="Right" />
+                            <TextBlock Text="{Binding AssignedWaiting}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource Accent2Brush}" Margin="0,3,0,0" HorizontalAlignment="Right" />
+                          </StackPanel>
+                          <StackPanel IsVisible="{Binding HasReview}" HorizontalAlignment="Right">
+                            <TextBlock Classes="label" Text="AWAITING REVIEW" Foreground="{StaticResource AmberBrush}"
+                                       HorizontalAlignment="Right" />
+                            <TextBlock Text="{Binding ReviewWaiting}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource AmberBrush}" Margin="0,3,0,0" HorizontalAlignment="Right" />
+                          </StackPanel>
+                          <StackPanel IsVisible="{Binding HasNoStatusWait}" HorizontalAlignment="Right">
+                            <TextBlock Classes="label" Text="{Binding WaitingLabel}" HorizontalAlignment="Right" />
+                            <TextBlock Text="{Binding Waiting}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBrush}" Margin="0,3,0,0" HorizontalAlignment="Right" />
+                          </StackPanel>
+                        </StackPanel>
                       </Grid>
                     </Border>
 

@@ -257,7 +257,7 @@ public sealed class PeopleViewModel : PageViewModel
         var onFloor = _state.Open
             .GroupBy(p => p.Id).Select(g => g.First())
             .Where(p => string.Equals(p.Repository.FullName, person.Repository, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.CreatedAt)
+            .OrderBy(p => p.ViewerRank).ThenBy(p => p.CreatedAt)
             .ToList();
 
         PullRequestLinkViewModel Link(PullRequest p, string detail) =>

@@ -146,3 +146,10 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **My PRs buttons** are now three equal-width buttons (Details, Review timer, GitHub) that always fit the card.
 - **Steam-style 3D tilt:** the front card in My PRs leans towards the mouse in 3D with a moving glare (`Controls/Tilt.cs`, driven by `PullRequestCardViewModel.IsFront`).
 - **Collapsible sidebar:** the arrow button at the bottom of the sidebar collapses it to an icon strip (remembered in settings as `SidebarPinned`). While collapsed it opens automatically over the pages when the mouse is over it and closes when the mouse leaves; the pages do not move.
+
+## Round 8 changes
+
+- **Priority order everywhere:** pull requests assigned to you come first, then ones where you are a requested reviewer, then the rest (`PullRequest.ViewerRank`). Applied in My PRs, the Dashboard desk and repository rows, and the People floors.
+- **My PRs waiting times follow the status:** ASSIGNED (cyan) for how long it has been assigned to you, AWAITING REVIEW (amber) for how long your review has been awaited, both when it is both, and a plain AGE otherwise.
+- **Card flicker fixed:** the card list is now updated in place (remove / move / insert / replace only what changed) instead of being cleared and refilled, and the 3D tilt follows the pointer on the window against the card's fixed layout rectangle, so tilting no longer makes the card flicker at its edges. The tilt switches off while the details popup is open.
+

@@ -359,3 +359,23 @@ public class Round4Tests
         Assert.Equal(reviewAt, person.OldestReviewSince);
     }
 }
+
+public class Round7Tests
+{
+    [Fact]
+    public void Assigned_sorts_before_reviewer_before_others()
+    {
+        var other = TestData.Pr("other");
+        var review = TestData.Pr("review", with: p => p with { RequestedReviewers = [TestData.Me] });
+        var assigned = TestData.Pr("assigned", with: p => p with { Assignees = [TestData.Me] });
+        var both = TestData.Pr("both", with: p => p with { Assignees = [TestData.Me], RequestedReviewers = [TestData.Me] });
+
+        var ordered = new[] { other, review, assigned, both }.OrderBy(p => p.ViewerRank).Select(p => p.Id).ToList();
+
+        Assert.Equal(0, assigned.ViewerRank);
+        Assert.Equal(0, both.ViewerRank); // assigned wins when it is also a review request
+        Assert.Equal(1, review.ViewerRank);
+        Assert.Equal(2, other.ViewerRank);
+        Assert.Equal(["assigned", "both", "review", "other"], ordered);
+    }
+}

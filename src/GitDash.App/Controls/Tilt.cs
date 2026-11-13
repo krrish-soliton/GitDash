@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -39,6 +40,7 @@ public static class Tilt
     private sealed class State
     {
         public required Control Card;
+        public TopLevel? Top;
         public readonly Rotate3DTransform Transform = new() { Depth = 900 };
         public readonly RadialGradientBrush Glare = new()
         {
@@ -54,6 +56,8 @@ public static class Tilt
         public DispatcherTimer? Timer;
         public double TargetX, TargetY, TargetGlare;
         public double X, Y, GlareOpacity;
+        public EventHandler<PointerEventArgs>? Moved;
+        public EventHandler<PointerEventArgs>? Left;
     }
 
     private static void Attach(Control card)
@@ -63,17 +67,17 @@ public static class Tilt
         States.Add(card, state);
         card.RenderTransformOrigin = RelativePoint.Center;
         card.RenderTransform = state.Transform;
-        card.PointerMoved += OnMoved;
-        card.PointerExited += OnExited;
+        card.AttachedToVisualTree += OnAttached;
         card.DetachedFromVisualTree += OnDetached;
+        if (card.IsAttachedToVisualTree()) Hook(state);
     }
 
     private static void Detach(Control card)
     {
         if (!States.TryGetValue(card, out var state)) return;
-        card.PointerMoved -= OnMoved;
-        card.PointerExited -= OnExited;
+        card.AttachedToVisualTree -= OnAttached;
         card.DetachedFromVisualTree -= OnDetached;
+        Unhook(state);
         state.Timer?.Stop();
         state.Timer = null;
         States.Remove(card);
@@ -81,19 +85,57 @@ public static class Tilt
         if (state.Shine is not null) state.Shine.Opacity = 0;
     }
 
-    private static void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
+    private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        if (sender is Control card && States.TryGetValue(card, out var state)) state.Timer?.Stop();
+        if (sender is Control card && States.TryGetValue(card, out var state)) Hook(state);
     }
 
-    private static void OnMoved(object? sender, PointerEventArgs e)
+    private static void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
         if (sender is not Control card || !States.TryGetValue(card, out var state)) return;
-        var size = card.Bounds.Size;
-        if (size.Width <= 0 || size.Height <= 0) return;
+        Unhook(state);
+        state.Timer?.Stop();
+        state.Timer = null;
+    }
 
-        var p = e.GetPosition(card);
-        double nx = Math.Clamp(p.X / size.Width, 0, 1), ny = Math.Clamp(p.Y / size.Height, 0, 1);
+    // The pointer is followed on the window, not on the card: the card itself moves when it tilts, so the pointer
+    // "entering" and "leaving" it at its edges made the tilt (and the card) flicker. The card's layout rectangle
+    // does not move, so the test against it is stable.
+    private static void Hook(State state)
+    {
+        Unhook(state);
+        if (TopLevel.GetTopLevel(state.Card) is not { } top) return;
+        state.Top = top;
+        state.Moved = (_, e) => OnMoved(state, e);
+        state.Left = (_, _) => Rest(state);
+        top.AddHandler(InputElement.PointerMovedEvent, state.Moved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        top.AddHandler(InputElement.PointerExitedEvent, state.Left, RoutingStrategies.Direct, handledEventsToo: true);
+    }
+
+    private static void Unhook(State state)
+    {
+        if (state.Top is null) return;
+        if (state.Moved is not null) state.Top.RemoveHandler(InputElement.PointerMovedEvent, state.Moved);
+        if (state.Left is not null) state.Top.RemoveHandler(InputElement.PointerExitedEvent, state.Left);
+        state.Top = null;
+        state.Moved = state.Left = null;
+    }
+
+    private static void OnMoved(State state, PointerEventArgs e)
+    {
+        var card = state.Card;
+        if (card.GetVisualParent() is not Visual parent) return;
+        var rect = card.Bounds;
+        if (rect.Width <= 0 || rect.Height <= 0) return;
+
+        var p = e.GetPosition(parent);
+        if (!rect.Contains(p))
+        {
+            Rest(state);
+            return;
+        }
+
+        double nx = (p.X - rect.X) / rect.Width, ny = (p.Y - rect.Y) / rect.Height;
         // The edge under the cursor dips away from the viewer (pressed in), the opposite edge rises.
         state.TargetY = (nx - 0.5) * 2 * MaxAngle;
         state.TargetX = -(ny - 0.5) * 2 * MaxAngle;
@@ -109,9 +151,9 @@ public static class Tilt
         Run(state);
     }
 
-    private static void OnExited(object? sender, PointerEventArgs e)
+    private static void Rest(State state)
     {
-        if (sender is not Control card || !States.TryGetValue(card, out var state)) return;
+        if (state.TargetX == 0 && state.TargetY == 0 && state.TargetGlare == 0 && state.Timer is null) return;
         state.TargetX = state.TargetY = state.TargetGlare = 0;
         Run(state);
     }

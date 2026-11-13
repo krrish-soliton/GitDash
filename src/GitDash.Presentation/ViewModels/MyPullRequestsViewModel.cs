@@ -55,7 +55,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
 {
     private bool _isFront;
 
-    /// <summary>The card at the front of the cover flow (it gets the 3D tilt).</summary>
+    /// <summary>The card at the front of the cover flow, with nothing covering it: it gets the 3D tilt.</summary>
     public bool IsFront { get => _isFront; set => Set(ref _isFront, value); }
 
     public PullRequest PullRequest { get; } = pr;
@@ -95,9 +95,25 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
         _ => PullRequest.IsAuthoredByViewer ? "Raised by you" : "Not on your desk",
     };
 
-    public string ArrivedLabel => PullRequest.IsOnViewersDesk ? "ON YOUR DESK SINCE" : "OPENED";
+    public string ArrivedLabel => PullRequest.IsOnViewersDesk ? "ON DESK SINCE" : "OPENED";
     public string Arrived { get; } = Humanize.Stamp(pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt);
     public string WaitingLabel => PullRequest.IsOnViewersDesk ? "WAITING" : "AGE";
+
+    // Waiting time by status: how long it has been assigned to me, and how long my review has been awaited.
+    public bool HasAssigned => PullRequest.IsAssignedToViewer;
+    public string AssignedWaiting { get; } =
+        pr.IsAssignedToViewer ? Humanize.Age(now - (pr.AssignedToViewerAt ?? pr.CreatedAt)) : string.Empty;
+    public bool HasReview => PullRequest.NeedsViewerApproval;
+    public string ReviewWaiting { get; } =
+        pr.NeedsViewerApproval ? Humanize.Age(now - (pr.ReviewRequestedFromViewerAt ?? pr.CreatedAt)) : string.Empty;
+    /// <summary>Neither assigned nor awaiting my review: just how old the pull request is.</summary>
+    public bool HasNoStatusWait => !PullRequest.IsOnViewersDesk;
+
+    /// <summary>Changes whenever something shown on the card changes (used to update only the cards that need it).</summary>
+    public string Key { get; } = KeyOf(pr);
+
+    public static string KeyOf(PullRequest p) =>
+        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}";
     public string Waiting { get; } =
         Humanize.Age(now - (pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt));
     public string Age { get; } = Humanize.Age(now - pr.CreatedAt);
@@ -213,7 +229,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     private void MarkFront()
     {
-        for (var i = 0; i < Cards.Count; i++) Cards[i].IsFront = i == _selectedIndex;
+        for (var i = 0; i < Cards.Count; i++) Cards[i].IsFront = i == _selectedIndex && !_isDetailOpen;
     }
 
     public string Position { get => _position; private set => Set(ref _position, value); }
@@ -231,7 +247,14 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public ICommand StartReviewCommand { get; }
 
     // ----- Detail popup -----
-    public bool IsDetailOpen { get => _isDetailOpen; private set => Set(ref _isDetailOpen, value); }
+    public bool IsDetailOpen
+    {
+        get => _isDetailOpen;
+        private set
+        {
+            if (Set(ref _isDetailOpen, value)) MarkFront();
+        }
+    }
     public bool IsDetailLoading { get => _isDetailLoading; private set => Set(ref _isDetailLoading, value); }
     public string DetailError { get => _detailError; private set => Set(ref _detailError, value); }
     public PullRequestCardViewModel? DetailCard { get => _detailCard; private set => Set(ref _detailCard, value); }
@@ -295,27 +318,23 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
         var filter = _selectedFilter;
         var matching = all.Where(filter.Matches);
+        // Assigned to me first, then review requested from me, then everything else.
         var ordered = filter.Filter is PullRequestFilter.AssignedToMe or PullRequestFilter.ReviewRequested
-            ? matching.OrderByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt).ToList()
-            : matching.OrderByDescending(p => p.UpdatedAt).ToList();
+            ? matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt).ToList()
+            : matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.UpdatedAt).ToList();
 
         // Rebuild only when something visible changed; otherwise the cover flow would restart its animation.
-        var signature = filter.Filter + "|" +
-                        string.Join('|', ordered.Select(p => $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}"));
+        var signature = filter.Filter + "|" + string.Join('|', ordered.Select(PullRequestCardViewModel.KeyOf));
         if (!force && signature == _signature) return;
         _signature = signature;
 
         var selectedId = Cards.ElementAtOrDefault(SelectedIndex)?.Id;
         var now = _time.GetUtcNow();
-        Cards.Clear();
-        foreach (var pr in ordered)
-        {
-            Cards.Add(new PullRequestCardViewModel(pr, now, _state.Avatars.GetValueOrDefault(pr.Author)));
-        }
+        Reconcile(ordered, now);
 
         var index = selectedId is null ? -1 : ordered.FindIndex(p => p.Id == selectedId);
-        _selectedIndex = -1; // force a change notification so the view re-centres
         SelectedIndex = index >= 0 ? index : 0;
+        MarkFront(); // cards were added or replaced, so the front flag has to be set again
         IsEmpty = Cards.Count == 0;
         EmptyText = filter.Filter switch
         {
@@ -325,6 +344,46 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             _ => "No open pull requests in the monitored repositories.",
         };
         UpdatePosition();
+    }
+
+    /// <summary>
+    /// Brings the card list in line with the new order by removing, moving, inserting and replacing only what differs.
+    /// Emptying and refilling the list made every card vanish and reappear (a visible flicker) on each live update.
+    /// </summary>
+    private void Reconcile(List<PullRequest> ordered, DateTimeOffset now)
+    {
+        PullRequestCardViewModel NewCard(PullRequest pr) => new(pr, now, _state.Avatars.GetValueOrDefault(pr.Author));
+
+        var wanted = ordered.Select(p => p.Id).ToHashSet();
+        for (var i = Cards.Count - 1; i >= 0; i--)
+        {
+            if (!wanted.Contains(Cards[i].Id)) Cards.RemoveAt(i);
+        }
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var pr = ordered[i];
+            if (i >= Cards.Count || Cards[i].Id != pr.Id)
+            {
+                var from = -1;
+                for (var j = i + 1; j < Cards.Count; j++)
+                {
+                    if (Cards[j].Id != pr.Id) continue;
+                    from = j;
+                    break;
+                }
+
+                if (from < 0)
+                {
+                    Cards.Insert(i, NewCard(pr));
+                    continue;
+                }
+
+                Cards.Move(from, i);
+            }
+
+            if (Cards[i].Key != PullRequestCardViewModel.KeyOf(pr)) Cards[i] = NewCard(pr);
+        }
     }
 
     private void UpdatePosition() =>

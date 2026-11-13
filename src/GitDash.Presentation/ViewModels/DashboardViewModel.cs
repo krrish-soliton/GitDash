@@ -70,8 +70,9 @@ public sealed class DashboardViewModel : PageViewModel
         var rows = state.Open
             .GroupBy(p => p.Id).Select(g => g.First())
             .GroupBy(p => p.Repository.FullName, StringComparer.OrdinalIgnoreCase)
-            .Select(g => (Name: g.Key, Open: g.Count(), Mine: g.Count(p => p.IsOnViewersDesk)))
-            .OrderByDescending(r => r.Open)
+            .Select(g => (Name: g.Key, Open: g.Count(), Mine: g.Count(p => p.IsOnViewersDesk),
+                Assigned: g.Count(p => p.IsAssignedToViewer), Review: g.Count(p => !p.IsAssignedToViewer && p.NeedsViewerApproval)))
+            .OrderByDescending(r => r.Assigned).ThenByDescending(r => r.Review).ThenByDescending(r => r.Open)
             .ToList();
         var max = Math.Max(1, rows.Count == 0 ? 1 : rows.Max(r => r.Open));
         Replace(Repositories, rows.Select(r => new RepositoryRowViewModel(r.Name, r.Open, r.Mine, (double)r.Open / max)));
@@ -79,7 +80,7 @@ public sealed class DashboardViewModel : PageViewModel
         var now = _time.GetUtcNow();
         var desk = state.Open.GroupBy(p => p.Id).Select(g => g.First())
             .Where(p => p.IsOnViewersDesk)
-            .OrderBy(p => p.ArrivedAt ?? p.CreatedAt)
+            .OrderBy(p => p.ViewerRank).ThenBy(p => p.ArrivedAt ?? p.CreatedAt)
             .ToList();
         DeskIsEmpty = desk.Count == 0;
         DeskOverflow = Math.Max(0, desk.Count - BooksPerShelf * ShelfCount);
