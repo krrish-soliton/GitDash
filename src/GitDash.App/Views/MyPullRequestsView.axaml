@@ -76,7 +76,8 @@
               <!-- The shadow sits on its own layer behind the card: a blurred shadow on the tilting card itself
                    was rasterised with hard edges outside the card while it moved in 3D. -->
               <Panel Width="400" Height="520" Margin="0,24">
-              <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000" />
+              <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000"
+                      Opacity="{DynamicResource CardShadowOpacity}" />
               <Border Classes="card" Width="400" Height="520" Cursor="Hand" Tapped="OnCardTapped"
                       BorderThickness="2"
                       Classes.stateError="{Binding StateError}" Classes.stateStale="{Binding StateStale}"
