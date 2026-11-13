@@ -574,4 +574,30 @@ public class Round10Tests
     {
         Assert.True(new GitDash.Application.Settings.AppSettings().GlassEffect);
     }
+
+    private sealed class RecordingLauncher : GitDash.Application.Abstractions.IUrlLauncher
+    {
+        public List<string> Opened { get; } = [];
+        public bool Open(string url) { Opened.Add(url); return true; }
+    }
+
+    [Fact]
+    public void About_page_shows_the_author_and_opens_the_repository()
+    {
+        var launcher = new RecordingLauncher();
+        var about = new GitDash.Presentation.ViewModels.AboutViewModel(launcher);
+        Assert.Equal("Gowtham Krishnan", about.AuthorName);
+        Assert.Equal("gowtham.krishnan@solitontech.com", about.Email);
+        Assert.Equal("GK", about.AuthorInitials);
+        about.OpenRepositoryCommand.Execute(null);
+        Assert.Equal(GitDash.Presentation.ViewModels.AboutViewModel.RepositoryUrl, launcher.Opened[0]);
+        Assert.True(GitDash.Infrastructure.Security.GitHubUrlLauncher.IsAllowed(GitDash.Presentation.ViewModels.AboutViewModel.RepositoryUrl));
+    }
+
+    [Fact]
+    public void Version_text_drops_build_metadata()
+    {
+        Assert.Equal("dev", GitDash.Presentation.ViewModels.AboutViewModel.VersionOf(null));
+        Assert.True(GitDash.Infrastructure.Security.GitHubUrlLauncher.IsAllowed(GitDash.Presentation.ViewModels.SettingsViewModel.NewOAuthAppUrl));
+    }
 }

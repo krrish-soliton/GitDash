@@ -122,7 +122,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         _selectedRepositories = new HashSet<string>(settings.Current.SelectedRepositories, StringComparer.OrdinalIgnoreCase);
         RefreshRepositoryOptions(MonitorState.Empty);
-        Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings];
+        About = new AboutViewModel(launcher);
+        Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings, About];
         _currentPage = Home;
         Home.IsSelected = true;
 
@@ -141,6 +142,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public MyPullRequestsViewModel MyPullRequests { get; }
     public TimersViewModel Timers { get; }
     public SettingsViewModel Settings { get; }
+    public AboutViewModel About { get; }
     public WidgetViewModel Widget { get; } = new();
     public IReadOnlyList<PageViewModel> Pages { get; }
 
@@ -173,7 +175,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public string RepositorySummary { get => _repositorySummary; private set => Set(ref _repositorySummary, value); }
 
     /// <summary>The filter is shown on the pages that list pull requests.</summary>
-    public bool ShowRepositoryFilter => CurrentPage is not (TimersViewModel or SettingsViewModel);
+    public bool ShowRepositoryFilter => CurrentPage is not (TimersViewModel or SettingsViewModel or AboutViewModel);
 
     private bool IsSelected(string repository) =>
         _selectedRepositories.Count == 0 || _selectedRepositories.Contains(repository);

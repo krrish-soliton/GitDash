@@ -72,6 +72,7 @@ public sealed class SettingsViewModel : PageViewModel
         SignInCommand = new AsyncRelayCommand(SignInWithBrowserAsync, ShowAuthError);
         CancelSignInCommand = new RelayCommand(() => _deviceFlow?.Cancel());
         OpenVerificationCommand = new RelayCommand(() => _launcher.Open(VerificationUri));
+        OpenOAuthAppsCommand = new RelayCommand(() => _launcher.Open(NewOAuthAppUrl));
         RemoveAccountCommand = new RelayCommand<AccountItemViewModel>(a => _ = RemoveAsync(a));
         ReloadRepositoriesCommand = new AsyncRelayCommand(LoadRepositoriesAsync, ex => RepositoryMessage = ex.Message);
         TestNotificationCommand = new RelayCommand(() => _ = _notifications.PublishAsync(new ToastRequest(
@@ -118,6 +119,11 @@ public sealed class SettingsViewModel : PageViewModel
     public ICommand SignInCommand { get; }
     public ICommand CancelSignInCommand { get; }
     public ICommand OpenVerificationCommand { get; }
+
+    /// <summary>Opens GitHub's "Register a new OAuth application" page.</summary>
+    public ICommand OpenOAuthAppsCommand { get; }
+
+    public const string NewOAuthAppUrl = "https://github.com/settings/applications/new";
     public ICommand RemoveAccountCommand { get; }
 
     // ----- Repository picker -----

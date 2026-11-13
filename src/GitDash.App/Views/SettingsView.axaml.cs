@@ -17,6 +17,11 @@ public partial class SettingsView : UserControl
         }
     }
 
+    private void OnOpenOAuthAppsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel page) page.OpenOAuthAppsCommand.Execute(null);
+    }
+
     private void OnLimitReachedClick(object? sender, RoutedEventArgs e) => ToolCommand(sender, page => page.LimitReachedCommand);
 
     private void OnClearLimitClick(object? sender, RoutedEventArgs e) => ToolCommand(sender, page => page.ClearLimitCommand);
