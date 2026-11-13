@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitDash.Presentation.ViewModels"
         xmlns:w="using:GitDash.App.Windows"
+        xmlns:conv="using:GitDash.App.Converters"
         x:Class="GitDash.App.Windows.IslandWindow"
         x:DataType="vm:ShellViewModel"
         Width="240" Height="48"
@@ -46,22 +47,36 @@
           PointerPressed="OnPressed" Cursor="Hand">
     <Grid RowDefinitions="Auto,*,Auto">
 
-      <!-- Compact row: always visible -->
-      <Grid Height="34" ColumnDefinitions="Auto,*,Auto" Margin="14,0">
-        <Ellipse x:Name="StatusDot" Classes="live" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
-                 VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-          <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource Accent2Brush}">
-            <Run Text="{Binding Widget.Assigned}" /><Run Text=" assigned" FontWeight="Normal" Foreground="#A0A8C0" />
-          </TextBlock>
-          <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource AmberBrush}">
-            <Run Text="{Binding Widget.Approval}" /><Run Text=" to approve" FontWeight="Normal" Foreground="#A0A8C0" />
-          </TextBlock>
-        </StackPanel>
-        <TextBlock Grid.Column="2" Text="{Binding Timers.WidgetClock}" FontSize="12.5" FontWeight="Bold"
-                   Foreground="White" VerticalAlignment="Center" IsVisible="{Binding Timers.IsAnyRunning}" />
-      </Grid>
+      <!-- Compact row plus one line per running timer: always visible -->
+      <StackPanel>
+        <Grid Height="34" ColumnDefinitions="Auto,*" Margin="14,0">
+          <Ellipse x:Name="StatusDot" Classes="live" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
+                   VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+            <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource Accent2Brush}">
+              <Run Text="{Binding Widget.Assigned}" /><Run Text=" assigned" FontWeight="Normal" Foreground="#A0A8C0" />
+            </TextBlock>
+            <TextBlock FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource AmberBrush}">
+              <Run Text="{Binding Widget.Approval}" /><Run Text=" to approve" FontWeight="Normal" Foreground="#A0A8C0" />
+            </TextBlock>
+          </StackPanel>
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Timers.VisibleTimers}" Margin="16,0,16,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:RunningTimerViewModel">
+              <Grid Height="30" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" VerticalAlignment="Top">
+                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="#A0A8C0" TextTrimming="CharacterEllipsis"
+                           Margin="0,0,10,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Clock}" FontSize="12" FontWeight="Bold" Foreground="White" />
+                <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Margin="0,3,0,0" Minimum="0" Maximum="1" Value="{Binding Progress}"
+                             Height="3" MinHeight="3" CornerRadius="2" Background="#22FFFFFF"
+                             Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
 
       <!-- Expanded content: a notification, or details while hovering -->
       <Grid Grid.Row="1" x:Name="Detail" ColumnDefinitions="Auto,*,Auto" Margin="16,2,12,6" IsVisible="False">

@@ -85,7 +85,7 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
                      })
                 Raise(name);
         });
@@ -302,6 +302,12 @@ public sealed class SettingsViewModel : PageViewModel
     {
         get => _settings.Current.ShowTimerWidget;
         set => Save(s => s with { ShowTimerWidget = value });
+    }
+
+    public bool ShowMultipleTimers
+    {
+        get => _settings.Current.ShowMultipleTimers;
+        set => Save(s => s with { ShowMultipleTimers = value });
     }
 
     public bool ShowFloatingWidget

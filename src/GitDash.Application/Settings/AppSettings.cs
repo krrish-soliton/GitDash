@@ -86,6 +86,8 @@ public sealed record AppSettings
     public int? TimerWidgetX { get; init; }
     public int? TimerWidgetY { get; init; }
     public bool ShowTimerWidget { get; init; }
+    /// <summary>Show every running timer on the widget and the island (off: only the most relevant one).</summary>
+    public bool ShowMultipleTimers { get; init; } = true;
     /// <summary>A dynamic-island style pill at the top of the screen that also shows the notifications.</summary>
     public bool ShowDynamicIsland { get; init; }
 

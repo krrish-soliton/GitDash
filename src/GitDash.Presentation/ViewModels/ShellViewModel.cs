@@ -110,6 +110,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
         Timers = new TimersViewModel(settings, history, notifications, ui, time);
         Dashboard = new DashboardViewModel(launcher, time, () => Navigate(Settings));
+        Dashboard.AttachTimers(Timers);
         People = new PeopleViewModel(launcher, time, personActivity);
         MyPullRequests = new MyPullRequestsViewModel(monitor, launcher, ui, time, pr =>
         {

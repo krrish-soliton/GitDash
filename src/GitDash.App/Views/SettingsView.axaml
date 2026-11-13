@@ -330,6 +330,14 @@
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
+              <TextBlock Text="Show several timers at once" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="When Pomodoro, task and review timers run together, list each one on the timer widget and the island. Off shows only the most relevant one." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowMultipleTimers}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
               <TextBlock Text="Click through the widgets and island" Foreground="{DynamicResource TextBrush}" />
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                          Text="Mouse clicks pass through them to the window underneath; they still react to hovering. A notification that does not close by itself stays clickable so you can dismiss it." />

@@ -18,7 +18,8 @@ namespace GitDash.App.Windows;
 public partial class IslandWindow : FloatingWindow
 {
     private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NotifyHeight = 92, HoverHeight = 74;
-    private const double WindowPadX = 10, WindowPadY = 12;
+    private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 30;
+    private int _timerRows;
     private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan Shrink = TimeSpan.FromMilliseconds(340);
 
@@ -41,7 +42,32 @@ public partial class IslandWindow : FloatingWindow
             _timer.Stop();
             Dismiss();
         };
+        DataContextChanged += (_, _) => AttachTimers();
     }
+
+    private System.Collections.ObjectModel.ObservableCollection<RunningTimerViewModel>? _listed;
+
+    private void AttachTimers()
+    {
+        if (_listed is not null) _listed.CollectionChanged -= OnTimersChanged;
+        _listed = (DataContext as ShellViewModel)?.Timers.VisibleTimers;
+        if (_listed is null) return;
+        _listed.CollectionChanged += OnTimersChanged;
+        OnTimersChanged(null, null);
+    }
+
+    /// <summary>Each running timer adds one line under the status row, so the island grows a little to fit them.</summary>
+    private void OnTimersChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs? e)
+    {
+        var rows = Math.Min(_listed?.Count ?? 0, 4);
+        if (rows == _timerRows) return;
+        _timerRows = rows;
+        if (_current is not null) Expand(WideWidth, NotifyHeight);
+        else if (_hoverOpen && IsLocked) Expand(WideWidth, HoverHeight);
+        else Collapse();
+    }
+
+    private double TimerExtra => _timerRows * TimerRowHeight;
 
     public bool IsShowingNotification => _current is not null;
 
@@ -139,6 +165,7 @@ public partial class IslandWindow : FloatingWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        if (_listed is not null) _listed.CollectionChanged -= OnTimersChanged;
         _slide?.Stop();
         _slide = null;
         base.OnClosed(e);
@@ -219,18 +246,6 @@ public partial class IslandWindow : FloatingWindow
     {
         if (DataContext is not ShellViewModel shell) return;
         var w = shell.Widget;
-        if (shell.Timers.IsAnyRunning)
-        {
-            // A running timer takes the hover card: what it is and how far along.
-            TitleText.Text = shell.Timers.WidgetLabel;
-            MessageText.Text = $"{shell.Timers.WidgetClock}   ·   {w.Assigned} assigned, {w.Approval} to approve";
-            IconBadge.Background = ToneBrushConverter.Brush("Timer");
-            CloseButton.IsVisible = false;
-            Detail.IsVisible = true;
-            Expand(WideWidth, HoverHeight);
-            return;
-        }
-
         var any = w.HasOldest || w.HasOldestReview;
         TitleText.Text = any ? "Oldest waiting" : "Nothing is waiting on you";
         MessageText.Text = any
@@ -246,18 +261,19 @@ public partial class IslandWindow : FloatingWindow
     {
         var pill = this.FindControl<Border>("Pill")!;
         pill.Width = CompactWidth;
-        pill.Height = CompactHeight;
+        pill.Height = CompactHeight + TimerExtra;
         Detail.IsVisible = false;
         // Let the pill finish shrinking before the window follows it.
         DispatcherTimer.RunOnce(() =>
         {
             if (_current is not null || _hoverOpen) return;
-            Fit(CompactWidth + WindowPadX, CompactHeight + WindowPadY);
+            Fit(CompactWidth + WindowPadX, CompactHeight + TimerExtra + WindowPadY);
         }, Shrink);
     }
 
     private void Expand(double width, double height)
     {
+        height += TimerExtra;
         Fit(width + WindowPadX, height + WindowPadY);
         var pill = this.FindControl<Border>("Pill")!;
         pill.Width = width;

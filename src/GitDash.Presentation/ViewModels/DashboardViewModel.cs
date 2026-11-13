@@ -39,6 +39,18 @@ public sealed class DashboardViewModel : PageViewModel
         OpenSettingsCommand = new RelayCommand(openSettings);
     }
 
+    /// <summary>The timers that are running right now (shared with the Timers page).</summary>
+    public ObservableCollection<RunningTimerViewModel> RunningTimers { get; private set; } = [];
+    public bool HasRunningTimers => RunningTimers.Count > 0;
+
+    public void AttachTimers(TimersViewModel timers)
+    {
+        RunningTimers = timers.RunningTimers;
+        RunningTimers.CollectionChanged += (_, _) => Raise(nameof(HasRunningTimers));
+        Raise(nameof(RunningTimers));
+        Raise(nameof(HasRunningTimers));
+    }
+
     public int TotalOpen { get => _totalOpen; private set => Set(ref _totalOpen, value); }
     public int AssignedToMe { get => _assignedToMe; private set => Set(ref _assignedToMe, value); }
     public int NeedsMyApproval { get => _needsMyApproval; private set => Set(ref _needsMyApproval, value); }

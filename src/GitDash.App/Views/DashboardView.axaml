@@ -26,6 +26,30 @@
         </Grid>
       </Border>
 
+      <!-- Timers that are running right now -->
+      <Border Classes="card enter1" Padding="18,14" IsVisible="{Binding HasRunningTimers}">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="muted" Text="RUNNING TIMERS" FontSize="10.5" FontWeight="Bold" LetterSpacing="1" />
+          <ItemsControl ItemsSource="{Binding RunningTimers}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RunningTimerViewModel">
+                <StackPanel Width="250" Margin="0,0,24,6" Spacing="3">
+                  <TextBlock Text="{Binding Label}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Clock}" FontSize="28" FontWeight="Bold"
+                             Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                  <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="4" MinHeight="4"
+                               CornerRadius="2" Background="#22FFFFFF"
+                               Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
       <!-- The three headline numbers -->
       <Grid ColumnDefinitions="*,20,*,20,*">
         <Panel Grid.Column="0" Classes="enter1">
