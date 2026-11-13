@@ -1,0 +1,96 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="BgBrush" Color="#0B0D14" />
+      <SolidColorBrush x:Key="SidebarBrush" Color="#0F121C" />
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#141826" />
+      <SolidColorBrush x:Key="Surface2Brush" Color="#1B2032" />
+      <SolidColorBrush x:Key="LineBrush" Color="#262C42" />
+      <SolidColorBrush x:Key="TextBrush" Color="#E8EAF2" />
+      <SolidColorBrush x:Key="MutedBrush" Color="#8B93AD" />
+      <SolidColorBrush x:Key="ScrimBrush" Color="#99070910" />
+      <SolidColorBrush x:Key="ChipBrush" Color="#2A2360" />
+      <SolidColorBrush x:Key="ChipTextBrush" Color="#C4B5FD" />
+      <SolidColorBrush x:Key="WarnChipBrush" Color="#3A2A10" />
+      <SolidColorBrush x:Key="WarnChipTextBrush" Color="#FCD34D" />
+      <SolidColorBrush x:Key="ErrorBoxBrush" Color="#2A1620" />
+      <SolidColorBrush x:Key="PopupBrush" Color="#F0141826" />
+      <SolidColorBrush x:Key="WidgetBrush" Color="#CC141826" />
+      <SolidColorBrush x:Key="SoftOverlayBrush" Color="#33FFFFFF" />
+      <SolidColorBrush x:Key="DeskTopBrush" Color="#3A2A1E" />
+      <SolidColorBrush x:Key="DeskEdgeBrush" Color="#241810" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="BgBrush" Color="#F3F5FA" />
+      <SolidColorBrush x:Key="SidebarBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Surface2Brush" Color="#EEF1F8" />
+      <SolidColorBrush x:Key="LineBrush" Color="#DDE2EE" />
+      <SolidColorBrush x:Key="TextBrush" Color="#1A1F33" />
+      <SolidColorBrush x:Key="MutedBrush" Color="#5F6783" />
+      <SolidColorBrush x:Key="ScrimBrush" Color="#66202638" />
+      <SolidColorBrush x:Key="ChipBrush" Color="#E6E0FF" />
+      <SolidColorBrush x:Key="ChipTextBrush" Color="#5B3FD6" />
+      <SolidColorBrush x:Key="WarnChipBrush" Color="#FFF0C7" />
+      <SolidColorBrush x:Key="WarnChipTextBrush" Color="#92600A" />
+      <SolidColorBrush x:Key="ErrorBoxBrush" Color="#FFE4E8" />
+      <SolidColorBrush x:Key="PopupBrush" Color="#F5FFFFFF" />
+      <SolidColorBrush x:Key="WidgetBrush" Color="#CCFFFFFF" />
+      <SolidColorBrush x:Key="SoftOverlayBrush" Color="#33FFFFFF" />
+      <SolidColorBrush x:Key="DeskTopBrush" Color="#C79A6B" />
+      <SolidColorBrush x:Key="DeskEdgeBrush" Color="#9C7248" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Palette -->
+  <Color x:Key="BgColor">#0B0D14</Color>
+  <Color x:Key="SurfaceColor">#141826</Color>
+  <Color x:Key="AccentColor">#7C5CFF</Color>
+  <Color x:Key="Accent2Color">#22D3EE</Color>
+
+  <SolidColorBrush x:Key="AccentBrush" Color="#7C5CFF" />
+  <SolidColorBrush x:Key="Accent2Brush" Color="#22D3EE" />
+  <SolidColorBrush x:Key="GreenBrush" Color="#34D399" />
+  <SolidColorBrush x:Key="AmberBrush" Color="#FBBF24" />
+  <SolidColorBrush x:Key="PinkBrush" Color="#F472B6" />
+  <SolidColorBrush x:Key="RedBrush" Color="#FB7185" />
+
+  <LinearGradientBrush x:Key="AccentGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Color="#7C5CFF" Offset="0" />
+    <GradientStop Color="#22D3EE" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="VioletCard" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Color="#3B2A8F" Offset="0" />
+    <GradientStop Color="#1B1F3A" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="CyanCard" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Color="#0E5C73" Offset="0" />
+    <GradientStop Color="#141F33" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="AmberCard" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Color="#7A4A12" Offset="0" />
+    <GradientStop Color="#231C24" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="FloorBrush" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Color="#7C5CFF" Offset="0" />
+    <GradientStop Color="#22D3EE" Offset="0.6" />
+    <GradientStop Color="#0022D3EE" Offset="1" />
+  </LinearGradientBrush>
+
+  <!-- Icons (24 × 24) -->
+  <StreamGeometry x:Key="IconHome">M12,3 L2,12 H5 V21 H10 V15 H14 V21 H19 V12 H22 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconDashboard">M3,3 H11 V11 H3 Z M13,3 H21 V8 H13 Z M13,10 H21 V21 H13 Z M3,13 H11 V21 H3 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconPeople">M9,11 A4,4 0 1 0 9,3 A4,4 0 0 0 9,11 Z M2,20 C2,16 5,14 9,14 C13,14 16,16 16,20 Z M17,11 A3,3 0 1 0 17,5 A3,3 0 0 0 17,11 Z M17.5,13.6 C20,14 22,16 22,19 V20 H18 C18,17.4 17.8,15.4 17.5,13.6 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconCards">M7,4 H17 V20 H7 Z M3,7 H5 V17 H3 Z M19,7 H21 V17 H19 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconTimer">M12,5 A8,8 0 1 0 12,21 A8,8 0 0 0 12,5 Z M11,9 H13 V12.6 L15.6,14.4 L14.5,16 L11,13.6 Z M9,1.5 H15 V3.5 H9 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconSettings">M4,6 H13 V8 H4 Z M19,6 H20 V8 H19 Z M14,4 H18 V10 H14 Z M4,16 H5 V18 H4 Z M11,16 H20 V18 H11 Z M6,14 H10 V20 H6 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconRefresh">M12,4 V1 L8,5 L12,9 V6 A6,6 0 1 1 6,12 H4 A8,8 0 1 0 12,4 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconLeft">M15,4 L7,12 L15,20 L16.5,18.5 L10,12 L16.5,5.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconRight">M9,4 L17,12 L9,20 L7.5,18.5 L14,12 L7.5,5.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconClose">M5,6.4 L6.4,5 L12,10.6 L17.6,5 L19,6.4 L13.4,12 L19,17.6 L17.6,19 L12,13.4 L6.4,19 L5,17.6 L10.6,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconPullRequest">M6,3 A3,3 0 1 0 7,8.8 V15.2 A3,3 0 1 0 9,15.2 V8.8 A3,3 0 0 0 6,3 Z M13,5 H15 A3,3 0 0 1 18,8 V15.2 A3,3 0 1 1 16,15.2 V8 A1,1 0 0 0 15,7 H13 V9.5 L9.8,6 L13,2.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconUser">M12,12 A4.5,4.5 0 1 0 12,3 A4.5,4.5 0 0 0 12,12 Z M3,21 C3,16.5 7,14 12,14 C17,14 21,16.5 21,21 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconCheck">M9.5,16.2 L5.3,12 L3.9,13.4 L9.5,19 L20.5,8 L19.1,6.6 Z</StreamGeometry>
+</ResourceDictionary>

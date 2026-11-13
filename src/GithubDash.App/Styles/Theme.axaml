@@ -1,0 +1,461 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ===== Typography ===== -->
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="28" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="TextBlock.label">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="1" />
+  </Style>
+  <Style Selector="TextBlock.big">
+    <Setter Property="FontSize" Value="52" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="TextBlock.clock">
+    <Setter Property="FontSize" Value="44" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.error">
+    <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+  </Style>
+
+  <!-- ===== Cards ===== -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="22" />
+  </Style>
+
+  <!-- Cards that lift on hover. Transitions run only while the pointer moves in or out. -->
+  <Style Selector="Border.lift">
+    <Setter Property="RenderTransform" Value="translateY(0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.lift:pointerover">
+    <Setter Property="RenderTransform" Value="translateY(-4px)" />
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+  </Style>
+
+  <Style Selector="Border.chip">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="10,4" />
+  </Style>
+  <Style Selector="Border.chip > TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="Border.badge">
+    <Setter Property="Background" Value="{StaticResource AmberBrush}" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,3" />
+  </Style>
+  <Style Selector="Border.badge > TextBlock">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="#1A1305" />
+    <Setter Property="LetterSpacing" Value="0.8" />
+  </Style>
+
+  <!-- ===== Entrance: fade and rise once when a page appears ===== -->
+  <Style Selector="Window.motion :is(Control).enter">
+    <Style.Animations>
+      <Animation Duration="0:0:0.42" Easing="CubicEaseOut" FillMode="Both">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="TranslateTransform.Y" Value="22" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="TranslateTransform.Y" Value="0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion :is(Control).enter1">
+    <Style.Animations>
+      <Animation Duration="0:0:0.42" Delay="0:0:0.07" Easing="CubicEaseOut" FillMode="Both">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="TranslateTransform.Y" Value="22" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="TranslateTransform.Y" Value="0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion :is(Control).enter2">
+    <Style.Animations>
+      <Animation Duration="0:0:0.42" Delay="0:0:0.14" Easing="CubicEaseOut" FillMode="Both">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="TranslateTransform.Y" Value="22" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="TranslateTransform.Y" Value="0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion :is(Control).enter3">
+    <Style.Animations>
+      <Animation Duration="0:0:0.42" Delay="0:0:0.21" Easing="CubicEaseOut" FillMode="Both">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="0" />
+          <Setter Property="TranslateTransform.Y" Value="22" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+          <Setter Property="TranslateTransform.Y" Value="0" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- Glow around PR cards assigned to the viewer -->
+  <Style Selector="Window.motion Border.assignedGlow">
+    <Style.Animations>
+      <Animation Duration="0:0:1.4" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- Desk scene -->
+  <Style Selector="Window.motion Panel.drop">
+    <Style.Animations>
+      <Animation Duration="0:0:0.55" Easing="BounceEaseOut" FillMode="Both">
+        <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-120" /><Setter Property="Opacity" Value="0" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="Opacity" Value="1" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="TextBlock.waitTime"><Setter Property="Foreground" Value="{DynamicResource TextBrush}" /></Style>
+  <Style Selector="TextBlock.waitTime.overdue"><Setter Property="Foreground" Value="{StaticResource RedBrush}" /></Style>
+  <Style Selector="Border.book.assigned">
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Window.motion Ellipse.lampGlow">
+    <Style.Animations>
+      <Animation Duration="0:0:2.2" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion Border.cursor">
+    <Style.Animations>
+      <Animation Duration="0:0:0.55" IterationCount="INFINITE" PlaybackDirection="Alternate">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion Border.steam">
+    <Style.Animations>
+      <Animation Duration="0:0:2.4" IterationCount="INFINITE" Easing="SineEaseOut">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="14" /></KeyFrame>
+        <KeyFrame Cue="40%"><Setter Property="Opacity" Value="0.7" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-6" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion Border.steam2">
+    <Style.Animations>
+      <Animation Duration="0:0:2.9" Delay="0:0:0.8" IterationCount="INFINITE" Easing="SineEaseOut">
+        <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="14" /></KeyFrame>
+        <KeyFrame Cue="40%"><Setter Property="Opacity" Value="0.7" /></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-6" /></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- ===== Looping animations. They exist only under Window.motion, which the window removes
+       when it is hidden, minimised or "reduce motion" is on — so they never burn CPU unseen. ===== -->
+  <Style Selector="Window.motion Ellipse.pulse">
+    <Style.Animations>
+      <Animation Duration="0:0:0.9" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="0.25" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- People: three slightly different idle loops so a floor never moves in lockstep. -->
+  <Style Selector="Window.motion Panel.person.v0">
+    <Style.Animations>
+      <Animation Duration="0:0:1.9" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="TranslateTransform.Y" Value="0" />
+          <Setter Property="RotateTransform.Angle" Value="-2.5" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="TranslateTransform.Y" Value="-7" />
+          <Setter Property="RotateTransform.Angle" Value="2.5" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion Panel.person.v1">
+    <Style.Animations>
+      <Animation Duration="0:0:2.6" Delay="0:0:0.4" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="TranslateTransform.X" Value="-6" />
+          <Setter Property="RotateTransform.Angle" Value="2" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="TranslateTransform.X" Value="6" />
+          <Setter Property="RotateTransform.Angle" Value="-2" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+  <Style Selector="Window.motion Panel.person.v2">
+    <Style.Animations>
+      <Animation Duration="0:0:1.5" Delay="0:0:0.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="QuadraticEaseOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="TranslateTransform.Y" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="TranslateTransform.Y" Value="-11" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- ===== Buttons ===== -->
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="16,9" />
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#8F74FF" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.ghost">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="14,9" />
+  </Style>
+  <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#262C42" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.round">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.round:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <!-- ===== Sidebar navigation ===== -->
+  <Style Selector="ListBox.nav">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem">
+    <Setter Property="Padding" Value="14,11" />
+    <Setter Property="Margin" Value="0,2" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ListBox.nav ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ChipBrush}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <!-- ===== Slide-in drawer (pull request timeline) ===== -->
+  <Style Selector="Border.drawer">
+    <Setter Property="RenderTransform" Value="translateX(480px)" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" Easing="CubicEaseOut" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.drawer.open">
+    <Setter Property="RenderTransform" Value="translateX(0px)" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Border.scrim">
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.scrim.open">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <!-- ===== Inline popup (pull request details) ===== -->
+  <Style Selector="Border.modal">
+    <Setter Property="RenderTransform" Value="scale(0.94)" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.modal.open">
+    <Setter Property="RenderTransform" Value="scale(1)" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="MinHeight" Value="40" />
+  </Style>
+
+  <!-- ===== Filter chips ===== -->
+  <!-- single choice -->
+  <Style Selector="ListBox.chips">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.chips ListBoxItem">
+    <Setter Property="Padding" Value="14,7" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ListBox.chips ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.chips ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#262C42" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ListBox.chips ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <!-- multiple choice -->
+  <Style Selector="ToggleButton.filter">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="13,6" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <Style Selector="ToggleButton.filter:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ChipBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+
+  <!-- ===== People ===== -->
+  <Style Selector="Border.personCard">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="RenderTransform" Value="translateY(0px) scale(1)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        <BrushTransition Property="Background" Duration="0:0:0.18" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.personCard:pointerover">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="RenderTransform" Value="translateY(-5px) scale(1.07)" />
+  </Style>
+  <Style Selector="Border.row">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.row:pointerover">
+    <Setter Property="Background" Value="#262C42" />
+  </Style>
+
+  <!-- ===== Inputs ===== -->
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Padding" Value="12,9" />
+  </Style>
+  <Style Selector="ProgressBar.thin">
+    <Setter Property="Height" Value="6" />
+    <Setter Property="MinHeight" Value="6" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Foreground" Value="{StaticResource AccentGradient}" />
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+  </Style>
+</Styles>

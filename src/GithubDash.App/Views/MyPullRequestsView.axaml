@@ -1,0 +1,491 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GithubDash.Presentation.ViewModels"
+             xmlns:c="using:GithubDash.App.Controls"
+             xmlns:conv="using:GithubDash.App.Converters"
+             x:Class="GithubDash.App.Views.MyPullRequestsView"
+             x:DataType="vm:MyPullRequestsViewModel"
+             Focusable="True"
+             KeyDown="OnKeyDown">
+  <Grid>
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="36,30,36,22">
+
+      <Grid ColumnDefinitions="*,Auto" Classes="enter">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="h1" Text="My pull requests" />
+          <TextBlock Classes="muted" Text="Pick a view below. Click the front card to open its timeline, description, comments and approvals." />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                    IsVisible="{Binding !IsEmpty}">
+          <TextBlock Text="{Binding Position}" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <Button Classes="round" Command="{Binding PreviousCommand}" ToolTip.Tip="Previous (←)">
+            <PathIcon Data="{StaticResource IconLeft}" Width="14" Height="14" />
+          </Button>
+          <Button Classes="round" Command="{Binding NextCommand}" ToolTip.Tip="Next (→)">
+            <PathIcon Data="{StaticResource IconRight}" Width="14" Height="14" />
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Which pull requests to show -->
+      <ListBox Grid.Row="1" Classes="chips enter1" Margin="0,18,0,0" ItemsSource="{Binding Filters}"
+               SelectedItem="{Binding SelectedFilter}" SelectionChanged="OnFilterChanged"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:FilterOptionViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{Binding Label}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <Border Background="#33000000" CornerRadius="999" Padding="7,1" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Count}" FontSize="11.5" FontWeight="Bold" />
+              </Border>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <Border Grid.Row="2" Classes="card enter1" IsVisible="{Binding IsEmpty}" VerticalAlignment="Center"
+              HorizontalAlignment="Center" Padding="32">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="h2" Text="Nothing here" HorizontalAlignment="Center" />
+          <TextBlock Classes="muted" Text="{Binding EmptyText}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Cover flow -->
+      <Border Grid.Row="2" Classes="enter1" ClipToBounds="True" Background="Transparent"
+              PointerWheelChanged="OnWheel" IsVisible="{Binding !IsEmpty}">
+        <ItemsControl ItemsSource="{Binding Cards}" VerticalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <c:CoverFlowPanel ItemWidth="400" Position="{Binding SelectedIndex}">
+                <c:CoverFlowPanel.Transitions>
+                  <Transitions>
+                    <DoubleTransition Property="Position" Duration="0:0:0.38" Easing="CubicEaseOut" />
+                  </Transitions>
+                </c:CoverFlowPanel.Transitions>
+              </c:CoverFlowPanel>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:PullRequestCardViewModel">
+              <Border Classes="card" Width="400" Height="480" Margin="0,24" Cursor="Hand"
+                      BoxShadow="0 18 40 0 #90000000" Tapped="OnCardTapped">
+                <Panel>
+                <!-- Glowing frame for PRs that are assigned to me -->
+                <Border Classes="assignedGlow" IsVisible="{Binding IsAssignedToMe}" IsHitTestVisible="False"
+                        CornerRadius="20" BorderThickness="2" BorderBrush="{StaticResource Accent2Brush}"
+                        Margin="-20" />
+                <Border IsVisible="{Binding IsAssignedToMe}" IsHitTestVisible="False" HorizontalAlignment="Right"
+                        VerticalAlignment="Top" Margin="0,-20,-20,0" Padding="10,4" CornerRadius="0,20,0,10"
+                        Background="{StaticResource Accent2Brush}">
+                  <TextBlock Text="ASSIGNED TO YOU" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
+                </Border>
+                <DockPanel>
+                  <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
+                    <Button Classes="primary" Content="Open details" Click="OnDetailsClick" />
+                    <Button Classes="ghost" Content="Start review timer" Click="OnStartReviewClick" />
+                    <Button Classes="ghost" Content="GitHub ↗" Click="OnOpenClick" />
+                  </StackPanel>
+
+                  <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding Repository}" />
+                        <Run Text="{Binding Number}" Foreground="{StaticResource Accent2Brush}" />
+                      </TextBlock>
+                      <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" Grid.Column="1">
+                        <Border Classes="badge" IsVisible="{Binding IsReapproval}"
+                                ToolTip.Tip="You reviewed this before and were asked to look again">
+                          <TextBlock Text="RE-APPROVAL" />
+                        </Border>
+                        <Border Classes="badge" IsVisible="{Binding HasStaleApproval}" ToolTip.Tip="{Binding StaleApprovalTip}">
+                          <TextBlock Text="STALE APPROVAL" />
+                        </Border>
+                        <Border Classes="badge" IsVisible="{Binding IsUpdatedSinceMyReview}"
+                                ToolTip.Tip="New commits were pushed after your review">
+                          <TextBlock Text="UPDATED SINCE YOUR REVIEW" />
+                        </Border>
+                        <Border Classes="badge" IsVisible="{Binding HasStaleChangeRequest}" ToolTip.Tip="{Binding StaleChangeRequestTip}">
+                          <TextBlock Text="STALE REVIEW" />
+                        </Border>
+                      </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding Title}" FontSize="19" FontWeight="Bold" TextWrapping="Wrap"
+                               MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}"
+                               Height="52" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Panel Width="32" Height="32">
+                        <Ellipse Fill="{Binding AuthorAccent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                        <TextBlock Text="{Binding AuthorInitials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border CornerRadius="16" ClipToBounds="True">
+                          <c:AvatarImage Url="{Binding AuthorAvatarUrl}" Stretch="UniformToFill" />
+                        </Border>
+                      </Panel>
+                      <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Author}" FontSize="13" Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Text="{Binding Role}" FontSize="11.5" Foreground="{StaticResource AmberBrush}" />
+                      </StackPanel>
+                    </StackPanel>
+
+                    <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
+                      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <TextBlock Classes="label" Text="{Binding ArrivedLabel}" />
+                        <TextBlock Grid.Row="1" Text="{Binding Arrived}" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" Margin="0,3,0,0" />
+                        <TextBlock Grid.Column="1" Classes="label" Text="{Binding WaitingLabel}" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Waiting}" FontSize="14"
+                                   FontWeight="SemiBold" Foreground="{StaticResource AmberBrush}" Margin="0,3,0,0"
+                                   HorizontalAlignment="Right" />
+                      </Grid>
+                    </Border>
+
+                    <UniformGrid Columns="4">
+                      <StackPanel>
+                        <TextBlock Text="{Binding TotalComments}" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Classes="muted" FontSize="11" Text="comments" />
+                      </StackPanel>
+                      <StackPanel>
+                        <TextBlock Text="{Binding MyComments}" FontSize="20" FontWeight="Bold"
+                                   Foreground="{StaticResource Accent2Brush}" />
+                        <TextBlock Classes="muted" FontSize="11" Text="by me" />
+                      </StackPanel>
+                      <StackPanel>
+                        <TextBlock Text="{Binding Commits}" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Classes="muted" FontSize="11" Text="commits" />
+                      </StackPanel>
+                      <StackPanel>
+                        <TextBlock Text="{Binding Files}" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Classes="muted" FontSize="11" Text="files" />
+                      </StackPanel>
+                    </UniformGrid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Border Classes="chip">
+                        <TextBlock Text="{Binding Changes}" />
+                      </Border>
+                      <Border Classes="chip">
+                        <TextBlock Text="{Binding Verdict}" />
+                      </Border>
+                      <Border Classes="chip">
+                        <TextBlock>
+                          <Run Text="open" />
+                          <Run Text="{Binding Age}" />
+                        </TextBlock>
+                      </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="12.5" TextWrapping="Wrap"
+                               MaxLines="4" TextTrimming="CharacterEllipsis" LineHeight="18" />
+                  </StackPanel>
+                </DockPanel>
+                </Panel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+
+      <TextBlock Grid.Row="3" Classes="muted" FontSize="12" HorizontalAlignment="Center"
+                 IsVisible="{Binding !IsEmpty}"
+                 Text="Click a side card to bring it forward · click the front card for details · ← → or scroll to browse" />
+    </Grid>
+
+    <!-- ===== Pull request details: inline popup with tabs ===== -->
+    <Border Classes="scrim" Classes.open="{Binding IsDetailOpen}" IsHitTestVisible="{Binding IsDetailOpen}"
+            Background="{DynamicResource ScrimBrush}" Tapped="OnScrimTapped" />
+    <Border Classes="modal" Classes.open="{Binding IsDetailOpen}" IsHitTestVisible="{Binding IsDetailOpen}"
+            Margin="56,36" MaxWidth="920" Background="{DynamicResource SurfaceBrush}" CornerRadius="20"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" BoxShadow="0 24 70 0 #B0000000"
+            ClipToBounds="True">
+      <DockPanel Margin="28,24,28,22">
+
+        <!-- Header -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="5" Margin="0,0,16,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Classes="label" Foreground="{StaticResource Accent2Brush}" VerticalAlignment="Center">
+                <Run Text="{Binding DetailCard.Repository}" />
+                <Run Text="{Binding DetailCard.Number}" />
+              </TextBlock>
+              <Border Classes="badge" IsVisible="{Binding DetailCard.IsReapproval}">
+                <TextBlock Text="RE-APPROVAL" />
+              </Border>
+              <Border Classes="badge" IsVisible="{Binding DetailCard.HasStaleApproval}" ToolTip.Tip="{Binding DetailCard.StaleApprovalTip}">
+                <TextBlock Text="STALE APPROVAL" />
+              </Border>
+              <Border Classes="badge" IsVisible="{Binding DetailCard.IsUpdatedSinceMyReview}">
+                <TextBlock Text="UPDATED SINCE YOUR REVIEW" />
+              </Border>
+              <Border Classes="badge" IsVisible="{Binding DetailCard.HasStaleChangeRequest}" ToolTip.Tip="{Binding DetailCard.StaleChangeRequestTip}">
+                <TextBlock Text="STALE REVIEW" />
+              </Border>
+            </StackPanel>
+            <TextBlock Text="{Binding DetailCard.Title}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap"
+                       MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Border Classes="chip">
+                <TextBlock>
+                  <Run Text="by" />
+                  <Run Text="{Binding DetailCard.Author}" FontWeight="SemiBold" />
+                </TextBlock>
+              </Border>
+              <Border Classes="chip">
+                <TextBlock Text="{Binding DetailCard.Role}" />
+              </Border>
+              <Border Classes="chip">
+                <TextBlock Text="{Binding DetailCard.Verdict}" />
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDetailLoading}"
+                          VerticalAlignment="Center">
+                <Ellipse Classes="pulse" Width="9" Height="9" Fill="{StaticResource Accent2Brush}" />
+                <TextBlock Classes="muted" FontSize="12" Text="Loading…" />
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+            <Button Classes="ghost" Content="Start review timer" Click="OnDetailReviewClick" />
+            <Button Classes="ghost" Content="GitHub ↗" Click="OnDetailOpenClick" />
+            <Button Classes="round" Command="{Binding CloseDetailsCommand}" ToolTip.Tip="Close (Esc)">
+              <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12" />
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock DockPanel.Dock="Top" Classes="error" Text="{Binding DetailError}" TextWrapping="Wrap"
+                   Margin="0,10,0,0"
+                   IsVisible="{Binding DetailError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+        <TabControl SelectedIndex="{Binding DetailTab}" Margin="0,10,0,0" Padding="0">
+
+          <!-- ===== Timeline ===== -->
+          <TabItem Header="{Binding TimelineHeader}">
+            <DockPanel Margin="0,12,0,0">
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <TextBlock Classes="muted" FontSize="12" Text="Show" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <ToggleButton Classes="filter" Content="Commits" IsChecked="{Binding ShowCommits}" />
+                <ToggleButton Classes="filter" Content="Comments" IsChecked="{Binding ShowComments}" />
+                <ToggleButton Classes="filter" Content="Reviews" IsChecked="{Binding ShowReviews}" />
+                <ToggleButton Classes="filter" Content="PR events" IsChecked="{Binding ShowEvents}" />
+              </StackPanel>
+              <Panel>
+                <TextBlock Classes="muted" Text="Nothing to show with these filters." IsVisible="{Binding !HasTimeline}" />
+                <ScrollViewer>
+                  <ItemsControl ItemsSource="{Binding TimelineDays}" Margin="0,0,14,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TimelineDayViewModel">
+                        <StackPanel>
+                          <!-- Day heading -->
+                          <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
+                            <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
+                              <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
+                            </Border>
+                            <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
+                                    VerticalAlignment="Center" Margin="10,0,0,0" />
+                          </Grid>
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:TimelineItemViewModel">
+                                <Grid ColumnDefinitions="50,26,*">
+                                  <TextBlock Text="{Binding Time}" Classes="muted" FontSize="12" Margin="0,9,0,0"
+                                             HorizontalAlignment="Right" />
+                                  <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}"
+                                          HorizontalAlignment="Center" />
+                                  <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top"
+                                           Margin="0,11,0,0"
+                                           Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                                  <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
+                                          Padding="14,9" Margin="6,0,0,10">
+                                    <StackPanel Spacing="3">
+                                      <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{Binding Actor}" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
+                                                IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
+                                          <TextBlock Text="YOU" FontSize="9.5" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+                                      </StackPanel>
+                                      <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5"
+                                                 TextWrapping="Wrap" />
+                                    </StackPanel>
+                                  </Border>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Panel>
+            </DockPanel>
+          </TabItem>
+
+          <!-- ===== Description ===== -->
+          <TabItem Header="Description">
+            <DockPanel Margin="0,12,0,0">
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <Border Classes="chip">
+                  <TextBlock>
+                    <Run Text="{Binding DetailCard.Commits}" FontWeight="Bold" />
+                    <Run Text="commits" />
+                  </TextBlock>
+                </Border>
+                <Border Classes="chip">
+                  <TextBlock>
+                    <Run Text="{Binding DetailCard.Files}" FontWeight="Bold" />
+                    <Run Text="files" />
+                  </TextBlock>
+                </Border>
+                <Border Classes="chip">
+                  <TextBlock Text="{Binding DetailCard.Changes}" />
+                </Border>
+                <Border Classes="chip">
+                  <TextBlock>
+                    <Run Text="open" />
+                    <Run Text="{Binding DetailCard.Age}" />
+                  </TextBlock>
+                </Border>
+              </StackPanel>
+              <ScrollViewer>
+                <c:MarkdownView Blocks="{Binding DescriptionBlocks}" Margin="0,0,14,0" />
+              </ScrollViewer>
+            </DockPanel>
+          </TabItem>
+
+          <!-- ===== Comments ===== -->
+          <TabItem Header="{Binding CommentsHeader}">
+            <DockPanel Margin="0,12,0,0">
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <TextBlock Classes="muted" FontSize="12" Text="Show comments" VerticalAlignment="Center"
+                           Margin="0,0,4,0" />
+                <ToggleButton Classes="filter" Content="By me" IsChecked="{Binding CommentsByMe}" />
+                <ToggleButton Classes="filter" Content="By other people" IsChecked="{Binding CommentsByOthers}" />
+                <ToggleButton Classes="filter" Content="AI comments" IsChecked="{Binding CommentsFromAi}" />
+                <ToggleButton Classes="filter" Content="That mention me" IsChecked="{Binding CommentsMentioningMe}" />
+              </StackPanel>
+              <Panel>
+                <TextBlock Classes="muted" Text="No comments match these filters." IsVisible="{Binding !HasComments}" />
+                <ScrollViewer>
+                  <ItemsControl ItemsSource="{Binding Comments}" Margin="0,0,14,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:CommentViewModel">
+                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,12">
+                          <Panel Width="34" Height="34" VerticalAlignment="Top" Margin="0,2,12,0">
+                            <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                            <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          </Panel>
+                          <Border Grid.Column="1" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
+                                  Padding="14,10">
+                            <StackPanel Spacing="6">
+                              <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                                <TextBlock Text="{Binding Author}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                                <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="5"
+                                        Padding="6,1" Margin="8,0,0,0" IsVisible="{Binding IsMine}"
+                                        VerticalAlignment="Center">
+                                  <TextBlock Text="YOU" FontSize="9.5" FontWeight="Bold" Foreground="White" />
+                                </Border>
+                                <Border Grid.Column="2" Classes="badge" Margin="8,0,0,0"
+                                        IsVisible="{Binding MentionsMe}" VerticalAlignment="Center">
+                                  <TextBlock Text="MENTIONS YOU" />
+                                </Border>
+                                <Border Grid.Column="3" Background="{DynamicResource ChipBrush}" CornerRadius="5" Padding="6,1"
+                                        Margin="8,0,0,0" IsVisible="{Binding IsAi}" HorizontalAlignment="Left"
+                                        VerticalAlignment="Center">
+                                  <TextBlock Text="AI" FontSize="9.5" FontWeight="Bold"
+                                             Foreground="{DynamicResource ChipTextBrush}" />
+                                </Border>
+                                <TextBlock Grid.Column="4" Text="{Binding When}" Classes="muted" FontSize="11"
+                                           VerticalAlignment="Center" />
+                              </Grid>
+                              <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{StaticResource Accent2Brush}"
+                                         TextTrimming="CharacterEllipsis" />
+                              <c:MarkdownView Blocks="{Binding Blocks}" />
+                            </StackPanel>
+                          </Border>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Panel>
+            </DockPanel>
+          </TabItem>
+
+          <!-- ===== Approvals and rejections ===== -->
+          <TabItem Header="{Binding ReviewsHeader}">
+            <DockPanel Margin="0,12,0,0">
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="*,10,*,10,*" Margin="0,0,0,14">
+                <Border Grid.Column="0" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
+                  <StackPanel Spacing="3">
+                    <TextBlock Classes="label" Text="APPROVED BY" Foreground="{StaticResource GreenBrush}" />
+                    <TextBlock Text="{Binding ApprovedBy}" FontSize="13" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextBrush}" />
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
+                  <StackPanel Spacing="3">
+                    <TextBlock Classes="label" Text="CHANGES REQUESTED BY" Foreground="{StaticResource RedBrush}" />
+                    <TextBlock Text="{Binding ChangesRequestedBy}" FontSize="13" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextBrush}" />
+                  </StackPanel>
+                </Border>
+                <Border Grid.Column="4" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
+                  <StackPanel Spacing="3">
+                    <TextBlock Classes="label" Text="STILL WAITING ON" Foreground="{StaticResource AmberBrush}" />
+                    <TextBlock Text="{Binding WaitingOn}" FontSize="13" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextBrush}" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+              <Panel>
+                <TextBlock Classes="muted" Text="No review activity yet." IsVisible="{Binding !HasReviews}" />
+                <ScrollViewer>
+                  <ItemsControl ItemsSource="{Binding ReviewEvents}" Margin="0,0,14,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ReviewEventViewModel">
+                        <Grid ColumnDefinitions="26,*">
+                          <Border Width="2" Background="{DynamicResource LineBrush}" HorizontalAlignment="Center" />
+                          <Ellipse Width="12" Height="12" VerticalAlignment="Top" Margin="0,11,0,0"
+                                   Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                          <Border Grid.Column="1" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
+                                  Padding="14,9" Margin="6,0,0,10">
+                            <StackPanel Spacing="3">
+                              <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                <TextBlock Text="{Binding Verdict}" FontSize="11" FontWeight="Bold" LetterSpacing="0.8"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Actor}" FontSize="13" FontWeight="SemiBold"
+                                           Margin="10,0,0,0" Foreground="{DynamicResource TextBrush}" />
+                                <TextBlock Grid.Column="3" Text="{Binding When}" Classes="muted" FontSize="11"
+                                           VerticalAlignment="Center" />
+                              </Grid>
+                              <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5" TextWrapping="Wrap" />
+                            </StackPanel>
+                          </Border>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Panel>
+            </DockPanel>
+          </TabItem>
+        </TabControl>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

@@ -1,0 +1,103 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GithubDash.Presentation.ViewModels"
+        xmlns:views="using:GithubDash.App.Views"
+        xmlns:conv="using:GithubDash.App.Converters"
+        x:Class="GithubDash.App.Windows.MainWindow"
+        x:DataType="vm:ShellViewModel"
+        Title="GithubDash"
+        Icon="/Assets/app.ico"
+        Width="1280" Height="820" MinWidth="1080" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgBrush}">
+
+  <Window.DataTemplates>
+    <DataTemplate DataType="vm:HomeViewModel">
+      <views:HomeView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:DashboardViewModel">
+      <views:DashboardView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:PeopleViewModel">
+      <views:PeopleView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:MyPullRequestsViewModel">
+      <views:MyPullRequestsView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:TimersViewModel">
+      <views:TimersView />
+    </DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel">
+      <views:SettingsView />
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <Grid ColumnDefinitions="232,*">
+
+    <!-- Sidebar -->
+    <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,22,16,16">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="6,0,0,26">
+          <Border Width="36" Height="36" CornerRadius="11" Background="{StaticResource AccentGradient}">
+            <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="White" />
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="GithubDash" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+            <TextBlock Text="Pull request radar" Classes="muted" FontSize="11" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Sync status -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10">
+          <Border IsVisible="{Binding HasError}" Background="{DynamicResource ErrorBoxBrush}" CornerRadius="10" Padding="10"
+                  ToolTip.Tip="{Binding Error}">
+            <TextBlock Text="{Binding Error}" Classes="error" FontSize="11" TextWrapping="Wrap" MaxLines="4"
+                       TextTrimming="CharacterEllipsis" />
+          </Border>
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Panel Width="10" Height="10" VerticalAlignment="Center" Margin="6,0,10,0">
+              <Ellipse Fill="{StaticResource GreenBrush}" IsVisible="{Binding !IsSyncing}" />
+              <Ellipse Classes="pulse" Fill="{StaticResource Accent2Brush}" IsVisible="{Binding IsSyncing}" />
+            </Panel>
+            <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="muted" FontSize="11.5"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="2" Classes="round" Width="32" Height="32" Command="{Binding RefreshCommand}"
+                    ToolTip.Tip="Sync now">
+              <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+            </Button>
+          </Grid>
+        </StackPanel>
+
+        <ListBox Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:PageViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <PathIcon Width="17" Height="17"
+                          Data="{Binding Icon, Converter={x:Static conv:GeometryKeyConverter.Instance}}" />
+                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- Pages -->
+    <DockPanel Grid.Column="1">
+      <!-- Repository filter shared by the list pages -->
+      <Border DockPanel.Dock="Top" IsVisible="{Binding ShowRepositoryFilter}" Padding="36,14,36,0">
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+          <TextBlock Text="Repository" Classes="label" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding RepositoryOptions}" SelectedItem="{Binding SelectedRepository}"
+                    MinWidth="240" MaxDropDownHeight="360" />
+        </StackPanel>
+      </Border>
+      <TransitioningContentControl Content="{Binding CurrentPage}">
+        <TransitioningContentControl.PageTransition>
+          <CrossFade Duration="0:0:0.16" />
+        </TransitioningContentControl.PageTransition>
+      </TransitioningContentControl>
+    </DockPanel>
+  </Grid>
+</Window>

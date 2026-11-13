@@ -1,0 +1,643 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GithubDash.Presentation.ViewModels"
+             xmlns:c="using:GithubDash.App.Controls"
+             xmlns:conv="using:GithubDash.App.Converters"
+             x:Class="GithubDash.App.Views.PeopleView"
+             x:DataType="vm:PeopleViewModel"
+             Focusable="True">
+
+  <UserControl.Styles>
+    <!-- Entrance, played once per person: walk in from the back of the room (position and size, so it reads as depth),
+         then turn to face the desk like a card flipping around (3D rotation). -->
+    <Style Selector="Window.motion Panel.walkin:not(.d1):not(.d2)">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Easing="CubicEaseOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-300" /><Setter Property="TranslateTransform.Y" Value="-120" /><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="12%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin:not(.d1):not(.d2) > Panel.depth">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Easing="CubicEaseOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="ScaleTransform.ScaleX" Value="0.5" /><Setter Property="ScaleTransform.ScaleY" Value="0.5" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="ScaleTransform.ScaleX" Value="1" /><Setter Property="ScaleTransform.ScaleY" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin:not(.d1):not(.d2) > Panel.depth > Panel.turn">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Easing="CubicEaseInOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="Rotate3DTransform.AngleY" Value="80" /></KeyFrame>
+          <KeyFrame Cue="55%"><Setter Property="Rotate3DTransform.AngleY" Value="80" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Rotate3DTransform.AngleY" Value="0" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin.d1">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Delay="0:0:0.45" Easing="CubicEaseOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-300" /><Setter Property="TranslateTransform.Y" Value="-120" /><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="12%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin.d1 > Panel.depth">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Delay="0:0:0.45" Easing="CubicEaseOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="ScaleTransform.ScaleX" Value="0.5" /><Setter Property="ScaleTransform.ScaleY" Value="0.5" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="ScaleTransform.ScaleX" Value="1" /><Setter Property="ScaleTransform.ScaleY" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin.d1 > Panel.depth > Panel.turn">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Delay="0:0:0.45" Easing="CubicEaseInOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="Rotate3DTransform.AngleY" Value="80" /></KeyFrame>
+          <KeyFrame Cue="55%"><Setter Property="Rotate3DTransform.AngleY" Value="80" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Rotate3DTransform.AngleY" Value="0" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin.d2">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Delay="0:0:0.9" Easing="CubicEaseOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-300" /><Setter Property="TranslateTransform.Y" Value="-120" /><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="12%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin.d2 > Panel.depth">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Delay="0:0:0.9" Easing="CubicEaseOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="ScaleTransform.ScaleX" Value="0.5" /><Setter Property="ScaleTransform.ScaleY" Value="0.5" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="ScaleTransform.ScaleX" Value="1" /><Setter Property="ScaleTransform.ScaleY" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.walkin.d2 > Panel.depth > Panel.turn">
+      <Style.Animations>
+        <Animation Duration="0:0:2"  Delay="0:0:0.9" Easing="CubicEaseInOut" FillMode="Both">
+          <KeyFrame Cue="0%"><Setter Property="Rotate3DTransform.AngleY" Value="80" /></KeyFrame>
+          <KeyFrame Cue="55%"><Setter Property="Rotate3DTransform.AngleY" Value="80" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Rotate3DTransform.AngleY" Value="0" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Footsteps: a quick bob that only lasts while the avatar is walking in. -->
+    <Style Selector="Window.motion Panel.walkin Panel.bob">
+      <Style.Animations>
+        <Animation Duration="0:0:0.2" IterationCount="10" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="-6" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Typing hands -->
+    <Style Selector="Window.motion Border.hand1">
+      <Style.Animations>
+        <Animation Duration="0:0:0.17" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="-3" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Border.hand2">
+      <Style.Animations>
+        <Animation Duration="0:0:0.21" Delay="0:0:0.08" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-3" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Head nod while working -->
+    <Style Selector="Window.motion Panel.nod">
+      <Style.Animations>
+        <Animation Duration="0:0:1.6" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="2.5" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Idle people pace beside their desk -->
+    <Style Selector="Window.motion Panel.patrol">
+      <Style.Animations>
+        <Animation Duration="0:0:3.2" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-16" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="16" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Busy monitors flicker; waiting bubbles hop -->
+    <Style Selector="Window.motion Border.screen.busy">
+      <Style.Animations>
+        <Animation Duration="0:0:1.1" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.55" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Border.bubble">
+      <Style.Animations>
+        <Animation Duration="0:0:0.7" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="QuadraticEaseOut">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="-5" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Ceiling lamps sway slightly -->
+    <Style Selector="Window.motion Border.lamp">
+      <Style.Animations>
+        <Animation Duration="0:0:2.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.55" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- Collapsible headings: flat, no box -->
+    <Style Selector="Expander.section">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="Expander.section /template/ ToggleButton#ExpanderHeader">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="Border.station:pointerover">
+      <Setter Property="Background" Value="#14FFFFFF" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid RowDefinitions="Auto,*" Margin="30,26,30,0">
+
+      <Grid ColumnDefinitions="*,Auto" Classes="enter" Margin="0,0,0,16">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="h1" Text="The office" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Every repository is an office. People walk in and sit down at a desk when they have pull requests to deal with — one sheet of paper per PR they raised. Click anyone for their full activity." />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Classes="chip">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:CountUpText Value="{Binding PeopleCount}" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="people" />
+            </StackPanel>
+          </Border>
+          <Border Classes="chip">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <c:CountUpText Value="{Binding OpenCount}" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="open pull requests" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <ScrollViewer Grid.Row="1">
+        <StackPanel Spacing="22" Margin="0,0,0,36">
+
+          <Border Classes="card" IsVisible="{Binding IsEmpty}">
+            <TextBlock Classes="muted" Text="No open pull requests in the monitored repositories — the office is empty." />
+          </Border>
+
+          <!-- One office per repository -->
+          <ItemsControl ItemsSource="{Binding Floors}" IsVisible="{Binding !IsEmpty}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="22" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FloorViewModel">
+                <Border CornerRadius="20" ClipToBounds="True" BorderThickness="1" BorderBrush="{DynamicResource LineBrush}"
+                        Background="{DynamicResource SurfaceBrush}" MinHeight="560">
+                  <Grid RowDefinitions="Auto,*,Auto">
+
+                    <!-- Room header: repository and live numbers -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="22,16,22,0">
+                      <StackPanel Spacing="2">
+                        <TextBlock Classes="label" Text="{Binding FloorLabel}" Foreground="{StaticResource Accent2Brush}" />
+                        <TextBlock Text="{Binding Repository}" FontSize="17" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Border Classes="chip"><TextBlock>
+                          <Run Text="{Binding OpenCount}" /><Run Text=" open" /></TextBlock></Border>
+                        <Border Classes="chip"><TextBlock>
+                          <Run Text="{Binding AwaitingReviewCount}" /><Run Text=" awaiting review" /></TextBlock></Border>
+                        <Border Classes="chip"><TextBlock>
+                          <Run Text="{Binding ApprovedCount}" /><Run Text=" approved" /></TextBlock></Border>
+                        <Border Classes="chip"><TextBlock>
+                          <Run Text="{Binding ChangesRequestedCount}" /><Run Text=" changes requested" /></TextBlock></Border>
+                        <Border Classes="chip"><TextBlock>
+                          <Run Text="Oldest Assigned " /><Run Text="{Binding OldestAssignedAge}" /></TextBlock></Border>
+                        <Border Classes="chip"><TextBlock>
+                          <Run Text="Oldest Review " /><Run Text="{Binding OldestReviewAge}" /></TextBlock></Border>
+                      </StackPanel>
+                    </Grid>
+
+                    <!-- The room: back wall, then a floor drawn in perspective -->
+                    <Grid Grid.Row="1" Margin="0,10,0,0" RowDefinitions="132,*">
+                      <!-- Back wall with windows, ceiling lights and the door -->
+                      <Panel Grid.Row="0" IsHitTestVisible="False">
+                        <Border Background="{DynamicResource Surface2Brush}" Opacity="0.55" />
+                        <StackPanel Orientation="Horizontal" Spacing="26" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                    Margin="0,0,0,0">
+                          <Border Classes="lamp" Width="80" Height="5" CornerRadius="3" Background="{StaticResource AmberBrush}" />
+                          <Border Classes="lamp" Width="80" Height="5" CornerRadius="3" Background="{StaticResource AmberBrush}" />
+                          <Border Classes="lamp" Width="80" Height="5" CornerRadius="3" Background="{StaticResource AmberBrush}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="34" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Margin="60,16,0,0">
+                          <Border Width="96" Height="62" CornerRadius="6" Background="#2238BDF8" BorderBrush="{DynamicResource LineBrush}" BorderThickness="3" />
+                          <Border Width="96" Height="62" CornerRadius="6" Background="#2238BDF8" BorderBrush="{DynamicResource LineBrush}" BorderThickness="3" />
+                          <Border Width="96" Height="62" CornerRadius="6" Background="#2238BDF8" BorderBrush="{DynamicResource LineBrush}" BorderThickness="3" />
+                        </StackPanel>
+                        <Border Width="52" Height="104" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                Margin="24,0,0,0" CornerRadius="6,6,0,0" Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{StaticResource Accent2Brush}" BorderThickness="2">
+                          <Ellipse Width="7" Height="7" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   Margin="0,0,6,0" Fill="{StaticResource AmberBrush}" />
+                        </Border>
+                        <!-- Skirting board where wall meets floor -->
+                        <Border Height="6" VerticalAlignment="Bottom" Background="{DynamicResource LineBrush}" />
+                      </Panel>
+
+                      <!-- Floor: a trapezoid that widens towards the viewer, with tile lines meeting at the horizon -->
+                      <Panel Grid.Row="1" MinHeight="420">
+                        <Path Stretch="Fill" Data="M60,0 L940,0 L1000,100 L0,100 Z" IsHitTestVisible="False"
+                              Fill="{DynamicResource Surface2Brush}" />
+                        <Path Stretch="Fill" Data="M60,0 L940,0 L1000,100 L0,100 Z" IsHitTestVisible="False">
+                          <Path.Fill>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                              <GradientStop Color="#55000000" Offset="0" />
+                              <GradientStop Color="#00000000" Offset="0.7" />
+                              <GradientStop Color="#18FFFFFF" Offset="1" />
+                            </LinearGradientBrush>
+                          </Path.Fill>
+                        </Path>
+                        <Path Stretch="Fill" IsHitTestVisible="False" Stroke="{DynamicResource LineBrush}" StrokeThickness="1" Opacity="0.7"
+                              Data="M60,0 L0,100 M148,0 L100,100 M236,0 L200,100 M324,0 L300,100 M412,0 L400,100 M500,0 L500,100 M588,0 L600,100 M676,0 L700,100 M764,0 L800,100 M852,0 L900,100 M940,0 L1000,100 M54,10 L946,10 M45.6,24 L954.4,24 M33.6,44 L966.4,44 M16.8,72 L983.2,72" />
+
+                      <!-- Workstations -->
+                      <ItemsControl ItemsSource="{Binding People}" Margin="70,18,40,24" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:PersonViewModel">
+                            <Border Classes="station" Background="Transparent" Width="196" Margin="0,0,10,18" Cursor="Hand"
+                                    CornerRadius="14" Tapped="OnPersonTapped" ToolTip.Tip="{Binding Hint}"
+                                    AttachedToVisualTree="OnStationAttached">
+                              <Panel Height="270"
+                                     Classes.d1="{Binding Variant, Converter={x:Static conv:EqualsConverter.Instance}, ConverterParameter=1}"
+                                     Classes.d2="{Binding Variant, Converter={x:Static conv:EqualsConverter.Instance}, ConverterParameter=2}">
+                                <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
+                                <Panel Classes="depth" RenderTransformOrigin="50%,100%">
+                                  <Panel.RenderTransform><ScaleTransform /></Panel.RenderTransform>
+                                <Panel Classes="turn" RenderTransformOrigin="50%,50%">
+                                  <Panel.RenderTransform><Rotate3DTransform Depth="500" /></Panel.RenderTransform>
+                                <Panel Classes="bob">
+                                  <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
+
+                                  <!-- Scene: figure(s) and desk -->
+                                  <Panel Height="150" VerticalAlignment="Top" Margin="0,50,0,0">
+                                    <!-- Soft shadow on the floor under the desk -->
+                                    <Ellipse Width="170" Height="20" VerticalAlignment="Bottom" Margin="0,0,0,-12"
+                                             Fill="#55000000" IsHitTestVisible="False" />
+
+                                    <!-- Seated worker (behind the desk) -->
+                                    <Panel Width="74" Height="104" VerticalAlignment="Top" Margin="0,4,0,0"
+                                           IsVisible="{Binding IsWorking}">
+                                      <Border Width="60" Height="46" CornerRadius="16,16,6,6" VerticalAlignment="Bottom"
+                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                      <Panel Classes="nod" Width="50" Height="50" VerticalAlignment="Top">
+                                        <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
+                                        <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                        <TextBlock Text="{Binding Initials}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="14" FontWeight="Bold" Foreground="#0B0D14" />
+                                        <Border CornerRadius="25" ClipToBounds="True">
+                                          <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                                        </Border>
+                                        <Ellipse Stroke="White" StrokeThickness="2.5" IsVisible="{Binding IsViewer}" />
+                                      </Panel>
+                                    </Panel>
+
+                                    <!-- Desk -->
+                                    <Panel VerticalAlignment="Bottom" Height="64">
+                                      <Border Height="16" VerticalAlignment="Top" Margin="-6,0,-6,0" CornerRadius="4"
+                                              Background="{DynamicResource DeskTopBrush}"
+                                              BoxShadow="0 5 8 0 #44000000" />
+                                      <Border Height="50" VerticalAlignment="Bottom" Margin="8,0" CornerRadius="0,0,4,4"
+                                              Background="{DynamicResource DeskEdgeBrush}" />
+                                      <!-- Numbers in coloured circles: Assigned, PR, Waiting -->
+                                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
+                                                  VerticalAlignment="Bottom" Margin="0,0,0,10">
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource Accent2Brush}"
+                                                ToolTip.Tip="Assigned to them">
+                                          <TextBlock Text="{Binding Assigned}" FontSize="12" FontWeight="Bold" Foreground="#0B0D14"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource AccentBrush}"
+                                                ToolTip.Tip="PR they raised">
+                                          <TextBlock Text="{Binding Raised}" FontSize="12" FontWeight="Bold" Foreground="White"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <Border Width="28" Height="28" CornerRadius="14" Background="{StaticResource RedBrush}"
+                                                ToolTip.Tip="Waiting on them (assigned or review requested)">
+                                          <TextBlock Text="{Binding AssignedUnder}" FontSize="12" FontWeight="Bold" Foreground="#0B0D14"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                      </StackPanel>
+                                    </Panel>
+
+                                    <!-- Monitor -->
+                                    <Panel HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,60" Width="42" Height="40">
+                                      <Border Height="30" VerticalAlignment="Top" CornerRadius="4" Background="#0B0D14"
+                                              BorderBrush="{DynamicResource LineBrush}" BorderThickness="2" Padding="4">
+                                        <Border Classes="screen" Classes.busy="{Binding IsWorking}" CornerRadius="2"
+                                                Background="{StaticResource Accent2Brush}" Opacity="0.35" />
+                                      </Border>
+                                      <Border Width="8" Height="8" VerticalAlignment="Bottom" Background="{DynamicResource LineBrush}" />
+                                    </Panel>
+
+                                    <!-- Paper: one sheet per PR raised, up to five -->
+                                    <Panel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,60" Width="38" Height="22">
+                                      <Border Width="30" Height="4" Margin="0,0,0,0" VerticalAlignment="Bottom" CornerRadius="1" Background="White" IsVisible="{Binding Paper1}" />
+                                      <Border Width="30" Height="4" Margin="2,0,0,4" VerticalAlignment="Bottom" CornerRadius="1" Background="#E2E8F0" IsVisible="{Binding Paper2}" />
+                                      <Border Width="30" Height="4" Margin="0,0,0,8" VerticalAlignment="Bottom" CornerRadius="1" Background="White" IsVisible="{Binding Paper3}" />
+                                      <Border Width="30" Height="4" Margin="2,0,0,12" VerticalAlignment="Bottom" CornerRadius="1" Background="#E2E8F0" IsVisible="{Binding Paper4}" />
+                                      <Border Width="30" Height="4" Margin="0,0,0,16" VerticalAlignment="Bottom" CornerRadius="1" Background="White" IsVisible="{Binding Paper5}" />
+                                    </Panel>
+
+                                    <!-- Typing hands (only for people who are working) -->
+                                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
+                                                VerticalAlignment="Bottom" Margin="0,0,0,58" IsVisible="{Binding IsWorking}">
+                                      <Border Classes="hand1" Width="14" Height="8" CornerRadius="4"
+                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}">
+                                        <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+                                      </Border>
+                                      <Border Classes="hand2" Width="14" Height="8" CornerRadius="4"
+                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}">
+                                        <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+                                      </Border>
+                                    </StackPanel>
+
+                                    <!-- Standing person with nothing to do: paces next to the desk -->
+                                    <Panel Classes="patrol" Width="64" Height="112" VerticalAlignment="Bottom" Margin="0,0,0,-10"
+                                           IsVisible="{Binding IsIdle}">
+                                      <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
+                                      <Border Width="9" Height="26" CornerRadius="4" VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                                              Margin="0,0,13,0" Opacity="0.8"
+                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                      <Border Width="9" Height="26" CornerRadius="4" VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                                              Margin="13,0,0,0" Opacity="0.8"
+                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                      <Border Width="46" Height="36" CornerRadius="16,16,8,8" VerticalAlignment="Bottom" Margin="0,0,0,24"
+                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                      <Panel Width="48" Height="48" VerticalAlignment="Top">
+                                        <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                        <TextBlock Text="{Binding Initials}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="13" FontWeight="Bold" Foreground="#0B0D14" />
+                                        <Border CornerRadius="24" ClipToBounds="True">
+                                          <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                                        </Border>
+                                        <Ellipse Stroke="White" StrokeThickness="2.5" IsVisible="{Binding IsViewer}" />
+                                      </Panel>
+                                    </Panel>
+                                  </Panel>
+
+                                  <!-- Comic speech bubbles: W = waiting on them, A = assigned to them -->
+                                  <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
+                                              VerticalAlignment="Top" Margin="0,2,0,0">
+                                    <Border Classes="bubble" ToolTip.Tip="Waiting: pull requests waiting on this person (assigned or review requested)">
+                                      <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+                                      <StackPanel>
+                                        <Border Padding="9,2" CornerRadius="13" BorderThickness="2" BorderBrush="#0B0D14"
+                                                Background="{StaticResource RedBrush}">
+                                          <TextBlock FontStyle="Italic" FontSize="13" Foreground="#0B0D14">
+                                            <Run Text="W " FontWeight="Black" /><Run Text="{Binding AssignedUnder}" FontWeight="ExtraBold" />
+                                          </TextBlock>
+                                        </Border>
+                                        <Path Data="M0,0 L12,0 L4,10 Z" Fill="{StaticResource RedBrush}" Stroke="#0B0D14" StrokeThickness="2"
+                                              Margin="9,-2,0,0" HorizontalAlignment="Left" />
+                                      </StackPanel>
+                                    </Border>
+                                    <Border Classes="bubble" ToolTip.Tip="Assigned: pull requests where this person is the assignee">
+                                      <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+                                      <StackPanel>
+                                        <Border Padding="9,2" CornerRadius="13" BorderThickness="2" BorderBrush="#0B0D14"
+                                                Background="{StaticResource Accent2Brush}">
+                                          <TextBlock FontStyle="Italic" FontSize="13" Foreground="#0B0D14">
+                                            <Run Text="A " FontWeight="Black" /><Run Text="{Binding Assigned}" FontWeight="ExtraBold" />
+                                          </TextBlock>
+                                        </Border>
+                                        <Path Data="M0,0 L12,0 L8,10 Z" Fill="{StaticResource Accent2Brush}" Stroke="#0B0D14" StrokeThickness="2"
+                                              Margin="0,-2,9,0" HorizontalAlignment="Right" />
+                                      </StackPanel>
+                                    </Border>
+                                  </StackPanel>
+
+                                  <!-- Name tag and numbers -->
+                                  <StackPanel VerticalAlignment="Bottom" Spacing="3" Margin="2,0,2,2">
+                                    <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" FontSize="12"
+                                               FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="140" />
+                                    <TextBlock Text="{Binding StatusLine}" HorizontalAlignment="Center" TextAlignment="Center"
+                                               FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                                    <TextBlock Text="{Binding OldestAssignedLine}" HorizontalAlignment="Center" FontSize="10"
+                                               Foreground="{StaticResource Accent2Brush}" IsVisible="{Binding HasOldestAssigned}" />
+                                    <TextBlock Text="{Binding OldestReviewLine}" HorizontalAlignment="Center" FontSize="10"
+                                               Foreground="{StaticResource AmberBrush}" IsVisible="{Binding HasOldestReview}" />
+                                  </StackPanel>
+                                </Panel>
+                                </Panel>
+                                </Panel>
+                              </Panel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      </Panel>
+                    </Grid>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <StackPanel Orientation="Horizontal" Spacing="18">
+            <TextBlock Classes="muted" FontSize="12" Text="sheets on the desk = PR raised" />
+            <TextBlock Classes="muted" FontSize="12" Text="circles on the desk = Assigned (cyan) · PR (violet) · Waiting (red)" />
+            <TextBlock Classes="muted" FontSize="12" Text="standing = nothing on their plate" />
+            <TextBlock Classes="muted" FontSize="12" Text="white ring = you" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <!-- ===== Person panel ===== -->
+    <Border Classes="scrim" Classes.open="{Binding IsPersonOpen}" IsHitTestVisible="{Binding IsPersonOpen}"
+            Background="{DynamicResource ScrimBrush}" Tapped="OnScrimTapped" />
+    <Border Classes="drawer" Classes.open="{Binding IsPersonOpen}" IsHitTestVisible="{Binding IsPersonOpen}"
+            Width="560" HorizontalAlignment="Right" Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0" Padding="26,26,18,18"
+            BoxShadow="-20 0 50 0 #80000000">
+      <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,8,16">
+          <Panel Width="64" Height="64" Margin="0,0,14,0">
+            <Ellipse Fill="{Binding SelectedPerson.Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+            <TextBlock Text="{Binding SelectedPerson.Initials}" FontSize="18" FontWeight="Bold" Foreground="#0B0D14"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Border CornerRadius="32" ClipToBounds="True">
+              <c:AvatarImage Url="{Binding SelectedPerson.AvatarUrl}" Stretch="UniformToFill" />
+            </Border>
+            <Ellipse Stroke="{StaticResource Accent2Brush}" StrokeThickness="2" />
+          </Panel>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+            <TextBlock Text="{Binding SelectedPerson.DisplayName}" FontSize="19" FontWeight="Bold"
+                       Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding PersonSubtitle}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="ghost" Content="Refresh" Command="{Binding RefreshActivityCommand}"
+                  VerticalAlignment="Top" Margin="0,0,8,0" />
+          <Button Grid.Column="3" Classes="round" VerticalAlignment="Top" Command="{Binding ClosePersonCommand}"
+                  ToolTip.Tip="Close (Esc)">
+            <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12" />
+          </Button>
+        </Grid>
+
+        <ScrollViewer>
+          <StackPanel Margin="0,0,12,0" Spacing="8">
+
+            <!-- Dashboard -->
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsActivityLoading}">
+              <Ellipse Classes="pulse" Width="9" Height="9" Fill="{StaticResource Accent2Brush}" />
+              <TextBlock Classes="muted" Text="Loading full activity from GitHub…" />
+            </StackPanel>
+            <TextBlock Classes="error" Text="{Binding ActivityError}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasActivityError}" />
+
+            <ItemsControl ItemsSource="{Binding ActivityTiles}" IsVisible="{Binding HasActivity}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PersonTileViewModel">
+                  <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10" Margin="0,0,8,8"
+                          Width="152">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Value}" FontSize="22" FontWeight="Bold"
+                                 Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Expander Classes="section" Header="Pending branches (newest commit is theirs, never merged)" IsExpanded="True" IsVisible="{Binding HasPendingBranches}">
+              <ItemsControl ItemsSource="{Binding PendingBranches}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Border Background="{DynamicResource WarnChipBrush}" CornerRadius="8" Padding="8,3" Margin="0,0,6,6">
+                      <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{DynamicResource WarnChipTextBrush}" />
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Expander>
+
+            <Expander Classes="section" Header="Recent pull requests" IsExpanded="True" IsVisible="{Binding HasRecentPrs}">
+            <ItemsControl ItemsSource="{Binding RecentPullRequests}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PersonPullRequestViewModel">
+                  <Border Classes="row" Tapped="OnPersonPrTapped" ToolTip.Tip="Open on GitHub">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2"
+                                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Text="{Binding Meta}" Classes="muted" FontSize="11.5" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="1" Text="{Binding State}" FontSize="10.5" FontWeight="Bold" Margin="10,2,0,0"
+                                 Foreground="{Binding State, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            </Expander>
+
+            <Expander Classes="section" Header="Activity on pull requests (comments, reviews, opened, merged)" IsExpanded="True" IsVisible="{Binding HasEvents}">
+            <ItemsControl ItemsSource="{Binding ActivityEvents}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PersonEventViewModel">
+                  <Border Classes="row" Tapped="OnPersonEventTapped" ToolTip.Tip="Open on GitHub">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="4" CornerRadius="2" Margin="0,2,12,2"
+                              Background="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding Kind}" FontWeight="Bold" /><Run Text="  " /><Run Text="{Binding Title}" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12" TextWrapping="Wrap" MaxLines="3"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding When}" Classes="muted" FontSize="11" Margin="10,0,0,0" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            </Expander>
+
+            <!-- Right now (from the live sync) -->
+            <Expander Classes="section" Header="PR raised by them, open now" IsExpanded="True">
+<StackPanel>
+            <TextBlock Classes="muted" Text="Nothing open." IsVisible="{Binding !HasRaisedItems}" Margin="0,0,0,8" />
+            <ItemsControl ItemsSource="{Binding RaisedItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PullRequestLinkViewModel">
+                  <Border Classes="row" Tapped="OnPullRequestTapped" ToolTip.Tip="Open on GitHub">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                 MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}" />
+                      <TextBlock Text="{Binding Subtitle}" Classes="muted" FontSize="11.5" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl></StackPanel>
+            </Expander>
+
+            <Expander Classes="section" Header="Waiting on them" IsExpanded="True">
+<StackPanel>
+            <TextBlock Classes="muted" Text="Nothing is waiting on them." IsVisible="{Binding !HasWaitingItems}" />
+            <ItemsControl ItemsSource="{Binding WaitingItems}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PullRequestLinkViewModel">
+                  <Border Classes="row" Tapped="OnPullRequestTapped" ToolTip.Tip="Open on GitHub">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                 MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}" />
+                      <TextBlock Text="{Binding Subtitle}" Classes="muted" FontSize="11.5" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl></StackPanel>
+            </Expander>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

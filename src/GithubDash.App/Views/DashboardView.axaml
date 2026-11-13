@@ -1,0 +1,263 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GithubDash.Presentation.ViewModels"
+             xmlns:c="using:GithubDash.App.Controls"
+             xmlns:conv="using:GithubDash.App.Converters"
+             x:Class="GithubDash.App.Views.DashboardView"
+             x:DataType="vm:DashboardViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="36,30,36,36" Spacing="24">
+
+      <StackPanel Classes="enter" Spacing="4">
+        <TextBlock Classes="h1" Text="Dashboard" />
+        <TextBlock Classes="muted" Text="Open pull requests across the repositories you monitor" />
+      </StackPanel>
+
+      <!-- Nothing selected yet -->
+      <Border Classes="card enter1" IsVisible="{Binding IsEmpty}" Padding="28">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="h2" Text="Choose what to monitor" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="Add a GitHub account and pick repositories — personal or from your organizations. Only the ones you select are tracked." />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="primary" Content="Open settings" VerticalAlignment="Center"
+                  Command="{Binding OpenSettingsCommand}" />
+        </Grid>
+      </Border>
+
+      <!-- The three headline numbers -->
+      <Grid ColumnDefinitions="*,20,*,20,*">
+        <Panel Grid.Column="0" Classes="enter1">
+          <Border Classes="card lift" Background="{StaticResource VioletCard}">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="OPEN PULL REQUESTS" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="#33FFFFFF">
+                <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="White" />
+              </Border>
+              <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding TotalOpen}" />
+              <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="Across all monitored repositories" />
+            </Grid>
+          </Border>
+        </Panel>
+        <Panel Grid.Column="2" Classes="enter2">
+          <Border Classes="card lift" Background="{StaticResource CyanCard}">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="ASSIGNED TO ME" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="#33FFFFFF">
+                <PathIcon Data="{StaticResource IconUser}" Width="18" Height="18" Foreground="White" />
+              </Border>
+              <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding AssignedToMe}" />
+              <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="You are the assignee" />
+            </Grid>
+          </Border>
+        </Panel>
+        <Panel Grid.Column="4" Classes="enter3">
+          <Border Classes="card lift" Background="{StaticResource AmberCard}">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="NEEDS MY APPROVAL" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="#33FFFFFF">
+                <PathIcon Data="{StaticResource IconCheck}" Width="18" Height="18" Foreground="White" />
+              </Border>
+              <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding NeedsMyApproval}" />
+              <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="Your review was requested" />
+            </Grid>
+          </Border>
+        </Panel>
+      </Grid>
+
+      <!-- My desk: a bookcase standing on the desk, one book per PR, and the full names in a scrolling list -->
+      <Border Classes="card enter2" Padding="0" ClipToBounds="True" IsVisible="{Binding !IsEmpty}">
+        <Grid RowDefinitions="Auto,372">
+          <Grid ColumnDefinitions="*,Auto" Margin="24,20,24,0">
+            <StackPanel Spacing="3">
+              <TextBlock Classes="h2" Text="My desk" />
+              <TextBlock Classes="muted" Text="{Binding DeskSummary}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="3">
+              <TextBlock Text="{Binding OldestAssignedOnDesk}" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{StaticResource Accent2Brush}" HorizontalAlignment="Right" />
+              <TextBlock Text="{Binding OldestReviewOnDesk}" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{StaticResource AmberBrush}" HorizontalAlignment="Right" />
+              <TextBlock FontSize="11" HorizontalAlignment="Right" Classes="muted" IsVisible="{Binding HasOverflow}">
+                <Run Text="+" /><Run Text="{Binding DeskOverflow}" /><Run Text=" more in the list" />
+              </TextBlock>
+            </StackPanel>
+          </Grid>
+
+          <Panel Grid.Row="1">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,46">
+
+              <!-- Bookcase -->
+              <Border Grid.Column="0" Margin="36,14,0,0" Width="292" VerticalAlignment="Bottom" CornerRadius="8,8,0,0"
+                      Background="{DynamicResource DeskEdgeBrush}" Padding="10,10,10,0" BoxShadow="0 6 18 0 #44000000">
+                <ItemsControl ItemsSource="{Binding Shelves}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ShelfViewModel">
+                      <StackPanel>
+                        <!-- The back of the shelf is a darker panel; books stand on the board below -->
+                        <Border Height="86" Background="#33000000" CornerRadius="3,3,0,0">
+                          <ItemsControl ItemsSource="{Binding Books}" VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                                        Margin="6,0,0,0">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="3" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:DeskBookViewModel">
+                                <Panel Classes="drop" Cursor="Hand" VerticalAlignment="Bottom" Tapped="OnBookTapped">
+                                  <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
+                                  <Border Width="26" Height="{Binding Height}" CornerRadius="3,3,1,1" VerticalAlignment="Bottom"
+                                          Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}"
+                                          BorderBrush="{StaticResource Accent2Brush}"
+                                          Classes.assigned="{Binding IsAssigned}" Classes="book"
+                                          ToolTip.Tip="{Binding Title}">
+                                    <Border.RenderTransform><RotateTransform Angle="{Binding Tilt}" /></Border.RenderTransform>
+                                    <Grid RowDefinitions="Auto,*" Margin="0,5">
+                                      <Border Height="3" Margin="5,0" CornerRadius="2" Background="#66FFFFFF" />
+                                      <LayoutTransformControl Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <LayoutTransformControl.LayoutTransform><RotateTransform Angle="-90" /></LayoutTransformControl.LayoutTransform>
+                                        <TextBlock Text="{Binding Number}" FontSize="10" FontWeight="Bold" Foreground="#0B0D14" />
+                                      </LayoutTransformControl>
+                                    </Grid>
+                                  </Border>
+                                </Panel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Border>
+                        <Border Height="8" Background="{DynamicResource DeskTopBrush}" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+
+              <!-- Every PR in full, in the order they landed on my desk -->
+              <Border Grid.Column="1" Margin="28,14,24,14" CornerRadius="12" Background="{DynamicResource Surface2Brush}"
+                      BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="4">
+                <Panel>
+                  <TextBlock Text="Nothing waiting on you — enjoy the quiet." Classes="muted" HorizontalAlignment="Center"
+                             VerticalAlignment="Center" IsVisible="{Binding DeskIsEmpty}" />
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding DeskBooks}" Margin="8,6,12,6">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DeskBookViewModel">
+                          <Border Background="Transparent" Cursor="Hand" Padding="0,6" Tapped="OnBookTapped">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                              <Border Width="5" CornerRadius="3" Margin="0,2,12,2"
+                                      Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                              <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBrush}" />
+                                <TextBlock Classes="muted" FontSize="11.5">
+                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
+                                </TextBlock>
+                              </StackPanel>
+                              <StackPanel Grid.Column="2" Spacing="3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <Border Padding="7,1" CornerRadius="7" Background="{StaticResource Accent2Brush}" IsVisible="{Binding IsAssigned}">
+                                  <TextBlock Text="ASSIGNED" FontSize="9" FontWeight="Bold" Foreground="#0B0D14" />
+                                </Border>
+                                <Border Padding="7,1" CornerRadius="7" Background="{StaticResource AmberBrush}" IsVisible="{Binding NeedsApproval}">
+                                  <TextBlock Text="APPROVE" FontSize="9" FontWeight="Bold" Foreground="#0B0D14" />
+                                </Border>
+                              </StackPanel>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Panel>
+              </Border>
+
+              <!-- Desk lamp and mug -->
+              <Panel Grid.Column="2" Width="150" Margin="0,0,16,0">
+                <Panel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0" Width="90" Height="120">
+                  <Ellipse Classes="lampGlow" Width="110" Height="70" VerticalAlignment="Bottom" Margin="0,0,0,10"
+                           Fill="#40FBBF24" />
+                  <Path Data="M45,118 L45,60 L70,22" Stroke="{DynamicResource MutedBrush}" StrokeThickness="4"
+                        StrokeLineCap="Round" />
+                  <Path Data="M52,10 L86,30 L74,42 L40,22 Z" Fill="{StaticResource AmberBrush}" />
+                </Panel>
+                <Panel HorizontalAlignment="Center" VerticalAlignment="Bottom" Width="46" Height="70">
+                  <Border Classes="steam" Width="5" Height="18" Margin="-12,0,0,0" VerticalAlignment="Top" CornerRadius="3"
+                          Background="{DynamicResource MutedBrush}"><Border.RenderTransform><TranslateTransform /></Border.RenderTransform></Border>
+                  <Border Classes="steam2" Width="5" Height="18" Margin="12,6,0,0" VerticalAlignment="Top" CornerRadius="3"
+                          Background="{DynamicResource MutedBrush}"><Border.RenderTransform><TranslateTransform /></Border.RenderTransform></Border>
+                  <Border Width="34" Height="30" VerticalAlignment="Bottom" HorizontalAlignment="Left" CornerRadius="3,3,10,10"
+                          Background="{StaticResource PinkBrush}" />
+                  <Border Width="14" Height="16" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,-2,6"
+                          CornerRadius="8" BorderBrush="{StaticResource PinkBrush}" BorderThickness="3" />
+                </Panel>
+              </Panel>
+            </Grid>
+
+            <!-- Desk top -->
+            <Border Height="46" VerticalAlignment="Bottom" Background="{DynamicResource DeskTopBrush}">
+              <Border Height="6" VerticalAlignment="Top" Background="{DynamicResource DeskEdgeBrush}" />
+            </Border>
+          </Panel>
+        </Grid>
+      </Border>
+
+      <Grid ColumnDefinitions="*,20,*">
+        <!-- Per repository -->
+        <Border Grid.Column="0" Classes="card enter2" VerticalAlignment="Top">
+          <StackPanel Spacing="16">
+            <TextBlock Classes="h2" Text="Repositories" />
+            <TextBlock Classes="muted" Text="Nothing open right now." IsVisible="{Binding !Repositories.Count}" />
+            <ItemsControl ItemsSource="{Binding Repositories}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RepositoryRowViewModel">
+                  <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,14">
+                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextBrush}" FontSize="13.5"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" Classes="muted" Margin="12,0,0,0">
+                      <Run Text="{Binding Mine}" Foreground="{StaticResource AmberBrush}" />
+                      <Run Text="mine" />
+                    </TextBlock>
+                    <TextBlock Grid.Column="2" Classes="muted" Margin="12,0,0,0">
+                      <Run Text="{Binding Open}" Foreground="{DynamicResource TextBrush}" />
+                      <Run Text="open" />
+                    </TextBlock>
+                    <ProgressBar Grid.Row="1" Grid.ColumnSpan="3" Classes="thin" Margin="0,8,0,0"
+                                 Minimum="0" Maximum="1" Value="{Binding Share}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- What changed -->
+        <Border Grid.Column="2" Classes="card enter3" VerticalAlignment="Top">
+          <StackPanel Spacing="14">
+            <TextBlock Classes="h2" Text="Recent activity" />
+            <TextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !HasActivity}"
+                       Text="Changes appear here as they happen: new assignments, review requests, comments and merges." />
+            <ItemsControl ItemsSource="{Binding Activity}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ActivityItemViewModel">
+                  <Border Background="Transparent" Cursor="Hand" Padding="0,0,0,12" Tapped="OnActivityTapped">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="4" CornerRadius="2" Margin="0,2,12,2"
+                              Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}" FontSize="13"
+                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Message}" Classes="muted" FontSize="12"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding When}" Classes="muted" FontSize="11"
+                                 Margin="12,0,0,0" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
