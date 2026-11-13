@@ -73,8 +73,11 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:PullRequestCardViewModel">
-              <Border Classes="card" Width="400" Height="480" Margin="0,24" Cursor="Hand"
-                      BoxShadow="0 18 40 0 #90000000" Tapped="OnCardTapped"
+              <!-- The shadow sits on its own layer behind the card: a blurred shadow on the tilting card itself
+                   was rasterised with hard edges outside the card while it moved in 3D. -->
+              <Panel Width="400" Height="480" Margin="0,24">
+              <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000" />
+              <Border Classes="card" Width="400" Height="480" Cursor="Hand" Tapped="OnCardTapped"
                       c:Tilt.Enabled="{Binding IsFront}">
                 <Panel>
                 <!-- Glowing frame for PRs that are assigned to me -->
@@ -213,6 +216,7 @@
                 <Border x:Name="Shine" IsHitTestVisible="False" IsVisible="False" Opacity="0" Margin="-22" CornerRadius="18" />
                 </Panel>
               </Border>
+              </Panel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
