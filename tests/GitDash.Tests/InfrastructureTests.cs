@@ -236,3 +236,31 @@ public class PersonActivityMapperTests
         Assert.Equal(0.75, a.MergeRate);
     }
 }
+
+public class GitHubCliTokenSourceTests
+{
+    [Fact]
+    public void Parses_the_first_line_and_rejects_anything_else()
+    {
+        Assert.Equal("gho_abc123", GitHubCliTokenSource.ParseToken("gho_abc123\n"));
+        Assert.Equal("gho_abc123", GitHubCliTokenSource.ParseToken("  gho_abc123  \r\nsecond line"));
+        Assert.True(GitHubCliTokenSource.ParseToken("") is null);
+        Assert.True(GitHubCliTokenSource.ParseToken(null) is null);
+        Assert.True(GitHubCliTokenSource.ParseToken("not a token because spaces") is null);
+        Assert.True(GitHubCliTokenSource.ParseToken(new string('a', 300)) is null);
+    }
+
+    [Fact]
+    public void Looks_on_the_path_first_and_in_the_usual_install_folders()
+    {
+        var candidates = GitHubCliTokenSource.Candidates();
+        Assert.True(candidates.Count > 1);
+        Assert.True(candidates[0].StartsWith("gh"));
+    }
+
+    [Fact]
+    public void Token_page_link_is_allowed_by_the_launcher()
+    {
+        Assert.True(GitHubUrlLauncher.IsAllowed(GitDash.Presentation.ViewModels.SettingsViewModel.NewTokenUrl));
+    }
+}

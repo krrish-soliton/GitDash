@@ -17,6 +17,11 @@ public partial class SettingsView : UserControl
         }
     }
 
+    private void OnOpenNewTokenClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel page) page.OpenNewTokenCommand.Execute(null);
+    }
+
     private void OnOpenOAuthAppsClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is SettingsViewModel page) page.OpenOAuthAppsCommand.Execute(null);

@@ -49,6 +49,16 @@ public interface INativeNotifier
     Task ShowAsync(string title, string message, CancellationToken ct = default);
 }
 
+/// <summary>Reads the token of the user's existing GitHub CLI login (<c>gh auth token</c>).</summary>
+public interface IGitHubCliTokenSource
+{
+    /// <summary>
+    /// Returns the token. Throws <see cref="InvalidOperationException"/> with a message fit for the user when the
+    /// GitHub CLI is not installed or not logged in.
+    /// </summary>
+    Task<string> GetTokenAsync(CancellationToken ct = default);
+}
+
 /// <summary>Opens links in the default browser, restricted to GitHub hosts.</summary>
 public interface IUrlLauncher
 {

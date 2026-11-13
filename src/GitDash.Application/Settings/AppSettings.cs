@@ -9,6 +9,8 @@ public enum AuthMethod
 {
     PersonalAccessToken,
     DeviceFlow,
+    /// <summary>The token of the user's GitHub CLI login, copied when the account was added.</summary>
+    GitHubCli,
 }
 
 public enum NotificationStyle

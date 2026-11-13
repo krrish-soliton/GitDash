@@ -70,6 +70,8 @@ public sealed class SettingsViewModel : PageViewModel
 
         AddTokenCommand = new AsyncRelayCommand(AddTokenAsync, ShowAuthError);
         SignInCommand = new AsyncRelayCommand(SignInWithBrowserAsync, ShowAuthError);
+        UseGitHubCliCommand = new AsyncRelayCommand(UseGitHubCliAsync, ShowAuthError);
+        OpenNewTokenCommand = new RelayCommand(() => _launcher.Open(NewTokenUrl));
         CancelSignInCommand = new RelayCommand(() => _deviceFlow?.Cancel());
         OpenVerificationCommand = new RelayCommand(() => _launcher.Open(VerificationUri));
         OpenOAuthAppsCommand = new RelayCommand(() => _launcher.Open(NewOAuthAppUrl));
@@ -119,6 +121,14 @@ public sealed class SettingsViewModel : PageViewModel
     public ICommand SignInCommand { get; }
     public ICommand CancelSignInCommand { get; }
     public ICommand OpenVerificationCommand { get; }
+
+    /// <summary>Signs in with the token of the user's GitHub CLI login.</summary>
+    public ICommand UseGitHubCliCommand { get; }
+
+    /// <summary>Opens GitHub's "New personal access token (classic)" page with repo and read:org already ticked.</summary>
+    public ICommand OpenNewTokenCommand { get; }
+
+    public const string NewTokenUrl = "https://github.com/settings/tokens/new?scopes=repo,read:org&description=GitDash";
 
     /// <summary>Opens GitHub's "Register a new OAuth application" page.</summary>
     public ICommand OpenOAuthAppsCommand { get; }
@@ -372,7 +382,12 @@ public sealed class SettingsViewModel : PageViewModel
         var accounts = _settings.Current.Accounts
             .Select(a => new AccountItemViewModel(
                 a.Id, a.Login, a.Name ?? a.Login,
-                a.Method == AuthMethod.DeviceFlow ? "Browser sign-in" : "Access token",
+                a.Method switch
+                {
+                    AuthMethod.DeviceFlow => "Browser sign-in",
+                    AuthMethod.GitHubCli => "GitHub CLI",
+                    _ => "Access token",
+                },
                 Humanize.Initials(a.Login), Humanize.Accent(a.Login), a.AvatarUrl,
                 _settings.Current.Repositories.Count(r => r.AccountId == a.Id)))
             .ToList();
@@ -394,6 +409,13 @@ public sealed class SettingsViewModel : PageViewModel
         ShowAuth("Checking the token with GitHub…");
         var account = await Task.Run(() => _accounts.AddWithTokenAsync(token, AuthMethod.PersonalAccessToken));
         ShowAuth($"Signed in as {account.Login}.");
+    }
+
+    private async Task UseGitHubCliAsync()
+    {
+        ShowAuth("Asking GitHub CLI for your token…");
+        var account = await Task.Run(() => _accounts.AddFromGitHubCliAsync());
+        ShowAuth($"Signed in as {account.Login} through GitHub CLI.");
     }
 
     private async Task SignInWithBrowserAsync()

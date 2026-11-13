@@ -120,6 +120,47 @@ public class EndToEndTests
             new PersonActivityService(settings, accounts, gateway, time));
     }
 
+    private sealed class FakeCli(string? token, string? problem = null) : IGitHubCliTokenSource
+    {
+        public Task<string> GetTokenAsync(CancellationToken ct = default) =>
+            problem is null ? Task.FromResult(token!) : throw new InvalidOperationException(problem);
+    }
+
+    [Fact]
+    public async Task Github_cli_login_adds_an_account_with_the_cli_method()
+    {
+        var settings = new SettingsService(new InMemorySettingsStore());
+        await settings.LoadAsync();
+        var secrets = new InMemorySecretStore();
+        var accounts = new AccountService(
+            settings, secrets, new DemoGitHubGateway(TimeProvider.System, 1), new DemoDeviceFlowAuthenticator(), new FakeCli("gho_cli_token"));
+
+        var account = await accounts.AddFromGitHubCliAsync();
+
+        Assert.Equal(AuthMethod.GitHubCli, account.Method);
+        Assert.Equal("gho_cli_token", await accounts.GetTokenAsync(account.Id));
+        Assert.Equal(1, settings.Current.Accounts.Count);
+    }
+
+    [Fact]
+    public async Task Github_cli_problems_reach_the_user_and_store_nothing()
+    {
+        var settings = new SettingsService(new InMemorySettingsStore());
+        await settings.LoadAsync();
+        var accounts = new AccountService(
+            settings, new InMemorySecretStore(), new DemoGitHubGateway(TimeProvider.System, 1), new DemoDeviceFlowAuthenticator(),
+            new FakeCli(null, "GitHub CLI (gh) was not found."));
+
+        string? message = null;
+        try { await accounts.AddFromGitHubCliAsync(); }
+        catch (InvalidOperationException ex) { message = ex.Message; }
+        Assert.True(message is not null && message.Contains("not found"));
+        Assert.Equal(0, settings.Current.Accounts.Count);
+
+        var without = new AccountService(settings, new InMemorySecretStore(), new DemoGitHubGateway(TimeProvider.System, 1), new DemoDeviceFlowAuthenticator());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => without.AddFromGitHubCliAsync());
+    }
+
     [Fact]
     public async Task Cache_restores_state_before_any_network_sync()
     {

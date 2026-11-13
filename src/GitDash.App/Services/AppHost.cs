@@ -74,7 +74,7 @@ public sealed class AppHost : IDisposable
         // Small local file; loading it synchronously keeps the first frame consistent with the saved settings.
         Settings.LoadAsync().GetAwaiter().GetResult();
 
-        var accounts = new AccountService(Settings, secrets, gitHub, deviceFlow);
+        var accounts = new AccountService(Settings, secrets, gitHub, deviceFlow, new GitHubCliTokenSource());
         var toasts = new ToastPresenter(
             launcher, showMainWindow, () => Settings.Current.ReduceMotion, tone => Settings.Current.AutoCloses(tone));
         var notifications = new NotificationRouter(Settings, toasts, new NativeNotifier());
