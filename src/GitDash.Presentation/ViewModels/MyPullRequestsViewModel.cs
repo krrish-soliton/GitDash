@@ -13,6 +13,8 @@ public enum PullRequestFilter
     All,
     ReviewRequested,
     Own,
+    MergeConflict,
+    PipelineFailed,
 }
 
 /// <summary>One filter chip above the cover flow, with a live count.</summary>
@@ -29,6 +31,8 @@ public sealed class FilterOptionViewModel(PullRequestFilter filter, string label
         PullRequestFilter.AssignedToMe => pr.IsAssignedToViewer,
         PullRequestFilter.ReviewRequested => pr.NeedsViewerApproval,
         PullRequestFilter.Own => pr.IsAuthoredByViewer,
+        PullRequestFilter.MergeConflict => pr.HasMergeConflict,
+        PullRequestFilter.PipelineFailed => pr.PipelineFailed,
         _ => true,
     };
 }
@@ -122,11 +126,11 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
 
     // Exactly one of these is true, which picks the single border colour. First match wins:
     // error (red), stale review (blue), approved (green), changes requested (orange), not reviewed (purple).
-    public bool StateError => HasError;
-    public bool StateStale => !HasError && IsStale;
-    public bool StateApproved => !HasError && !IsStale && IsApproved;
-    public bool StateChanges => !HasError && !IsStale && IsChangesRequested;
-    public bool StateUnreviewed => !HasError && !IsStale && IsUnreviewed;
+    public bool StateError => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Error;
+    public bool StateStale => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Stale;
+    public bool StateApproved => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Approved;
+    public bool StateChanges => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Changes;
+    public bool StateUnreviewed => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Unreviewed;
 
     /// <summary>Neither assigned nor awaiting my review: just how old the pull request is.</summary>
     public bool HasNoStatusWait => !PullRequest.IsOnViewersDesk;
@@ -197,6 +201,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             new(PullRequestFilter.All, "All PRs"),
             new(PullRequestFilter.ReviewRequested, "Requested review"),
             new(PullRequestFilter.Own, "Own PRs"),
+            new(PullRequestFilter.MergeConflict, "Merge conflicts"),
+            new(PullRequestFilter.PipelineFailed, "Pipeline failed"),
         ];
         _selectedFilter = Filters[0];
 
@@ -363,6 +369,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             PullRequestFilter.AssignedToMe => "Nothing is assigned to you right now.",
             PullRequestFilter.ReviewRequested => "Nobody is waiting for your review.",
             PullRequestFilter.Own => "You have no open pull requests.",
+            PullRequestFilter.MergeConflict => "No pull requests have merge conflicts.",
+            PullRequestFilter.PipelineFailed => "No pull requests have failing pipelines.",
             _ => "No open pull requests in the monitored repositories.",
         };
         UpdatePosition();

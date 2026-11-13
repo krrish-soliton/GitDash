@@ -12,7 +12,10 @@ public sealed record RepositoryRowViewModel(string Name, int Open, int Mine, dou
 /// <summary>One PR drawn as a book lying on the desk.</summary>
 public sealed record DeskBookViewModel(
     string Title, string Repository, string Number, string Accent, double Height, double Tilt, bool IsAssigned, bool NeedsApproval,
-    string Waiting, string Url);
+    string Waiting, string Url, IReadOnlyList<PullRequestTag> Tags)
+{
+    public bool HasTags => Tags.Count > 0;
+}
 
 /// <summary>One shelf of the bookcase.</summary>
 public sealed record ShelfViewModel(IReadOnlyList<DeskBookViewModel> Books);
@@ -90,8 +93,8 @@ public sealed class DashboardViewModel : PageViewModel
             // Older work makes a taller book; the tilt is deterministic so redraws do not shuffle the shelf.
             var height = 40 + Math.Min(34, waiting.TotalDays * 5) + p.TotalComments % 5 * 2;
             return new DeskBookViewModel(
-                p.Title, p.Repository.Name, $"#{p.Number}", Humanize.Accent(p.Repository.FullName), height,
-                (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url);
+                p.Title, p.Repository.Name, $"#{p.Number}", PullRequestStatus.ColorOf(p), height,
+                (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url, PullRequestStatus.TagsOf(p));
         }).ToList();
         Replace(DeskBooks, books);
         Replace(Shelves, Enumerable.Range(0, ShelfCount)

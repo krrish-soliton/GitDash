@@ -397,3 +397,35 @@ public class Round7Tests
         Assert.False(failing.StateUnreviewed);
     }
 }
+
+public class Round9Tests
+{
+    [Fact]
+    public void Tags_and_colour_come_from_one_shared_status()
+    {
+        var conflict = TestData.Pr("c", with: p => p with { HasMergeConflict = true, Assignees = [TestData.Me] });
+        var plain = TestData.Pr("p");
+
+        var tags = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(conflict).Select(t => t.Text).ToList();
+
+        Assert.True(tags.Contains("MERGE CONFLICT"));
+        Assert.True(tags.Contains("ASSIGNED"));
+        Assert.Equal("#FB7185", GitDash.Presentation.ViewModels.PullRequestStatus.ColorOf(conflict));
+        Assert.Equal("#A855F7", GitDash.Presentation.ViewModels.PullRequestStatus.ColorOf(plain));
+        Assert.Empty(GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(plain));
+    }
+
+    [Fact]
+    public void Error_filters_match_only_their_own_error()
+    {
+        var conflict = TestData.Pr("c", with: p => p with { HasMergeConflict = true });
+        var failing = TestData.Pr("f", with: p => p with { PipelineFailed = true });
+        var mergeFilter = new GitDash.Presentation.ViewModels.FilterOptionViewModel(GitDash.Presentation.ViewModels.PullRequestFilter.MergeConflict, "m");
+        var pipeFilter = new GitDash.Presentation.ViewModels.FilterOptionViewModel(GitDash.Presentation.ViewModels.PullRequestFilter.PipelineFailed, "p");
+
+        Assert.True(mergeFilter.Matches(conflict));
+        Assert.False(mergeFilter.Matches(failing));
+        Assert.True(pipeFilter.Matches(failing));
+        Assert.False(pipeFilter.Matches(conflict));
+    }
+}
