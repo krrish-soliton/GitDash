@@ -83,15 +83,6 @@
                       Classes.unreviewed="{Binding IsUnreviewed}"
                       c:Tilt.Enabled="{Binding IsFront}">
                 <Panel>
-                <!-- Glowing frame for PRs that are assigned to me -->
-                <Border Classes="assignedGlow" IsVisible="{Binding IsAssignedToMe}" IsHitTestVisible="False"
-                        CornerRadius="20" BorderThickness="2" BorderBrush="{StaticResource Accent2Brush}"
-                        Margin="-20" />
-                <Border IsVisible="{Binding IsAssignedToMe}" IsHitTestVisible="False" HorizontalAlignment="Right"
-                        VerticalAlignment="Top" Margin="0,-20,-20,0" Padding="10,4" CornerRadius="0,20,0,10"
-                        Background="{StaticResource Accent2Brush}">
-                  <TextBlock Text="ASSIGNED TO YOU" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
-                </Border>
                 <DockPanel>
                   <!-- Three equal-width buttons that always fit the card -->
                   <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*,*" Margin="0,14,0,0">
@@ -107,6 +98,9 @@
                         <Run Text="{Binding Number}" Foreground="{StaticResource Accent2Brush}" />
                       </TextBlock>
                       <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" Grid.Column="1">
+                        <Border Classes="badge assigned" IsVisible="{Binding HasAssigned}">
+                          <TextBlock Text="ASSIGNED" />
+                        </Border>
                         <Border Classes="badge ok" IsVisible="{Binding IsApproved}">
                           <TextBlock Text="APPROVED" />
                         </Border>
@@ -250,6 +244,9 @@
                 <Run Text="{Binding DetailCard.Repository}" />
                 <Run Text="{Binding DetailCard.Number}" />
               </TextBlock>
+              <Border Classes="badge assigned" IsVisible="{Binding DetailCard.HasAssigned}">
+                <TextBlock Text="ASSIGNED" />
+              </Border>
               <Border Classes="badge ok" IsVisible="{Binding DetailCard.IsApproved}">
                 <TextBlock Text="APPROVED" />
               </Border>
