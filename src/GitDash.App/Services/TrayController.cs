@@ -1,5 +1,9 @@
 using System.ComponentModel;
+using System.Globalization;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using GitDash.Application.Settings;
@@ -17,6 +21,7 @@ public sealed class TrayController(
     private TrayIcon? _icon;
     private NativeMenuItem? _assigned, _approval, _total;
     private NativeMenuItem? _move, _widget, _island, _mini;
+    private int _iconCount = -1;
 
     public void Start()
     {
@@ -46,10 +51,9 @@ public sealed class TrayController(
         menu.Items.Add(open);
         menu.Items.Add(exit);
 
-        using var iconStream = AssetLoader.Open(new Uri("avares://GitDash/Assets/app.ico"));
         _icon = new TrayIcon
         {
-            Icon = new WindowIcon(iconStream),
+            Icon = IconFor(counts.Assigned),
             Menu = menu,
             IsVisible = settings.Current.ShowTrayIcon,
         };
@@ -91,9 +95,45 @@ public sealed class TrayController(
         SyncToggles(s);
     });
 
+    /// <summary>The app icon, with a red disc showing the number of pull requests assigned to me once there is one.</summary>
+    private WindowIcon IconFor(int assigned)
+    {
+        _iconCount = assigned;
+        using var stream = AssetLoader.Open(new Uri("avares://GitDash/Assets/app.ico"));
+        if (assigned <= 0) return new WindowIcon(stream);
+        try
+        {
+            using var baseIcon = new Bitmap(stream);
+            const int size = 32;
+            var target = new RenderTargetBitmap(new PixelSize(size, size), new Vector(96, 96));
+            using (var ctx = target.CreateDrawingContext())
+            {
+                ctx.DrawImage(baseIcon, new Rect(baseIcon.Size), new Rect(0, 0, size, size));
+                var label = Math.Min(assigned, 99).ToString(CultureInfo.InvariantCulture);
+                const double radius = 11;
+                var centre = new Point(size - radius, size - radius);
+                ctx.DrawEllipse(new SolidColorBrush(Color.FromRgb(0xE0, 0x30, 0x3B)), new Pen(Brushes.White, 1.5), centre, radius, radius);
+                var text = new FormattedText(
+                    label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Bold),
+                    label.Length == 1 ? 15 : 12, Brushes.White);
+                ctx.DrawText(text, new Point(centre.X - text.Width / 2, centre.Y - text.Height / 2));
+            }
+
+            return new WindowIcon(target);
+        }
+        catch (Exception)
+        {
+            // A drawing problem must never take the tray icon away: fall back to the plain icon.
+            using var plain = AssetLoader.Open(new Uri("avares://GitDash/Assets/app.ico"));
+            return new WindowIcon(plain);
+        }
+    }
+
     private void Render()
     {
         if (_icon is null) return;
+        if (counts.Assigned != _iconCount) _icon.Icon = IconFor(counts.Assigned);
         _assigned!.Header = $"Assigned to me: {counts.Assigned}";
         _approval!.Header = $"Needs my approval: {counts.Approval}";
         _total!.Header = $"Open pull requests: {counts.Total}";

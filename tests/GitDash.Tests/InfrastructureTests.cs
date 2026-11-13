@@ -212,10 +212,11 @@ public class PersonActivityMapperTests
                                     {"author":{"login":"leo"},"createdAt":"2026-11-10T09:00:00Z","body":"not mine","url":"u2"}]},
                "reviews":{"nodes":[{"author":{"login":"Maya"},"state":"APPROVED","submittedAt":"2026-11-11T08:00:00Z","body":"","url":"u3"}]}}]},
              "repository":{"defaultBranchRef":{"name":"main"},"refs":{"nodes":[
-               {"name":"main","target":{"author":{"user":{"login":"maya"}}},"associatedPullRequests":{"totalCount":0}},
-               {"name":"wip","target":{"author":{"user":{"login":"maya"}}},"associatedPullRequests":{"totalCount":0}},
-               {"name":"done","target":{"author":{"user":{"login":"maya"}}},"associatedPullRequests":{"totalCount":1}},
-               {"name":"theirs","target":{"author":{"user":{"login":"leo"}}},"associatedPullRequests":{"totalCount":0}}]}}}
+               {"name":"main","target":{"author":{"user":{"login":"maya"}}},"mergedPullRequests":{"totalCount":0}},
+               {"name":"wip","target":{"committedDate":"2026-10-01T08:00:00Z","author":{"user":{"login":"maya"}}},"mergedPullRequests":{"totalCount":0},"openPullRequests":{"totalCount":0}},
+               {"name":"review","target":{"committedDate":"2026-11-10T08:00:00Z","author":{"user":{"login":"maya"}}},"mergedPullRequests":{"totalCount":0},"openPullRequests":{"totalCount":1}},
+               {"name":"done","target":{"author":{"user":{"login":"maya"}}},"mergedPullRequests":{"totalCount":1}},
+               {"name":"theirs","target":{"author":{"user":{"login":"leo"}}},"mergedPullRequests":{"totalCount":0}}]}}}
             """;
         using var doc = JsonDocument.Parse(json);
         var a = PullRequestMapper.MapPersonActivity(doc.RootElement, new RepositoryRef("o", "r"), "maya");
@@ -223,7 +224,11 @@ public class PersonActivityMapperTests
         Assert.Equal(10, a.Raised);
         Assert.Equal(6, a.Merged);
         Assert.Equal(7, a.PullRequestsCommentedOn);
-        Assert.Equal(new[] { "wip" }, a.PendingBranches.ToArray());
+        Assert.Equal(new[] { "wip", "review" }, a.PendingBranches.Select(b => b.Name).ToArray());
+        var now = DateTimeOffset.Parse("2026-11-13T00:00:00Z");
+        Assert.Equal(PendingBranchHealth.Stale, a.PendingBranches[0].HealthAt(now));
+        Assert.Equal(PendingBranchHealth.HasPullRequest, a.PendingBranches[1].HealthAt(now));
+        Assert.Equal(PendingBranchHealth.Waiting, (a.PendingBranches[0] with { LastCommitAt = now.AddDays(-3) }).HealthAt(now));
         Assert.Equal(1, a.CommentsInRecent);
         Assert.Equal(1, a.ReviewsInRecent);
         Assert.Equal("MERGED", a.RecentPullRequests.Single().State);

@@ -35,14 +35,14 @@ internal static class GitHubQueries
           }
         }
         fragment pr on PullRequest {
-          id number title url isDraft state createdAt updatedAt mergedAt bodyText additions deletions changedFiles
+          id number title url isDraft mergeable state createdAt updatedAt mergedAt bodyText additions deletions changedFiles
           author { login avatarUrl(size: 96) }
           mergedBy { login }
           assignees(first: 20) { nodes { login avatarUrl(size: 96) } }
           reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl(size: 96) } } } }
           reviews(last: 100) { nodes { author { login } state submittedAt comments { totalCount } } }
           comments(last: 100) { totalCount nodes { author { login } createdAt } }
-          commits(last: 1) { totalCount nodes { commit { committedDate } } }
+          commits(last: 1) { totalCount nodes { commit { committedDate statusCheckRollup { state } } } }
           timelineItems(last: 40, itemTypes: [ASSIGNED_EVENT, REVIEW_REQUESTED_EVENT]) {
             nodes {
               __typename
@@ -84,8 +84,9 @@ internal static class GitHubQueries
             refs(refPrefix: "refs/heads/", first: 100, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
               nodes {
                 name
-                target { ... on Commit { author { user { login } } } }
-                associatedPullRequests(states: [MERGED], first: 1) { totalCount }
+                target { ... on Commit { committedDate author { user { login } } } }
+                mergedPullRequests: associatedPullRequests(states: [MERGED], first: 1) { totalCount }
+                openPullRequests: associatedPullRequests(states: [OPEN], first: 1) { totalCount }
               }
             }
           }
@@ -99,6 +100,7 @@ internal static class GitHubQueries
               createdAt
               body
               author { login }
+              reviewThreads(first: 100) { nodes { isResolved comments(first: 50) { nodes { id } } } }
               timelineItems(last: 150, itemTypes: [PULL_REQUEST_COMMIT, ISSUE_COMMENT, PULL_REQUEST_REVIEW,
                 ASSIGNED_EVENT, UNASSIGNED_EVENT, REVIEW_REQUESTED_EVENT, REVIEW_REQUEST_REMOVED_EVENT,
                 REVIEW_DISMISSED_EVENT, READY_FOR_REVIEW_EVENT, CONVERT_TO_DRAFT_EVENT,
@@ -109,7 +111,7 @@ internal static class GitHubQueries
                   ... on IssueComment { createdAt author { login } bodyText body }
                   ... on PullRequestReview {
                     submittedAt author { login } state bodyText body
-                    comments(first: 50) { totalCount nodes { createdAt path body author { login } } }
+                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } } }
                   }
                   ... on AssignedEvent { createdAt actor { login } assignee { ... on User { login } } }
                   ... on UnassignedEvent { createdAt actor { login } assignee { ... on User { login } } }

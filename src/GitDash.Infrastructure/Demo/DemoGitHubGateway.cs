@@ -118,6 +118,8 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
                 Url = $"https://github.com/{repository.FullName}/pull/{90 + seed}",
                 Author = author,
                 IsDraft = i % 6 == 4,
+                HasMergeConflict = seed % 11 == 3,
+                PipelineFailed = seed % 7 == 2,
                 CreatedAt = created,
                 UpdatedAt = now - TimeSpan.FromMinutes(seed % 300),
                 Assignees = mine && i == 0 ? [viewerLogin] : i % 2 == 0 ? [reviewer] : [],
@@ -215,10 +217,23 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
             Draft = seed % 2,
             PullRequestsCommentedOn = 40 + seed * 5,
             PullRequestsReviewed = 31 + seed * 4,
-            PendingBranches = seed % 3 == 0 ? Array.Empty<string>() : new[] { "feature/sync-retry", "spike/parallel-fetch" }[..(1 + seed % 2)],
+            PendingBranches = seed % 3 == 0 ? Array.Empty<PendingBranch>() : new[]
+            {
+                new PendingBranch("feature/sync-retry", DateTimeOffset.UtcNow.AddDays(-2), true),
+                new PendingBranch("spike/parallel-fetch", DateTimeOffset.UtcNow.AddDays(-5), false),
+                new PendingBranch("old/experiment", DateTimeOffset.UtcNow.AddDays(-40), false),
+            }[..(1 + seed % 3)],
             RecentPullRequests = recent,
             Events = [.. events.OrderByDescending(e => e.At)],
         });
+    }
+
+    public Task<PipelineRunCounts> GetPipelineRunCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        var seed = Math.Abs(login.GetHashCode()) % 7;
+        return Task.FromResult(new PipelineRunCounts(6 + seed * 2, 24 + seed * 9, 310 + seed * 85));
     }
 
     public Task<PullRequestDetails> GetDetailsAsync(

@@ -31,8 +31,30 @@ public sealed class PersonActivityService(
         var token = await accounts.GetTokenAsync(monitored.AccountId, ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("The account for this repository has no stored token.");
 
-        var activity = await gateway.GetPersonActivityAsync(token, monitored.ToRef(), login, ct).ConfigureAwait(false);
+        var repository = monitored.ToRef();
+        var activityTask = gateway.GetPersonActivityAsync(token, repository, login, ct);
+        var runsTask = LoadRunsAsync(token, repository, login, now, ct);
+        var activity = await activityTask.ConfigureAwait(false) with { PipelineRuns = await runsTask.ConfigureAwait(false) };
         _cache[key] = (time.GetUtcNow(), activity);
         return activity;
+    }
+
+    /// <summary>Pipeline counts are a nice-to-have: if Actions cannot be read, the rest of the dashboard still loads.</summary>
+    private async Task<PipelineRunCounts> LoadRunsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset now, CancellationToken ct)
+    {
+        try
+        {
+            var utc = now.UtcDateTime;
+            var monthStart = new DateTimeOffset(utc.Year, utc.Month, 1, 0, 0, 0, TimeSpan.Zero);
+            var weekStart = new DateTimeOffset(utc.Date, TimeSpan.Zero)
+                .AddDays(-(((int)utc.DayOfWeek + 6) % 7)); // Monday 00:00 UTC
+            return await gateway.GetPipelineRunCountsAsync(token, repository, login, weekStart, monthStart, ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return PipelineRunCounts.Unknown;
+        }
     }
 }

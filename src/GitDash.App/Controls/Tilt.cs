@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -39,6 +40,7 @@ public static class Tilt
     private sealed class State
     {
         public required Control Card;
+        public TopLevel? Top;
         public readonly Rotate3DTransform Transform = new() { Depth = 900 };
         public readonly RadialGradientBrush Glare = new()
         {
@@ -54,6 +56,8 @@ public static class Tilt
         public DispatcherTimer? Timer;
         public double TargetX, TargetY, TargetGlare;
         public double X, Y, GlareOpacity;
+        public EventHandler<PointerEventArgs>? Moved;
+        public EventHandler<PointerEventArgs>? Left;
     }
 
     private static void Attach(Control card)
@@ -62,42 +66,79 @@ public static class Tilt
         var state = new State { Card = card };
         States.Add(card, state);
         card.RenderTransformOrigin = RelativePoint.Center;
-        card.RenderTransform = state.Transform;
-        card.PointerMoved += OnMoved;
-        card.PointerExited += OnExited;
+        card.AttachedToVisualTree += OnAttached;
         card.DetachedFromVisualTree += OnDetached;
+        if (card.IsAttachedToVisualTree()) Hook(state);
     }
 
     private static void Detach(Control card)
     {
         if (!States.TryGetValue(card, out var state)) return;
-        card.PointerMoved -= OnMoved;
-        card.PointerExited -= OnExited;
+        card.AttachedToVisualTree -= OnAttached;
         card.DetachedFromVisualTree -= OnDetached;
+        Unhook(state);
         state.Timer?.Stop();
         state.Timer = null;
         States.Remove(card);
-        card.RenderTransform = null;
-        if (state.Shine is not null) state.Shine.Opacity = 0;
+        Release(state);
+    }
+
+    private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is Control card && States.TryGetValue(card, out var state)) Hook(state);
     }
 
     private static void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        if (sender is Control card && States.TryGetValue(card, out var state)) state.Timer?.Stop();
+        if (sender is not Control card || !States.TryGetValue(card, out var state)) return;
+        Unhook(state);
+        state.Timer?.Stop();
+        state.Timer = null;
     }
 
-    private static void OnMoved(object? sender, PointerEventArgs e)
+    // The pointer is followed on the window, not on the card: the card itself moves when it tilts, so the pointer
+    // "entering" and "leaving" it at its edges made the tilt (and the card) flicker. The card's layout rectangle
+    // does not move, so the test against it is stable.
+    private static void Hook(State state)
     {
-        if (sender is not Control card || !States.TryGetValue(card, out var state)) return;
-        var size = card.Bounds.Size;
-        if (size.Width <= 0 || size.Height <= 0) return;
+        Unhook(state);
+        if (TopLevel.GetTopLevel(state.Card) is not { } top) return;
+        state.Top = top;
+        state.Moved = (_, e) => OnMoved(state, e);
+        state.Left = (_, _) => Rest(state);
+        top.AddHandler(InputElement.PointerMovedEvent, state.Moved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        top.AddHandler(InputElement.PointerExitedEvent, state.Left, RoutingStrategies.Direct, handledEventsToo: true);
+    }
 
-        var p = e.GetPosition(card);
-        double nx = Math.Clamp(p.X / size.Width, 0, 1), ny = Math.Clamp(p.Y / size.Height, 0, 1);
+    private static void Unhook(State state)
+    {
+        if (state.Top is null) return;
+        if (state.Moved is not null) state.Top.RemoveHandler(InputElement.PointerMovedEvent, state.Moved);
+        if (state.Left is not null) state.Top.RemoveHandler(InputElement.PointerExitedEvent, state.Left);
+        state.Top = null;
+        state.Moved = state.Left = null;
+    }
+
+    private static void OnMoved(State state, PointerEventArgs e)
+    {
+        var card = state.Card;
+        if (card.GetVisualParent() is not Visual parent) return;
+        var rect = card.Bounds;
+        if (rect.Width <= 0 || rect.Height <= 0) return;
+
+        var p = e.GetPosition(parent);
+        if (!rect.Contains(p))
+        {
+            Rest(state);
+            return;
+        }
+
+        double nx = (p.X - rect.X) / rect.Width, ny = (p.Y - rect.Y) / rect.Height;
         // The edge under the cursor dips away from the viewer (pressed in), the opposite edge rises.
         state.TargetY = (nx - 0.5) * 2 * MaxAngle;
         state.TargetX = -(ny - 0.5) * 2 * MaxAngle;
-        state.TargetGlare = MaxGlare;
+        state.TargetGlare = MaxGlare * GlareScale(state);
+        Engage(state);
 
         state.Shine ??= card.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "Shine");
         if (state.Shine is not null)
@@ -109,9 +150,30 @@ public static class Tilt
         Run(state);
     }
 
-    private static void OnExited(object? sender, PointerEventArgs e)
+    // The 3D transform and the glare layer exist only while the card is actually tilting. At rest the card is drawn
+    // plainly: a perspective transform at 0 degrees still goes through the 3D path and showed thin streaks.
+    private static void Engage(State state)
     {
-        if (sender is not Control card || !States.TryGetValue(card, out var state)) return;
+        if (!ReferenceEquals(state.Card.RenderTransform, state.Transform)) state.Card.RenderTransform = state.Transform;
+        state.Shine ??= state.Card.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "Shine");
+        if (state.Shine is not null && !state.Shine.IsVisible && GlareScale(state) > 0) state.Shine.IsVisible = true;
+    }
+
+    /// <summary>Theme setting for the glare (0 in the light theme, where a white glare would only look like a smudge).</summary>
+    private static double GlareScale(State state) =>
+        state.Card.TryFindResource("CardGlareScale", state.Card.ActualThemeVariant, out var v) && v is double d ? d : 1;
+
+    private static void Release(State state)
+    {
+        state.Card.RenderTransform = null;
+        if (state.Shine is null) return;
+        state.Shine.Opacity = 0;
+        state.Shine.IsVisible = false;
+    }
+
+    private static void Rest(State state)
+    {
+        if (state.TargetX == 0 && state.TargetY == 0 && state.TargetGlare == 0 && state.Timer is null) return;
         state.TargetX = state.TargetY = state.TargetGlare = 0;
         Run(state);
     }
@@ -146,5 +208,6 @@ public static class Tilt
 
         state.Timer?.Stop();
         state.Timer = null;
+        Release(state);
     }
 }

@@ -359,3 +359,219 @@ public class Round4Tests
         Assert.Equal(reviewAt, person.OldestReviewSince);
     }
 }
+
+public class Round7Tests
+{
+    [Fact]
+    public void Assigned_sorts_before_reviewer_before_others()
+    {
+        var other = TestData.Pr("other");
+        var review = TestData.Pr("review", with: p => p with { RequestedReviewers = [TestData.Me] });
+        var assigned = TestData.Pr("assigned", with: p => p with { Assignees = [TestData.Me] });
+        var both = TestData.Pr("both", with: p => p with { Assignees = [TestData.Me], RequestedReviewers = [TestData.Me] });
+
+        var ordered = new[] { other, review, assigned, both }.OrderBy(p => p.ViewerRank).Select(p => p.Id).ToList();
+
+        Assert.Equal(0, assigned.ViewerRank);
+        Assert.Equal(0, both.ViewerRank); // assigned wins when it is also a review request
+        Assert.Equal(1, review.ViewerRank);
+        Assert.Equal(2, other.ViewerRank);
+        Assert.Equal(["assigned", "both", "review", "other"], ordered);
+    }
+
+    [Fact]
+    public void Card_border_state_is_exactly_one_colour_and_errors_win()
+    {
+        static GitDash.Presentation.ViewModels.PullRequestCardViewModel Card(PullRequest p) => new(p, TestData.Now);
+        static int Count(GitDash.Presentation.ViewModels.PullRequestCardViewModel c) =>
+            new[] { c.StateError, c.StateStale, c.StateApproved, c.StateChanges, c.StateUnreviewed }.Count(b => b);
+
+        var plain = Card(TestData.Pr("plain"));
+        var failing = Card(TestData.Pr("failing", with: p => p with { PipelineFailed = true }));
+        var conflict = Card(TestData.Pr("conflict", with: p => p with { HasMergeConflict = true }));
+
+        foreach (var c in new[] { plain, failing, conflict }) Assert.Equal(1, Count(c));
+        Assert.True(plain.StateUnreviewed);   // purple
+        Assert.True(failing.StateError);      // red
+        Assert.True(conflict.StateError);
+        Assert.False(failing.StateUnreviewed);
+    }
+}
+
+public class Round9Tests
+{
+    [Fact]
+    public void Tags_and_colour_come_from_one_shared_status()
+    {
+        var conflict = TestData.Pr("c", with: p => p with { HasMergeConflict = true, Assignees = [TestData.Me] });
+        var plain = TestData.Pr("p");
+
+        var tags = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(conflict).Select(t => t.Text).ToList();
+
+        Assert.True(tags.Contains("Merge Conflict"));
+        Assert.True(tags.Contains("Assigned"));
+        Assert.Equal("#FB7185", GitDash.Presentation.ViewModels.PullRequestStatus.ColorOf(conflict));
+        Assert.Equal("#A855F7", GitDash.Presentation.ViewModels.PullRequestStatus.ColorOf(plain));
+        Assert.Equal(["Unreviewed"], GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(plain).Select(t => t.Text).ToList());
+    }
+
+    [Fact]
+    public void Error_filters_match_only_their_own_error()
+    {
+        var conflict = TestData.Pr("c", with: p => p with { HasMergeConflict = true });
+        var failing = TestData.Pr("f", with: p => p with { PipelineFailed = true });
+        var mergeFilter = new GitDash.Presentation.ViewModels.FilterOptionViewModel(GitDash.Presentation.ViewModels.PullRequestFilter.MergeConflict, "m");
+        var pipeFilter = new GitDash.Presentation.ViewModels.FilterOptionViewModel(GitDash.Presentation.ViewModels.PullRequestFilter.PipelineFailed, "p");
+
+        Assert.True(mergeFilter.Matches(conflict));
+        Assert.False(mergeFilter.Matches(failing));
+        Assert.True(pipeFilter.Matches(failing));
+        Assert.False(pipeFilter.Matches(conflict));
+    }
+}
+
+public class Round10Tests
+{
+    [Fact]
+    public void Time_is_shown_in_the_chosen_style()
+    {
+        var at = new DateTimeOffset(2026, 11, 13, 14, 5, 0, TimeSpan.Zero);
+        var previous = GitDash.Presentation.Mvvm.Humanize.Format;
+        try
+        {
+            GitDash.Presentation.Mvvm.Humanize.Format = GitDash.Application.Settings.TimeFormat.Utc;
+            Assert.Equal("14:05 UTC", GitDash.Presentation.Mvvm.Humanize.Time(at));
+
+            GitDash.Presentation.Mvvm.Humanize.Format = GitDash.Application.Settings.TimeFormat.Hour24;
+            var local = at.ToLocalTime();
+            Assert.Equal(local.ToString("HH:mm"), GitDash.Presentation.Mvvm.Humanize.Time(at));
+
+            GitDash.Presentation.Mvvm.Humanize.Format = GitDash.Application.Settings.TimeFormat.Hour12;
+            Assert.True(GitDash.Presentation.Mvvm.Humanize.Time(at).EndsWith("M"));
+        }
+        finally
+        {
+            GitDash.Presentation.Mvvm.Humanize.Format = previous;
+        }
+    }
+
+    [Fact]
+    public void Pascal_case_and_timeline_tags()
+    {
+        Assert.Equal("Changes Requested", GitDash.Presentation.Mvvm.Humanize.Pascal("CHANGES_REQUESTED"));
+        Assert.Equal("Open", GitDash.Presentation.Mvvm.Humanize.Pascal("OPEN"));
+        Assert.Equal("Added", GitDash.Presentation.ViewModels.TimelineTags.LabelOf(GitDash.Domain.PullRequests.TimelineEntryKind.ReviewRequested));
+        Assert.Equal("Removed", GitDash.Presentation.ViewModels.TimelineTags.LabelOf(GitDash.Domain.PullRequests.TimelineEntryKind.Unassigned));
+    }
+
+    [Fact]
+    public void Card_tags_show_changes_requested_and_unreviewed()
+    {
+        var plain = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(TestData.Pr("p")).Select(t => t.Text).ToList();
+        Assert.True(plain.Contains("Unreviewed"));
+        var withState = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(TestData.Pr("p"), withState: true).Select(t => t.Text).ToList();
+        Assert.Equal("Open", withState[0]);
+    }
+
+    [Fact]
+    public void Shelf_book_height_grows_with_pr_size()
+    {
+        var tiny = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(1, 0, 1);
+        var medium = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(200, 50, 8);
+        var huge = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(50000, 20000, 400);
+        Assert.True(tiny < medium);
+        Assert.True(medium < huge);
+        Assert.True(tiny >= GitDash.Presentation.ViewModels.DashboardViewModel.MinBookHeight);
+        Assert.True(huge <= GitDash.Presentation.ViewModels.DashboardViewModel.MaxBookHeight);
+    }
+
+    [Fact]
+    public void Desk_books_are_coloured_by_type_and_capped()
+    {
+        var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(2, 1, 1);
+        Assert.Equal(4, books.Count);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.AssignedBookColor, books[0].Color);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.ReviewBookColor, books[2].Color);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor, books[3].Color);
+
+        var capped = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(20, 20, 20);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.MaxDeskBooks, capped.Count);
+        Assert.True(capped.Any(b => b.Color == GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor));
+        Assert.Equal(0, GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(0, 0, 0).Count);
+    }
+
+    [Fact]
+    public void Desk_books_are_ordered_assigned_then_review_then_raised()
+    {
+        var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 2, 3);
+        Assert.Equal(6, books.Count);
+        var colors = books.Select(b => b.Color).ToList();
+        var assigned = colors.IndexOf(GitDash.Presentation.ViewModels.PersonViewModel.AssignedBookColor);
+        var review = colors.IndexOf(GitDash.Presentation.ViewModels.PersonViewModel.ReviewBookColor);
+        var raised = colors.IndexOf(GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor);
+        Assert.True(assigned < review);
+        Assert.True(review < raised);
+    }
+
+    [Fact]
+    public void Pending_branch_colours_follow_pr_and_age()
+    {
+        var now = Now;
+        var withPr = new GitDash.Domain.Insights.PendingBranch("a", now.AddDays(-30), true);
+        var fresh = new GitDash.Domain.Insights.PendingBranch("b", now.AddDays(-3), false);
+        var old = new GitDash.Domain.Insights.PendingBranch("c", now.AddDays(-15), false);
+        Assert.Equal("Green", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(withPr, now, "o/r").Tone);
+        Assert.Equal("Amber", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(fresh, now, "o/r").Tone);
+        Assert.Equal("Red", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(old, now, "o/r").Tone);
+    }
+
+    [Fact]
+    public void Repository_option_reports_clicks_but_not_silent_updates()
+    {
+        var clicks = 0;
+        var option = new GitDash.Presentation.ViewModels.RepositoryOptionViewModel("o/r", false, _ => clicks++);
+        option.SetChecked(true);
+        Assert.Equal(0, clicks);
+        option.IsSelected = false;
+        Assert.Equal(1, clicks);
+    }
+
+    [Fact]
+    public void Window_placement_and_repository_selection_have_safe_defaults()
+    {
+        var settings = new GitDash.Application.Settings.AppSettings();
+        Assert.True(settings.MainWindow is null);
+        Assert.Equal(0, settings.SelectedRepositories.Count);
+    }
+
+    [Fact]
+    public void Viewer_comes_first_then_biggest_stack()
+    {
+        var people = new[]
+        {
+            new GitDash.Domain.Insights.PersonStats("zed", 1, 0, 0, 0, null, null),
+            new GitDash.Domain.Insights.PersonStats("amy", 2, 2, 2, 4, null, null),
+            new GitDash.Domain.Insights.PersonStats("me", 0, 0, 0, 0, null, null),
+            new GitDash.Domain.Insights.PersonStats("bob", 1, 1, 1, 2, null, null),
+        };
+        var order = GitDash.Presentation.ViewModels.PeopleViewModel
+            .OrderPeople(people, new HashSet<string> { "me" }).Select(p => p.Login).ToList();
+        Assert.Equal("me", order[0]);
+        Assert.Equal("amy", order[1]);
+        Assert.Equal("bob", order[2]);
+        Assert.Equal("zed", order[3]);
+    }
+
+    [Fact]
+    public void Branch_link_keeps_slashes_and_escapes_the_rest()
+    {
+        Assert.Equal("https://github.com/o/r/tree/feature/a%20b",
+            GitDash.Presentation.ViewModels.PendingBranchViewModel.UrlFor("o/r", "feature/a b"));
+    }
+
+    [Fact]
+    public void Glass_effect_is_on_by_default()
+    {
+        Assert.True(new GitDash.Application.Settings.AppSettings().GlassEffect);
+    }
+}

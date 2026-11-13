@@ -20,10 +20,18 @@ public sealed class WidgetController(
     public void Start()
     {
         settings.Changed += OnSettingsChanged;
+        shell.Timers.PropertyChanged += OnTimersChanged;
         Update(settings.Current);
     }
 
     private void OnSettingsChanged(AppSettings s) => Dispatcher.UIThread.Post(() => Update(s));
+
+    /// <summary>The timer widget appears when a timer starts and goes away when the last one stops.</summary>
+    private void OnTimersChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TimersViewModel.IsAnyRunning))
+            Dispatcher.UIThread.Post(() => Update(settings.Current));
+    }
 
     private void Update(AppSettings s)
     {
@@ -45,14 +53,15 @@ public sealed class WidgetController(
             _counter = null;
         }
 
-        // Timer widget
-        if (s.ShowTimerWidget && _timer is null)
+        // Timer widget: only while at least one timer is running
+        var showTimer = s.ShowTimerWidget && shell.Timers.IsAnyRunning;
+        if (showTimer && _timer is null)
         {
             _timer = new TimerWidgetWindow(showMainWindow) { DataContext = shell.Timers };
             _timer.Show();
             _timer.Position = Place(_timer, s.TimerWidgetX, s.TimerWidgetY, 72 + 190);
         }
-        else if (!s.ShowTimerWidget && _timer is not null)
+        else if (!showTimer && _timer is not null)
         {
             Remember(_timer, SaveFor(_timer));
             _timer.Close();
@@ -63,6 +72,7 @@ public sealed class WidgetController(
         {
             if (window is null) continue;
             window.SetMotion(!s.ReduceMotion);
+            window.SetGlass(s.GlassEffect);
             window.SetIdleOpacity(s.WidgetOpacity);
             window.SetClickThroughEnabled(s.ClickThroughOverlays);
 
@@ -133,6 +143,7 @@ public sealed class WidgetController(
     public void Dispose()
     {
         settings.Changed -= OnSettingsChanged;
+        shell.Timers.PropertyChanged -= OnTimersChanged;
         _clock?.Stop();
         _counter?.Close();
         _timer?.Close();

@@ -30,6 +30,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
     private ITimer? _ticker;
     private string _widgetLabel = "Timers idle", _widgetClock = "--:--";
     private bool _isAnyRunning;
+    private readonly RunningTimerViewModel _pomodoroLine = new("#F472B6"), _reviewLine = new("#FBBF24"), _taskLine = new("#22D3EE");
 
     private string _taskName = string.Empty, _taskElapsed = "00:00", _reviewElapsed = "00:00", _reviewTotal = "00:00";
     private string _pomodoroPhase = "Focus", _pomodoroRemaining = "25:00", _pomodoroRound = string.Empty, _todayTotal = "0m";
@@ -58,6 +59,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         FinishReviewCommand = new RelayCommand(FinishReview);
 
         _history.Changed += OnHistoryChanged;
+        _settings.Changed += OnSettingsChanged;
         Refresh();
         RefreshHistory();
     }
@@ -70,6 +72,12 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
     public string WidgetLabel { get => _widgetLabel; private set => Set(ref _widgetLabel, value); }
     public string WidgetClock { get => _widgetClock; private set => Set(ref _widgetClock, value); }
     public bool IsAnyRunning { get => _isAnyRunning; private set => Set(ref _isAnyRunning, value); }
+
+    /// <summary>Every running timer (Pomodoro, review, task), used by the dashboard.</summary>
+    public ObservableCollection<RunningTimerViewModel> RunningTimers { get; } = [];
+
+    /// <summary>What the widget and the island list: all running timers, or just the most relevant one, by the setting.</summary>
+    public ObservableCollection<RunningTimerViewModel> VisibleTimers { get; } = [];
     public ICommand ToggleTaskCommand { get; }
     public ICommand FinishTaskCommand { get; }
 
@@ -168,12 +176,19 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         if (!_review.IsRunning) ToggleReview();
     }
 
+    /// <summary>Timer events are notifications too, so they also appear on the dynamic island.</summary>
+    private void Announce(string title, string message) =>
+        _ = _notifications.PublishAsync(new ToastRequest(title, message, ToastTone.Timer));
+
+    private string TaskTitle => string.IsNullOrWhiteSpace(TaskName) ? "Task" : TaskName.Trim();
+
     private void ToggleTask()
     {
         var now = _time.GetUtcNow();
         if (_task.IsRunning) _task.Pause(now);
         else _task.Start(now);
         Refresh();
+        Announce(_task.IsRunning ? "Task timer started" : "Task timer paused", $"{TaskTitle} · {TaskElapsed}");
     }
 
     private void FinishTask()
@@ -184,6 +199,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         {
             var label = string.IsNullOrWhiteSpace(TaskName) ? "Untitled task" : TaskName.Trim();
             Save(new TimerSession(Guid.NewGuid(), TimerKind.Task, label, started, _task.Elapsed(now)));
+            Announce("Task timer finished", $"{label} · {Humanize.Clock(_task.Elapsed(now))}");
         }
 
         _task.Reset();
@@ -204,6 +220,8 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         }
 
         Refresh();
+        Announce(_pomodoro.IsRunning ? $"Pomodoro started · {PomodoroPhase}" : $"Pomodoro paused · {PomodoroPhase}",
+            $"{PomodoroRemaining} remaining");
     }
 
     private void ResetPomodoro()
@@ -245,6 +263,8 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         if (_review.IsRunning) _review.Pause(now);
         else _review.Start(now);
         Refresh();
+        Announce(_review.IsRunning ? "Review timer started" : "Review timer paused",
+            $"{_selectedReviewTarget.Label} · {ReviewElapsed}");
     }
 
     private void FinishReview()
@@ -255,6 +275,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         {
             Save(new TimerSession(
                 Guid.NewGuid(), TimerKind.PullRequestReview, target.Label, started, _review.Elapsed(now), target.Url));
+            Announce("Review timer finished", $"{target.Label} · {Humanize.Clock(_review.Elapsed(now))}");
         }
 
         _review.Reset();
@@ -320,6 +341,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
             (_, _, true) => (string.IsNullOrWhiteSpace(TaskName) ? "Task" : TaskName.Trim(), TaskElapsed),
             _ => ("Timers idle", Humanize.Clock(_pomodoro.Remaining(now))),
         };
+        UpdateRunningLines(now);
         if (anyRunning && _ticker is null)
         {
             _ticker = _time.CreateTimer(_ => _ui.Post(Refresh), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
@@ -331,12 +353,45 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         }
     }
 
+    private void OnSettingsChanged(AppSettings _) => _ui.Post(() => UpdateRunningLines(_time.GetUtcNow()));
+
+    /// <summary>Updates the per-timer lines every tick and changes the lists only when a timer starts or stops.</summary>
+    private void UpdateRunningLines(DateTimeOffset now)
+    {
+        _pomodoroLine.Update($"Pomodoro · {PomodoroPhase}", PomodoroRemaining, _pomodoro.Progress(now));
+        _reviewLine.Update(_selectedReviewTarget is { } t ? $"PR review · {t.Label}" : "PR review", ReviewElapsed,
+            RunningTimerViewModel.MinuteSweep(_review.Elapsed(now)));
+        _taskLine.Update(TaskTitle, TaskElapsed, RunningTimerViewModel.MinuteSweep(_task.Elapsed(now)));
+
+        var running = new List<RunningTimerViewModel>(3);
+        if (_pomodoro.IsRunning) running.Add(_pomodoroLine);
+        if (_review.IsRunning) running.Add(_reviewLine);
+        if (_task.IsRunning) running.Add(_taskLine);
+        Sync(RunningTimers, running);
+        Sync(VisibleTimers, _settings.Current.ShowMultipleTimers ? running : [.. running.Take(1)]);
+    }
+
+    private static void Sync(ObservableCollection<RunningTimerViewModel> target, IReadOnlyList<RunningTimerViewModel> wanted)
+    {
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var at = target.IndexOf(wanted[i]);
+            if (at < 0) target.Insert(i, wanted[i]);
+            else if (at != i) target.Move(at, i);
+        }
+
+        while (target.Count > wanted.Count) target.RemoveAt(target.Count - 1);
+    }
+
     private void OnHistoryChanged() => _ui.Post(RefreshHistory);
+
+    /// <summary>The time format changed: redraw the session times.</summary>
+    public void Reformat() => RefreshHistory();
 
     private void RefreshHistory()
     {
         var now = _time.GetUtcNow();
-        var today = now.ToLocalTime().Date;
+        var today = Humanize.DayOf(now);
         DashboardViewModel.Replace(History, _history.Sessions.Take(25).Select(s => new SessionViewModel(
             s.Kind switch
             {
@@ -349,7 +404,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
             Humanize.Stamp(s.StartedAt))));
         HasHistory = History.Count > 0;
         TodayTotal = Humanize.Age(TimeSpan.FromTicks(_history.Sessions
-            .Where(s => s.StartedAt.ToLocalTime().Date == today)
+            .Where(s => Humanize.DayOf(s.StartedAt) == today)
             .Sum(s => s.Duration.Ticks))) is var total && total == "just now" ? "0m" : total;
         Refresh();
     }
@@ -357,6 +412,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
     public void Dispose()
     {
         _history.Changed -= OnHistoryChanged;
+        _settings.Changed -= OnSettingsChanged;
         _ticker?.Dispose();
     }
 }

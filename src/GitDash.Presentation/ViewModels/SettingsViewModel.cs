@@ -85,7 +85,7 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
                      })
                 Raise(name);
         });
@@ -267,6 +267,13 @@ public sealed class SettingsViewModel : PageViewModel
         set => Save(s => s with { MiniWidget = value });
     }
 
+    /// <summary>Glass gloss, glowing rim and a sweeping sheen on the island and the widgets.</summary>
+    public bool GlassEffect
+    {
+        get => _settings.Current.GlassEffect;
+        set => Save(s => s with { GlassEffect = value });
+    }
+
     public double WidgetXPercent
     {
         get => Math.Round(_settings.Current.WidgetXPercent);
@@ -304,10 +311,41 @@ public sealed class SettingsViewModel : PageViewModel
         set => Save(s => s with { ShowTimerWidget = value });
     }
 
+    public bool ShowMultipleTimers
+    {
+        get => _settings.Current.ShowMultipleTimers;
+        set => Save(s => s with { ShowMultipleTimers = value });
+    }
+
     public bool ShowFloatingWidget
     {
         get => _settings.Current.ShowFloatingWidget;
         set => Save(s => s with { ShowFloatingWidget = value });
+    }
+
+    public bool HideToTrayOnMinimize
+    {
+        get => _settings.Current.HideToTrayOnMinimize;
+        set => Save(s => s with { HideToTrayOnMinimize = value });
+    }
+
+    public bool HideToTrayOnClose
+    {
+        get => _settings.Current.HideToTrayOnClose;
+        set => Save(s => s with { HideToTrayOnClose = value });
+    }
+
+    public IReadOnlyList<string> TimeFormatOptions { get; } =
+        ["Local time, system format", "Local time, 24-hour", "Local time, 12-hour", "UTC"];
+
+    public int TimeFormatIndex
+    {
+        get => (int)_settings.Current.TimeFormat;
+        set
+        {
+            if (value < 0 || value >= TimeFormatOptions.Count) return;
+            Save(s => s with { TimeFormat = (TimeFormat)value });
+        }
     }
 
     public bool ShowTrayIcon

@@ -18,6 +18,9 @@ public sealed class EntranceRegistry
     public bool TryEnter(string key) => _seen.Add(key);
 }
 
+/// <summary>One book lying in the pile on a desk: a hex colour for the type of PR waiting and a width in pixels.</summary>
+public sealed record DeskBookItem(string Color, double Width);
+
 /// <summary>One animated person standing on a floor.</summary>
 public sealed record PersonViewModel(
     string Login, string Repository, string Initials, string Accent, string? AvatarUrl,
@@ -37,12 +40,44 @@ public sealed record PersonViewModel(
     /// <summary>Sits at the desk and types; people with nothing on their plate stand around instead.</summary>
     public bool IsWorking => Raised > 0 || Assigned > 0 || AssignedUnder > 0;
     public bool IsIdle => !IsWorking;
-    // One sheet of paper on the desk per raised PR, up to five.
-    public bool Paper1 => Raised >= 1;
-    public bool Paper2 => Raised >= 2;
-    public bool Paper3 => Raised >= 3;
-    public bool Paper4 => Raised >= 4;
-    public bool Paper5 => Raised >= 5;
+    /// <summary>Open pull requests where this person's review is requested.</summary>
+    public int ToReview { get; init; }
+
+    /// <summary>
+    /// Books piled on the desk from top to bottom, one per waiting item and coloured by type: Assigned cyan, Review Requested amber,
+    /// PR Raised violet. At most <see cref="MaxDeskBooks"/> are drawn; every type present keeps at least one.
+    /// </summary>
+    public IReadOnlyList<DeskBookItem> DeskBooks => BuildDeskBooks(Assigned, ToReview, Raised);
+
+    public const int MaxDeskBooks = 7;
+    public const string AssignedBookColor = "#22D3EE", ReviewBookColor = "#F59E0B", RaisedBookColor = "#A78BFA";
+    private static readonly int[] BookWidths = [30, 26, 32, 28, 24, 31, 27];
+
+    public static IReadOnlyList<DeskBookItem> BuildDeskBooks(int assigned, int toReview, int raised)
+    {
+        var counts = new[] { assigned, toReview, raised };
+        var colors = new[] { AssignedBookColor, ReviewBookColor, RaisedBookColor };
+        var take = new int[3];
+        var left = MaxDeskBooks;
+        while (left > 0)
+        {
+            var progressed = false;
+            for (var t = 0; t < 3 && left > 0; t++)
+            {
+                if (take[t] >= counts[t]) continue;
+                take[t]++; left--; progressed = true;
+            }
+
+            if (!progressed) break;
+        }
+
+        var books = new List<DeskBookItem>();
+        for (var t = 0; t < 3; t++)
+            for (var i = 0; i < take[t]; i++)
+                books.Add(new DeskBookItem(colors[t], BookWidths[books.Count % BookWidths.Length]));
+        return books;
+    }
+
     public bool IsBusy => Raised + Assigned >= 3;
     /// <summary>Assigned first, then PR, then Waiting.</summary>
     public string StatusLine => $"Assigned {Assigned} · PR {Raised} · Waiting {AssignedUnder}";
@@ -81,6 +116,26 @@ public sealed record FloorViewModel(
 public sealed record PullRequestLinkViewModel(string Title, string Subtitle, string Url);
 
 public sealed record PersonTileViewModel(string Label, string Value, string Tone);
+
+/// <summary>A branch chip: green with a pull request, yellow without one, red without one for over two weeks.</summary>
+public sealed record PendingBranchViewModel(string Name, string Tone, string Tip, string Url)
+{
+    /// <summary>Link to the branch on GitHub (the branch name keeps its slashes).</summary>
+    public static string UrlFor(string repository, string branch) =>
+        $"https://github.com/{repository}/tree/{string.Join('/', branch.Split('/').Select(Uri.EscapeDataString))}";
+
+    public static PendingBranchViewModel From(PendingBranch branch, DateTimeOffset now, string repository)
+    {
+        var url = UrlFor(repository, branch.Name);
+        var age = branch.LastCommitAt is { } at ? $"last commit {Humanize.Age(now - at)} ago" : "last commit unknown";
+        return branch.HealthAt(now) switch
+        {
+            PendingBranchHealth.HasPullRequest => new(branch.Name, "Green", $"Has an open pull request · {age} · click to open", url),
+            PendingBranchHealth.Stale => new(branch.Name, "Red", $"No pull request for over two weeks · {age} · click to open", url),
+            _ => new(branch.Name, "Amber", $"No pull request yet · {age} · click to open", url),
+        };
+    }
+}
 
 public sealed record PersonEventViewModel(string When, string Kind, string Title, string Text, string Url);
 
@@ -129,9 +184,15 @@ public sealed class PeopleViewModel : PageViewModel
 
     // ----- Person dashboard (loaded from GitHub when a person is opened) -----
     public ObservableCollection<PersonTileViewModel> ActivityTiles { get; } = [];
+
+    /// <summary>The single small card: merge rate and pipeline runs this week, this month and in total.</summary>
+    public ObservableCollection<PersonTileViewModel> SummaryStats { get; } = [];
     public ObservableCollection<PersonPullRequestViewModel> RecentPullRequests { get; } = [];
     public ObservableCollection<PersonEventViewModel> ActivityEvents { get; } = [];
-    public ObservableCollection<string> PendingBranches { get; } = [];
+    public ObservableCollection<PendingBranchViewModel> PendingBranches { get; } = [];
+
+    /// <summary>Live counts for the open person: waiting on them, assigned to them, raised by them.</summary>
+    public ObservableCollection<PersonTileViewModel> LiveTiles { get; } = [];
     public bool IsActivityLoading { get => _isActivityLoading; private set => Set(ref _isActivityLoading, value); }
     public bool HasActivity { get => _hasActivity; private set => Set(ref _hasActivity, value); }
     public bool HasPendingBranches { get => _hasPendingBranches; private set => Set(ref _hasPendingBranches, value); }
@@ -179,9 +240,12 @@ public sealed class PeopleViewModel : PageViewModel
         ActivityError = string.Empty;
         Raise(nameof(HasActivityError));
         ActivityTiles.Clear();
+        SummaryStats.Clear();
         RecentPullRequests.Clear();
         ActivityEvents.Clear();
         PendingBranches.Clear();
+        _openNow = "–";
+        RebuildLiveTiles();
         HasPendingBranches = HasEvents = HasRecentPrs = false;
     }
 
@@ -227,29 +291,55 @@ public sealed class PeopleViewModel : PageViewModel
         DashboardViewModel.Replace(ActivityTiles,
         [
             new("Pull requests raised", a.Raised.ToString("N0", inv), "Violet"),
-            new("Open now", a.Open.ToString("N0", inv), "Cyan"),
             new("Merged", a.Merged.ToString("N0", inv), "Green"),
             new("Closed unmerged", a.Closed.ToString("N0", inv), "Red"),
             new("Drafts", a.Draft.ToString("N0", inv), "Muted"),
-            new("Merge rate", a.Merged + a.Closed == 0 ? "–" : a.MergeRate.ToString("P0", inv), "Green"),
             new("PRs commented on", a.PullRequestsCommentedOn.ToString("N0", inv), "Cyan"),
             new("PRs reviewed", a.PullRequestsReviewed.ToString("N0", inv), "Amber"),
             new("Comments (recent)", a.CommentsInRecent.ToString("N0", inv), "Cyan"),
             new("Pending branches", a.PendingBranches.Count.ToString("N0", inv), a.PendingBranches.Count > 0 ? "Amber" : "Muted"),
+            new("Branches without PR > 2 weeks", a.PendingBranches.Count(b => b.HealthAt(now) == PendingBranchHealth.Stale).ToString("N0", inv),
+                a.PendingBranches.Any(b => b.HealthAt(now) == PendingBranchHealth.Stale) ? "Red" : "Muted"),
         ]);
-        DashboardViewModel.Replace(PendingBranches, a.PendingBranches);
+        static string Runs(int? n) => n is { } v ? v.ToString("N0", CultureInfo.InvariantCulture) : "–";
+        DashboardViewModel.Replace(SummaryStats,
+        [
+            new("Merge rate", a.Merged + a.Closed == 0 ? "–" : a.MergeRate.ToString("P0", inv), "Green"),
+            new("Runs this week", Runs(a.PipelineRuns.Week), "Cyan"),
+            new("Runs this month", Runs(a.PipelineRuns.Month), "Violet"),
+            new("Total runs", Runs(a.PipelineRuns.Total), "Amber"),
+        ]);
+        DashboardViewModel.Replace(PendingBranches, a.PendingBranches.Select(b => PendingBranchViewModel.From(b, now, a.Repository)));
         HasPendingBranches = PendingBranches.Count > 0;
         DashboardViewModel.Replace(RecentPullRequests, a.RecentPullRequests.Select(p => new PersonPullRequestViewModel(
             p.Title,
             $"#{p.Number} · {(p.ClosedAt is { } closed ? Humanize.Ago(now - closed) : "opened " + Humanize.Ago(now - p.CreatedAt))}",
-            p.IsDraft ? "DRAFT" : p.State, p.Url)));
+            p.IsDraft ? "Draft" : Humanize.Pascal(p.State), p.Url)));
         HasRecentPrs = RecentPullRequests.Count > 0;
         DashboardViewModel.Replace(ActivityEvents, a.Events.Take(30).Select(e => new PersonEventViewModel(
             Humanize.Ago(now - e.At), e.Kind.ToString(), $"#{e.Number} {e.PullRequestTitle}", e.Text, e.Url)));
         HasEvents = ActivityEvents.Count > 0;
+        _openNow = a.Open.ToString("N0", inv);
+        RebuildLiveTiles();
         HasActivity = true;
     }
 
+
+    private int _liveWaiting, _liveAssigned, _liveRaised;
+    private string _openNow = "–";
+
+    /// <summary>The four cards at the top: waiting, assigned, raised (live) and open now (from the loaded activity).</summary>
+    private void RebuildLiveTiles()
+    {
+        var inv = CultureInfo.InvariantCulture;
+        DashboardViewModel.Replace(LiveTiles,
+        [
+            new("Waiting On Them", _liveWaiting.ToString("N0", inv), "Red"),
+            new("Assigned", _liveAssigned.ToString("N0", inv), "Cyan"),
+            new("Raised", _liveRaised.ToString("N0", inv), "Violet"),
+            new("Open Now", _openNow, "Open"),
+        ]);
+    }
 
     private void FillPersonPanel(PersonViewModel person)
     {
@@ -257,7 +347,7 @@ public sealed class PeopleViewModel : PageViewModel
         var onFloor = _state.Open
             .GroupBy(p => p.Id).Select(g => g.First())
             .Where(p => string.Equals(p.Repository.FullName, person.Repository, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.CreatedAt)
+            .OrderBy(p => p.ViewerRank).ThenBy(p => p.CreatedAt)
             .ToList();
 
         PullRequestLinkViewModel Link(PullRequest p, string detail) =>
@@ -280,22 +370,32 @@ public sealed class PeopleViewModel : PageViewModel
                 _ => $"review requested · by {p.Author}",
             })));
 
+        _liveAssigned = onFloor.Count(p => p.Assignees.ContainsLogin(person.Login));
+        _liveWaiting = WaitingItems.Count;
+        _liveRaised = RaisedItems.Count;
+        RebuildLiveTiles();
         HasRaisedItems = RaisedItems.Count > 0;
         HasWaitingItems = WaitingItems.Count > 0;
         PersonSubtitle = $"{person.Repository} · {RaisedItems.Count} raised · {WaitingItems.Count} waiting on them";
     }
+
+    /// <summary>The viewer always comes first; everyone else by the size of their book stack, biggest first.</summary>
+    public static IEnumerable<PersonStats> OrderPeople(IEnumerable<PersonStats> people, ISet<string> viewers) => people
+        .OrderByDescending(p => viewers.Contains(p.Login))
+        .ThenByDescending(p => p.Assigned + p.ToReview + p.Raised)
+        .ThenBy(p => p.Login, Login.Comparer);
 
     private FloorViewModel ToViewModel(
         RepositoryFloor floor, int number, HashSet<string> viewers, IReadOnlyDictionary<string, string> avatars) => new(
         floor.Repository.FullName,
         $"Floor {number}",
         [
-            .. floor.People.Take(MaxPeoplePerFloor).Select((p, i) => new PersonViewModel(
+            .. OrderPeople(floor.People, viewers).Take(MaxPeoplePerFloor).Select((p, i) => new PersonViewModel(
                 p.Login, floor.Repository.FullName, Humanize.Initials(p.Login), Humanize.Accent(p.Login),
                 avatars.GetValueOrDefault(p.Login), p.Raised, p.Assigned, p.AssignedUnder,
                 p.OldestAssignedSince is { } since ? Humanize.Age(DateTimeOffset.UtcNow - since) : "",
                 p.OldestReviewSince is { } reviewSince ? Humanize.Age(DateTimeOffset.UtcNow - reviewSince) : "",
-                viewers.Contains(p.Login), i % 3) { Entrance = _entrance }),
+                viewers.Contains(p.Login), i % 3) { Entrance = _entrance, ToReview = p.ToReview }),
         ],
         floor.OpenCount,
         floor.DraftCount,

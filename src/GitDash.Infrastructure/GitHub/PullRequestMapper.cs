@@ -42,8 +42,9 @@ public static class PullRequestMapper
         var pending = repo.Nodes("refs")
             .Where(r => !string.Equals(r.Str("name"), defaultBranch, StringComparison.Ordinal))
             .Where(r => Login.Same(r.Prop("target").Prop("author").Prop("user").StrOrNull("login"), login))
-            .Where(r => r.Prop("associatedPullRequests").Int("totalCount") == 0)
-            .Select(r => r.Str("name"))
+            .Where(r => r.Prop("mergedPullRequests").Int("totalCount") == 0)
+            .Select(r => new PendingBranch(
+                r.Str("name"), r.Prop("target").Date("committedDate"), r.Prop("openPullRequests").Int("totalCount") > 0))
             .Take(50)
             .ToList();
 
@@ -186,6 +187,10 @@ public static class PullRequestMapper
                 _ => PullRequestState.Open,
             },
             IsDraft = node.Bool("isDraft"),
+            HasMergeConflict = node.Str("mergeable") == "CONFLICTING",
+            PipelineFailed = node.Nodes("commits")
+                .Select(n => n.Prop("commit").Prop("statusCheckRollup").StrOrNull("state"))
+                .FirstOrDefault() is "FAILURE" or "ERROR",
             CreatedAt = node.Date("createdAt") ?? DateTimeOffset.MinValue,
             UpdatedAt = node.Date("updatedAt") ?? DateTimeOffset.MinValue,
             MergedAt = node.Date("mergedAt"),
@@ -247,6 +252,18 @@ public static class PullRequestMapper
         var pr = data.Prop("repository").Prop("pullRequest");
         var entries = new List<TimelineEntry>();
         var comments = new List<PullRequestComment>();
+        // Which code comments belong to a conversation that has been resolved (true) or is still open (false).
+        var resolution = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var thread in pr.Nodes("reviewThreads"))
+        {
+            var resolved = thread.Bool("isResolved");
+            foreach (var c in thread.Nodes("comments"))
+            {
+                var id = c.Str("id");
+                if (id.Length > 0) resolution[id] = resolved;
+            }
+        }
+
         if (pr.Date("createdAt") is { } created)
         {
             entries.Add(new(created, TimelineEntryKind.Opened, pr.Prop("author").Str("login", Ghost), "Opened the pull request"));
@@ -288,7 +305,8 @@ public static class PullRequestMapper
                             inline.Prop("author").Str("login", reviewer),
                             Limit(inline.Str("body")),
                             CommentSource.Inline,
-                            ((JsonElement?)inline).StrOrNull("path")));
+                            ((JsonElement?)inline).StrOrNull("path"),
+                            resolution.TryGetValue(inline.Str("id"), out var isResolved) ? isResolved : null));
                     }
 
                     break;

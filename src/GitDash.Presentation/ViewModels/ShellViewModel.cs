@@ -104,19 +104,24 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _settings = settings;
         _ui = ui;
         _reduceMotion = settings.Current.ReduceMotion;
+        Humanize.Format = settings.Current.TimeFormat;
 
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
         Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
         Timers = new TimersViewModel(settings, history, notifications, ui, time);
         Dashboard = new DashboardViewModel(launcher, time, () => Navigate(Settings));
+        Dashboard.AttachTimers(Timers);
         People = new PeopleViewModel(launcher, time, personActivity);
+        // "Review timer" on a card: start timing, then open the pull request on GitHub.
         MyPullRequests = new MyPullRequestsViewModel(monitor, launcher, ui, time, pr =>
         {
-            Navigate(Timers);
             Timers.StartReviewFor(pr);
+            launcher.Open(pr.Url);
         });
 
+        _selectedRepositories = new HashSet<string>(settings.Current.SelectedRepositories, StringComparer.OrdinalIgnoreCase);
+        RefreshRepositoryOptions(MonitorState.Empty);
         Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings];
         _currentPage = Home;
         Home.IsSelected = true;
@@ -152,33 +157,31 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ----- Repository filter: one choice that every list page follows -----
+    // ----- Repository filter: any number of repositories, one choice that every list page follows -----
     public const string AllRepositories = "All repositories";
 
     /// <summary>"All repositories" followed by every repository that has open pull requests or is monitored.</summary>
-    public ObservableCollection<string> RepositoryOptions { get; } = [AllRepositories];
+    public ObservableCollection<RepositoryOptionViewModel> RepositoryOptions { get; } = [];
 
-    private string _selectedRepository = AllRepositories;
+    /// <summary>The chosen repositories (owner/name). Empty means all of them, which is the default.</summary>
+    private HashSet<string> _selectedRepositories = new(StringComparer.OrdinalIgnoreCase);
 
-    public string SelectedRepository
-    {
-        get => _selectedRepository;
-        set
-        {
-            var next = value ?? AllRepositories;
-            if (!Set(ref _selectedRepository, next)) return;
-            if (!ReferenceEquals(CurrentPage, Timers)) CurrentPage.Apply(Filtered(_state));
-        }
-    }
+    private string _repositorySummary = AllRepositories;
+    private bool _updatingOptions;
+
+    /// <summary>Text on the filter button: "All repositories", the repository name, or "3 repositories".</summary>
+    public string RepositorySummary { get => _repositorySummary; private set => Set(ref _repositorySummary, value); }
 
     /// <summary>The filter is shown on the pages that list pull requests.</summary>
     public bool ShowRepositoryFilter => CurrentPage is not (TimersViewModel or SettingsViewModel);
 
+    private bool IsSelected(string repository) =>
+        _selectedRepositories.Count == 0 || _selectedRepositories.Contains(repository);
+
     private MonitorState Filtered(MonitorState state)
     {
-        if (_selectedRepository == AllRepositories) return state;
-        bool Match(GitDash.Domain.PullRequests.PullRequest pr) =>
-            string.Equals(pr.Repository.FullName, _selectedRepository, StringComparison.OrdinalIgnoreCase);
+        if (_selectedRepositories.Count == 0) return state;
+        bool Match(GitDash.Domain.PullRequests.PullRequest pr) => IsSelected(pr.Repository.FullName);
 
         var open = state.Open.Where(Match).ToList();
         return state with
@@ -189,6 +192,58 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         };
     }
 
+    /// <summary>
+    /// Called when a checkbox in the filter changes. Ticking "All repositories" clears the individual choices;
+    /// ticking a repository un-ticks "All"; clearing the last repository goes back to "All".
+    /// </summary>
+    private void OnRepositoryOptionToggled(RepositoryOptionViewModel option)
+    {
+        if (_updatingOptions) return;
+        if (option.IsAll)
+        {
+            _selectedRepositories.Clear();
+        }
+        else if (option.IsSelected)
+        {
+            _selectedRepositories.Add(option.Name);
+        }
+        else
+        {
+            _selectedRepositories.Remove(option.Name);
+        }
+
+        SyncOptionChecks();
+        SelectionChanged();
+    }
+
+    private void SyncOptionChecks()
+    {
+        _updatingOptions = true;
+        try
+        {
+            foreach (var o in RepositoryOptions)
+                o.SetChecked(o.IsAll ? _selectedRepositories.Count == 0 : _selectedRepositories.Contains(o.Name));
+        }
+        finally
+        {
+            _updatingOptions = false;
+        }
+
+        RepositorySummary = _selectedRepositories.Count switch
+        {
+            0 => AllRepositories,
+            1 => _selectedRepositories.First(),
+            var n => $"{n} repositories",
+        };
+    }
+
+    private void SelectionChanged()
+    {
+        var keep = _selectedRepositories.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        _ = _settings.UpdateAsync(x => x with { SelectedRepositories = keep });
+        if (!ReferenceEquals(CurrentPage, Timers)) CurrentPage.Apply(Filtered(_state));
+    }
+
     private void RefreshRepositoryOptions(MonitorState state)
     {
         var names = state.Open.Select(p => p.Repository.FullName)
@@ -196,16 +251,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        // A repository that is no longer monitored drops out of the selection (without touching the saved choice).
+        if (names.Count > 0) _selectedRepositories.RemoveWhere(r => !names.Contains(r, StringComparer.OrdinalIgnoreCase));
+
         var wanted = new List<string> { AllRepositories };
         wanted.AddRange(names);
-        if (RepositoryOptions.SequenceEqual(wanted)) return;
+        if (!RepositoryOptions.Select(o => o.Name).SequenceEqual(wanted))
+        {
+            RepositoryOptions.Clear();
+            foreach (var name in wanted)
+                RepositoryOptions.Add(new RepositoryOptionViewModel(name, name == AllRepositories, OnRepositoryOptionToggled));
+        }
 
-        var keep = _selectedRepository;
-        RepositoryOptions.Clear();
-        foreach (var option in wanted) RepositoryOptions.Add(option);
-        // A repository that is no longer monitored falls back to "all".
-        _selectedRepository = wanted.Contains(keep, StringComparer.OrdinalIgnoreCase) ? keep : AllRepositories;
-        Raise(nameof(SelectedRepository));
+        SyncOptionChecks();
     }
 
     /// <summary>Two-way friendly alias of <see cref="CurrentPage"/> for the navigation list.</summary>
@@ -253,6 +312,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         ReduceMotion = settings.ReduceMotion;
         Raise(nameof(SidebarPinned));
+        if (Humanize.Format != settings.TimeFormat)
+        {
+            // Times are turned into text when a page is built, so rebuild them in the new style.
+            Humanize.Format = settings.TimeFormat;
+            Timers.Reformat();
+            _renderedRevision = -1;
+            Render(_state);
+        }
     });
 
     private void OnStateChanged(MonitorState state)
@@ -275,11 +342,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Status = state switch
         {
             { LastCheckedAt: { } at } =>
-                $"Live · {at.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture)} · " +
+                $"Live · {Humanize.Time(at, seconds: true)} · " +
                 $"{state.RepositoryCount} {(state.RepositoryCount == 1 ? "repo" : "repos")}",
             { IsSyncing: true } => "Connecting…",
             { LastSyncedAt: { } saved } =>
-                $"Saved data from {saved.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)} · updating…",
+                $"Saved data from {Humanize.Time(saved)} · updating…",
             _ => "Waiting for first sync",
         };
 

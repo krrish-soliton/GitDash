@@ -26,6 +26,22 @@ public enum AppTheme
     System,
 }
 
+/// <summary>How dates and times are shown. Everything is converted from UTC (as GitHub reports it).</summary>
+public enum TimeFormat
+{
+    /// <summary>Local time in the operating system's regional format.</summary>
+    System,
+    /// <summary>Local time, 24-hour clock.</summary>
+    Hour24,
+    /// <summary>Local time, 12-hour clock with AM / PM.</summary>
+    Hour12,
+    /// <summary>UTC, 24-hour clock.</summary>
+    Utc,
+}
+
+/// <summary>Where the main window was last: position and size when not maximised, and whether it was maximised.</summary>
+public sealed record WindowPlacement(int X, int Y, double Width, double Height, bool Maximized);
+
 public sealed record AccountSettings(Guid Id, string Login, string? Name, AuthMethod Method, string? AvatarUrl = null);
 
 /// <summary>
@@ -51,6 +67,13 @@ public sealed record AppSettings
     public NotificationStyle NotificationStyle { get; init; } = NotificationStyle.Custom;
     /// <summary>How often each repository is asked "anything new?". Unchanged repositories cost no API quota.</summary>
     public int LiveCheckSeconds { get; init; } = 10;
+    /// <summary>Last window placement; null on first start, when the window opens maximised.</summary>
+    public WindowPlacement? MainWindow { get; init; }
+
+    /// <summary>
+    /// Repositories (owner/name) the list pages are limited to. Empty means "All repositories", which is the default.
+    /// </summary>
+    public IReadOnlyList<string> SelectedRepositories { get; init; } = [];
     public bool ReduceMotion { get; init; }
     public AppTheme Theme { get; init; } = AppTheme.Dark;
 
@@ -86,12 +109,17 @@ public sealed record AppSettings
     public int? TimerWidgetX { get; init; }
     public int? TimerWidgetY { get; init; }
     public bool ShowTimerWidget { get; init; }
+    /// <summary>Show every running timer on the widget and the island (off: only the most relevant one).</summary>
+    public bool ShowMultipleTimers { get; init; } = true;
     /// <summary>A dynamic-island style pill at the top of the screen that also shows the notifications.</summary>
     public bool ShowDynamicIsland { get; init; }
 
     /// <summary>How see-through the overlays are while the cursor is not over them (hovering makes them solid).</summary>
     public double WidgetOpacity { get; init; } = 0.65;
     public double IslandOpacity { get; init; } = 0.9;
+
+    /// <summary>Glass gloss, glowing rim and sheen on the island and the widgets.</summary>
+    public bool GlassEffect { get; init; } = true;
 
     /// <summary>Overlays let mouse clicks fall through to the windows underneath them.</summary>
     public bool ClickThroughOverlays { get; init; } = true;
@@ -100,6 +128,11 @@ public sealed record AppSettings
     public int? IslandY { get; init; }
     public IReadOnlyList<AiToolSettings> AiTools { get; init; } = [];
     public bool ShowTrayIcon { get; init; } = true;
+    /// <summary>Minimising the window sends it to the tray instead of the taskbar (needs the tray icon).</summary>
+    public bool HideToTrayOnMinimize { get; init; }
+    /// <summary>Closing the window keeps the app running in the tray (needs the tray icon); off quits the app.</summary>
+    public bool HideToTrayOnClose { get; init; } = true;
+    public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();
 

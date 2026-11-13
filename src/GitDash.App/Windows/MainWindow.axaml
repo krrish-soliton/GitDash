@@ -63,6 +63,37 @@
       <Setter Property="RenderTransform" Value="rotate(90deg) scale(1.1)" />
     </Style>
 
+    <!-- Light / dark / system switch in the title bar -->
+    <Style Selector="RadioButton.themeOpt">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="12">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.themeOpt /template/ Border#Bg">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="RadioButton.themeOpt:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="RadioButton.themeOpt:checked">
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource Accent2Brush}" />
+    </Style>
+
     <!-- Collapsible sidebar: widths animate; labels fade; the collapsed state shows only icons -->
     <Style Selector="Panel#SidebarHost, Border#Sidebar">
       <Setter Property="Transitions">
@@ -133,6 +164,20 @@
                        VerticalAlignment="Center" />
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal">
+            <Border Background="{DynamicResource Surface2Brush}" CornerRadius="14" Padding="2" Margin="0,0,10,0"
+                    VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="2">
+                <RadioButton Classes="themeOpt" IsChecked="{Binding Settings.IsLight}" ToolTip.Tip="Light">
+                  <PathIcon Data="{StaticResource IconSun}" Width="14" Height="14" />
+                </RadioButton>
+                <RadioButton Classes="themeOpt" IsChecked="{Binding Settings.IsDark}" ToolTip.Tip="Dark">
+                  <PathIcon Data="{StaticResource IconMoon}" Width="14" Height="14" />
+                </RadioButton>
+                <RadioButton Classes="themeOpt" IsChecked="{Binding Settings.FollowsSystemTheme}" ToolTip.Tip="Follow the system">
+                  <PathIcon Data="{StaticResource IconSystem}" Width="14" Height="14" />
+                </RadioButton>
+              </StackPanel>
+            </Border>
             <Button Classes="caption" Click="OnMinimizeClick" ToolTip.Tip="Minimise">
               <PathIcon Data="M0,4.5 H10 V5.5 H0 Z" Width="10" Height="10" />
             </Button>
@@ -225,8 +270,25 @@
       <Border DockPanel.Dock="Top" IsVisible="{Binding ShowRepositoryFilter}" Padding="36,14,36,0">
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
           <TextBlock Text="Repository" Classes="label" VerticalAlignment="Center" />
-          <ComboBox ItemsSource="{Binding RepositoryOptions}" SelectedItem="{Binding SelectedRepository}"
-                    MinWidth="240" MaxDropDownHeight="360" />
+          <Button Classes="ghost" MinWidth="240" HorizontalContentAlignment="Stretch" ToolTip.Tip="Choose one or more repositories">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding RepositorySummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="1" Text="▾" Margin="10,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <ScrollViewer MaxHeight="360" MinWidth="260">
+                  <ItemsControl ItemsSource="{Binding RepositoryOptions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RepositoryOptionViewModel">
+                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" Margin="4,2" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
         </StackPanel>
       </Border>
       <TransitioningContentControl Content="{Binding CurrentPage}">

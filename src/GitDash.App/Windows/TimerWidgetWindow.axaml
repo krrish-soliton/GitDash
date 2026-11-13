@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitDash.Presentation.ViewModels"
         xmlns:w="using:GitDash.App.Windows"
+        xmlns:conv="using:GitDash.App.Converters"
         x:Class="GitDash.App.Windows.TimerWidgetWindow"
         x:DataType="vm:TimersViewModel"
         Width="250" Height="104"
@@ -47,16 +48,27 @@
           DoubleTapped="OnDoubleTapped">
     <Panel>
       <Border Classes="glow" Height="3" VerticalAlignment="Top" Background="{StaticResource AccentGradient}" />
-      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="2">
-        <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
-          <Ellipse Classes="live" Width="8" Height="8" VerticalAlignment="Center"
-                   Fill="{StaticResource GreenBrush}" IsVisible="{Binding IsAnyRunning}" />
-          <TextBlock Text="{Binding WidgetLabel}" Classes="label" FontSize="10" MaxWidth="190"
-                     TextTrimming="CharacterEllipsis" />
-        </StackPanel>
-        <TextBlock Text="{Binding WidgetClock}" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center"
-                   Foreground="{DynamicResource TextBrush}" />
-      </StackPanel>
+      <ItemsControl ItemsSource="{Binding VisibleTimers}" VerticalAlignment="Center" Margin="18,6">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:RunningTimerViewModel">
+            <StackPanel Spacing="2">
+              <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
+                <Ellipse Classes="live" Width="8" Height="8" VerticalAlignment="Center"
+                         Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                <TextBlock Text="{Binding Label}" Classes="label" FontSize="10" MaxWidth="190"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <TextBlock Text="{Binding Clock}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
+                         Foreground="{DynamicResource TextBrush}" />
+              <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="4" MinHeight="4" CornerRadius="2"
+                           Background="{DynamicResource TrackBrush}" Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </Panel>
   </Border>
 </w:FloatingWindow>

@@ -31,21 +31,19 @@ public sealed class ToneBrushConverter : IValueConverter
 {
     public static readonly ToneBrushConverter Instance = new();
 
-    public static IBrush Brush(string? tone) => HexBrushConverter.Brush(tone switch
+    public static IBrush Brush(string? tone) => HexBrushConverter.Brush(tone?.ToLowerInvariant() switch
     {
-        "Assigned" or "ReviewRequested" or "Review" => "#FBBF24",
-        "Approved" or "ReadyForReview" or "Reopened" => "#34D399",
-        "ChangesRequested" or "Removed" or "Closed" or "ReviewRequestRemoved" or "Unassigned" or "ReviewDismissed" => "#FB7185",
-        "Commit" or "ForcePushed" => "#60A5FA",
-        "Merged" or "Opened" => "#A78BFA",
-        "Comment" or "Reviewed" or "Cyan" => "#22D3EE",
-        "Amber" or "DRAFT" => "#FBBF24",
-        "Green" or "OPEN" => "#34D399",
-        "Red" or "CLOSED" => "#FB7185",
-        "Violet" or "MERGED" => "#A78BFA",
-        "Timer" => "#F472B6",
-        "Task" => "#60A5FA",
-        "Pomodoro" => "#F472B6",
+        "assigned" or "reviewrequested" or "review" or "amber" => "#FBBF24",
+        "approved" or "readyforreview" or "green" => "#34D399",
+        "added" => "#60A5FA",
+        "open" or "reopened" => "#2DD4BF",
+        "changesrequested" => "#FB923C",
+        "removed" or "closed" or "reviewrequestremoved" or "unassigned" or "reviewdismissed" or "red" => "#FB7185",
+        "commit" or "forcepushed" or "task" => "#60A5FA",
+        "merged" or "opened" or "violet" => "#A78BFA",
+        "comment" or "reviewed" or "cyan" => "#22D3EE",
+        "draft" or "converteddraft" => "#8B93AD",
+        "timer" or "pomodoro" => "#F472B6",
         _ => "#8B93AD",
     });
 

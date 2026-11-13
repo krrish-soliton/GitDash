@@ -26,14 +26,38 @@
         </Grid>
       </Border>
 
+      <!-- Timers that are running right now -->
+      <Border Classes="card enter1" Padding="18,14" IsVisible="{Binding HasRunningTimers}">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="muted" Text="Running Timers" FontSize="10.5" FontWeight="Bold" LetterSpacing="1" />
+          <ItemsControl ItemsSource="{Binding RunningTimers}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RunningTimerViewModel">
+                <StackPanel Width="250" Margin="0,0,24,6" Spacing="3">
+                  <TextBlock Text="{Binding Label}" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Clock}" FontSize="28" FontWeight="Bold"
+                             Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                  <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="4" MinHeight="4"
+                               CornerRadius="2" Background="{DynamicResource TrackBrush}"
+                               Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
       <!-- The three headline numbers -->
       <Grid ColumnDefinitions="*,20,*,20,*">
         <Panel Grid.Column="0" Classes="enter1">
-          <Border Classes="card lift" Background="{StaticResource VioletCard}">
+          <Border Classes="card lift" Background="{DynamicResource VioletCard}">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
-              <TextBlock Classes="label" Text="OPEN PULL REQUESTS" />
-              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="#33FFFFFF">
-                <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="White" />
+              <TextBlock Classes="label" Text="Open Pull Requests" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="{DynamicResource IconTileBrush}">
+                <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="{DynamicResource IconTileFgBrush}" />
               </Border>
               <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding TotalOpen}" />
               <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="Across all monitored repositories" />
@@ -41,11 +65,11 @@
           </Border>
         </Panel>
         <Panel Grid.Column="2" Classes="enter2">
-          <Border Classes="card lift" Background="{StaticResource CyanCard}">
+          <Border Classes="card lift" Background="{DynamicResource CyanCard}">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
-              <TextBlock Classes="label" Text="ASSIGNED TO ME" />
-              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="#33FFFFFF">
-                <PathIcon Data="{StaticResource IconUser}" Width="18" Height="18" Foreground="White" />
+              <TextBlock Classes="label" Text="Assigned To Me" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="{DynamicResource IconTileBrush}">
+                <PathIcon Data="{StaticResource IconUser}" Width="18" Height="18" Foreground="{DynamicResource IconTileFgBrush}" />
               </Border>
               <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding AssignedToMe}" />
               <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="You are the assignee" />
@@ -53,11 +77,11 @@
           </Border>
         </Panel>
         <Panel Grid.Column="4" Classes="enter3">
-          <Border Classes="card lift" Background="{StaticResource AmberCard}">
+          <Border Classes="card lift" Background="{DynamicResource AmberCard}">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
-              <TextBlock Classes="label" Text="NEEDS MY APPROVAL" />
-              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="#33FFFFFF">
-                <PathIcon Data="{StaticResource IconCheck}" Width="18" Height="18" Foreground="White" />
+              <TextBlock Classes="label" Text="Needs My Approval" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="{DynamicResource IconTileBrush}">
+                <PathIcon Data="{StaticResource IconCheck}" Width="18" Height="18" Foreground="{DynamicResource IconTileFgBrush}" />
               </Border>
               <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding NeedsMyApproval}" />
               <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="Your review was requested" />
@@ -110,7 +134,7 @@
                                           Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}"
                                           BorderBrush="{StaticResource Accent2Brush}"
                                           Classes.assigned="{Binding IsAssigned}" Classes="book"
-                                          ToolTip.Tip="{Binding Title}">
+                                          ToolTip.Tip="{Binding Tip}">
                                     <Border.RenderTransform><RotateTransform Angle="{Binding Tilt}" /></Border.RenderTransform>
                                     <Grid RowDefinitions="Auto,*" Margin="0,5">
                                       <Border Height="3" Margin="5,0" CornerRadius="2" Background="#66FFFFFF" />
@@ -150,15 +174,13 @@
                                 <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextBrush}" />
                                 <TextBlock Classes="muted" FontSize="11.5">
-                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
+                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  by " /><Run Text="{Binding Author}" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
                                 </TextBlock>
+                                <c:PullRequestTagStrip DataContext="{Binding Tags}" />
                               </StackPanel>
                               <StackPanel Grid.Column="2" Spacing="3" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <Border Padding="7,1" CornerRadius="7" Background="{StaticResource Accent2Brush}" IsVisible="{Binding IsAssigned}">
-                                  <TextBlock Text="ASSIGNED" FontSize="9" FontWeight="Bold" Foreground="#0B0D14" />
-                                </Border>
                                 <Border Padding="7,1" CornerRadius="7" Background="{StaticResource AmberBrush}" IsVisible="{Binding NeedsApproval}">
-                                  <TextBlock Text="APPROVE" FontSize="9" FontWeight="Bold" Foreground="#0B0D14" />
+                                  <TextBlock Text="Approve" FontSize="9" FontWeight="Bold" Foreground="#0B0D14" />
                                 </Border>
                               </StackPanel>
                             </Grid>

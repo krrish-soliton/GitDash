@@ -13,6 +13,8 @@ public enum PullRequestFilter
     All,
     ReviewRequested,
     Own,
+    MergeConflict,
+    PipelineFailed,
 }
 
 /// <summary>One filter chip above the cover flow, with a live count.</summary>
@@ -29,18 +31,46 @@ public sealed class FilterOptionViewModel(PullRequestFilter filter, string label
         PullRequestFilter.AssignedToMe => pr.IsAssignedToViewer,
         PullRequestFilter.ReviewRequested => pr.NeedsViewerApproval,
         PullRequestFilter.Own => pr.IsAuthoredByViewer,
+        PullRequestFilter.MergeConflict => pr.HasMergeConflict,
+        PullRequestFilter.PipelineFailed => pr.PipelineFailed,
         _ => true,
     };
 }
 
-public sealed record TimelineItemViewModel(string Time, string Actor, string Text, string Kind, bool IsViewer);
+public sealed record TimelineItemViewModel(string Time, string Actor, string Text, string Kind, bool IsViewer, string Label, string Tone);
+
+/// <summary>The tag text and colour key of a timeline entry: people and reviewers added or removed, states, decisions.</summary>
+public static class TimelineTags
+{
+    public static string LabelOf(TimelineEntryKind kind) => kind switch
+    {
+        TimelineEntryKind.Assigned or TimelineEntryKind.ReviewRequested => "Added",
+        TimelineEntryKind.Unassigned or TimelineEntryKind.ReviewRequestRemoved => "Removed",
+        TimelineEntryKind.ChangesRequested => "Changes Requested",
+        TimelineEntryKind.ReviewDismissed => "Dismissed",
+        TimelineEntryKind.ReadyForReview => "Ready For Review",
+        TimelineEntryKind.ConvertedToDraft => "Draft",
+        TimelineEntryKind.ForcePushed => "Force Pushed",
+        TimelineEntryKind.Reopened => "Open",
+        _ => kind.ToString(),
+    };
+
+    /// <summary>Colour key understood by the tone converter; Added and Open get colours of their own.</summary>
+    public static string ToneOf(TimelineEntryKind kind) => kind switch
+    {
+        TimelineEntryKind.Assigned or TimelineEntryKind.ReviewRequested => "Added",
+        TimelineEntryKind.Reopened => "Open",
+        TimelineEntryKind.ConvertedToDraft => "Draft",
+        _ => kind.ToString(),
+    };
+}
 
 /// <summary>All timeline entries of one calendar day, under a date heading.</summary>
 public sealed record TimelineDayViewModel(string Header, IReadOnlyList<TimelineItemViewModel> Items);
 
 public sealed record CommentViewModel(
     string Author, string Initials, string Accent, string When, string Source, string Body,
-    bool IsMine, bool MentionsMe, bool IsAi = false)
+    bool IsMine, bool MentionsMe, bool IsAi = false, bool IsResolved = false, bool IsUnresolved = false)
 {
     /// <summary>Body rendered as Markdown blocks.</summary>
     public IReadOnlyList<GitDash.Presentation.Markdown.MarkdownBlock> Blocks { get; } =
@@ -55,7 +85,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
 {
     private bool _isFront;
 
-    /// <summary>The card at the front of the cover flow (it gets the 3D tilt).</summary>
+    /// <summary>The card at the front of the cover flow, with nothing covering it: it gets the 3D tilt.</summary>
     public bool IsFront { get => _isFront; set => Set(ref _isFront, value); }
 
     public PullRequest PullRequest { get; } = pr;
@@ -95,9 +125,50 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
         _ => PullRequest.IsAuthoredByViewer ? "Raised by you" : "Not on your desk",
     };
 
-    public string ArrivedLabel => PullRequest.IsOnViewersDesk ? "ON YOUR DESK SINCE" : "OPENED";
+    public string ArrivedLabel => PullRequest.IsOnViewersDesk ? "ON DESK SINCE" : "OPENED";
     public string Arrived { get; } = Humanize.Stamp(pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt);
     public string WaitingLabel => PullRequest.IsOnViewersDesk ? "WAITING" : "AGE";
+
+    // Waiting time by status: how long it has been assigned to me, and how long my review has been awaited.
+    public bool HasAssigned => PullRequest.IsAssignedToViewer;
+    public string AssignedWaiting { get; } =
+        pr.IsAssignedToViewer ? Humanize.Age(now - (pr.AssignedToViewerAt ?? pr.CreatedAt)) : string.Empty;
+    public bool HasReview => PullRequest.NeedsViewerApproval;
+    public string ReviewWaiting { get; } =
+        pr.NeedsViewerApproval ? Humanize.Age(now - (pr.ReviewRequestedFromViewerAt ?? pr.CreatedAt)) : string.Empty;
+    // Review status of the pull request as a whole (drives the card border colour and the approved tag).
+    public bool IsApproved => PullRequest.Verdict == ReviewState.Approved;
+    public bool IsChangesRequested => PullRequest.Verdict == ReviewState.ChangesRequested;
+    public bool IsUnreviewed => !IsApproved && !IsChangesRequested;
+
+    // Errors that block the merge.
+    public bool HasMergeConflict => PullRequest.HasMergeConflict;
+    public bool PipelineFailed => PullRequest.PipelineFailed;
+    public bool HasError => PullRequest.HasError;
+    /// <summary>Tags shown on the card and in the details header (the same set as on every other page).</summary>
+    public IReadOnlyList<PullRequestTag> Tags { get; } = PullRequestStatus.TagsOf(pr);
+    public IReadOnlyList<PullRequestTag> DetailTags { get; } = PullRequestStatus.TagsOf(pr, withState: true);
+    public bool HasTags => IsApproved || HasAssigned || HasError || IsReapproval || HasStaleApproval || IsUpdatedSinceMyReview || HasStaleChangeRequest;
+
+    /// <summary>Any review (or the viewer's own) is out of date because new commits arrived.</summary>
+    public bool IsStale => PullRequest.HasStaleReview || PullRequest.ViewerReviewIsStale;
+
+    // Exactly one of these is true, which picks the single border colour. First match wins:
+    // error (red), stale review (blue), approved (green), changes requested (orange), not reviewed (purple).
+    public bool StateError => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Error;
+    public bool StateStale => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Stale;
+    public bool StateApproved => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Approved;
+    public bool StateChanges => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Changes;
+    public bool StateUnreviewed => PullRequestStatus.StateOf(PullRequest) == PullRequestState.Unreviewed;
+
+    /// <summary>Neither assigned nor awaiting my review: just how old the pull request is.</summary>
+    public bool HasNoStatusWait => !PullRequest.IsOnViewersDesk;
+
+    /// <summary>Changes whenever something shown on the card changes (used to update only the cards that need it).</summary>
+    public string Key { get; } = KeyOf(pr);
+
+    public static string KeyOf(PullRequest p) =>
+        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}:{p.ViewerReviewIsStale}:{p.Verdict}:{p.HasMergeConflict}:{p.PipelineFailed}:{Humanize.Format}";
     public string Waiting { get; } =
         Humanize.Age(now - (pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt));
     public string Age { get; } = Humanize.Age(now - pr.CreatedAt);
@@ -106,14 +177,17 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public int MyComments => PullRequest.CommentsByViewer;
     public int Commits => PullRequest.CommitCount;
     public string Changes => $"+{PullRequest.Additions}  −{PullRequest.Deletions}";
+    public string AdditionsText => $"+{PullRequest.Additions:N0}";
+    public string DeletionsText => $"−{PullRequest.Deletions:N0}";
+    public string OpenText => $"Open {Age}";
     public int Files => PullRequest.ChangedFiles;
     public string Summary => PullRequest.Summary.Length == 0 ? "No description provided." : PullRequest.Summary;
 
     public string Verdict => PullRequest.Verdict switch
     {
         ReviewState.Approved => "Approved",
-        ReviewState.ChangesRequested => "Changes requested",
-        _ => PullRequest.IsDraft ? "Draft" : "Awaiting review",
+        ReviewState.ChangesRequested => "Changes Requested",
+        _ => PullRequest.IsDraft ? "Draft" : "Awaiting Review",
     };
 }
 
@@ -159,6 +233,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             new(PullRequestFilter.All, "All PRs"),
             new(PullRequestFilter.ReviewRequested, "Requested review"),
             new(PullRequestFilter.Own, "Own PRs"),
+            new(PullRequestFilter.MergeConflict, "Merge conflicts"),
+            new(PullRequestFilter.PipelineFailed, "Pipeline failed"),
         ];
         _selectedFilter = Filters[0];
 
@@ -213,7 +289,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     private void MarkFront()
     {
-        for (var i = 0; i < Cards.Count; i++) Cards[i].IsFront = i == _selectedIndex;
+        for (var i = 0; i < Cards.Count; i++) Cards[i].IsFront = i == _selectedIndex && !_isDetailOpen;
     }
 
     public string Position { get => _position; private set => Set(ref _position, value); }
@@ -231,7 +307,14 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public ICommand StartReviewCommand { get; }
 
     // ----- Detail popup -----
-    public bool IsDetailOpen { get => _isDetailOpen; private set => Set(ref _isDetailOpen, value); }
+    public bool IsDetailOpen
+    {
+        get => _isDetailOpen;
+        private set
+        {
+            if (Set(ref _isDetailOpen, value)) MarkFront();
+        }
+    }
     public bool IsDetailLoading { get => _isDetailLoading; private set => Set(ref _isDetailLoading, value); }
     public string DetailError { get => _detailError; private set => Set(ref _detailError, value); }
     public PullRequestCardViewModel? DetailCard { get => _detailCard; private set => Set(ref _detailCard, value); }
@@ -264,6 +347,13 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public bool CommentsFromAi { get => _commentsFromAi; set { if (Set(ref _commentsFromAi, value)) RebuildComments(); } }
     public bool CommentsMentioningMe { get => _commentsMentioningMe; set { if (Set(ref _commentsMentioningMe, value)) RebuildComments(); } }
 
+    /// <summary>Resolved inline threads are shown while this is on.</summary>
+    public bool ShowResolvedComments { get => _showResolvedComments; set { if (Set(ref _showResolvedComments, value)) RebuildComments(); } }
+
+    /// <summary>Unresolved inline threads are shown while this is on.</summary>
+    public bool ShowUnresolvedComments { get => _showUnresolvedComments; set { if (Set(ref _showUnresolvedComments, value)) RebuildComments(); } }
+    private bool _showResolvedComments = true, _showUnresolvedComments = true;
+
     public ObservableCollection<ReviewEventViewModel> ReviewEvents { get; } = [];
     public bool HasReviews { get => _hasReviews; private set => Set(ref _hasReviews, value); }
     public string ApprovedBy { get => _approvedBy; private set => Set(ref _approvedBy, value); }
@@ -295,36 +385,74 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
         var filter = _selectedFilter;
         var matching = all.Where(filter.Matches);
+        // Assigned to me first, then review requested from me, then everything else.
         var ordered = filter.Filter is PullRequestFilter.AssignedToMe or PullRequestFilter.ReviewRequested
-            ? matching.OrderByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt).ToList()
-            : matching.OrderByDescending(p => p.UpdatedAt).ToList();
+            ? matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt).ToList()
+            : matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.UpdatedAt).ToList();
 
         // Rebuild only when something visible changed; otherwise the cover flow would restart its animation.
-        var signature = filter.Filter + "|" +
-                        string.Join('|', ordered.Select(p => $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}"));
+        var signature = filter.Filter + "|" + string.Join('|', ordered.Select(PullRequestCardViewModel.KeyOf));
         if (!force && signature == _signature) return;
         _signature = signature;
 
         var selectedId = Cards.ElementAtOrDefault(SelectedIndex)?.Id;
         var now = _time.GetUtcNow();
-        Cards.Clear();
-        foreach (var pr in ordered)
-        {
-            Cards.Add(new PullRequestCardViewModel(pr, now, _state.Avatars.GetValueOrDefault(pr.Author)));
-        }
+        Reconcile(ordered, now);
 
         var index = selectedId is null ? -1 : ordered.FindIndex(p => p.Id == selectedId);
-        _selectedIndex = -1; // force a change notification so the view re-centres
         SelectedIndex = index >= 0 ? index : 0;
+        MarkFront(); // cards were added or replaced, so the front flag has to be set again
         IsEmpty = Cards.Count == 0;
         EmptyText = filter.Filter switch
         {
             PullRequestFilter.AssignedToMe => "Nothing is assigned to you right now.",
             PullRequestFilter.ReviewRequested => "Nobody is waiting for your review.",
             PullRequestFilter.Own => "You have no open pull requests.",
+            PullRequestFilter.MergeConflict => "No pull requests have merge conflicts.",
+            PullRequestFilter.PipelineFailed => "No pull requests have failing pipelines.",
             _ => "No open pull requests in the monitored repositories.",
         };
         UpdatePosition();
+    }
+
+    /// <summary>
+    /// Brings the card list in line with the new order by removing, moving, inserting and replacing only what differs.
+    /// Emptying and refilling the list made every card vanish and reappear (a visible flicker) on each live update.
+    /// </summary>
+    private void Reconcile(List<PullRequest> ordered, DateTimeOffset now)
+    {
+        PullRequestCardViewModel NewCard(PullRequest pr) => new(pr, now, _state.Avatars.GetValueOrDefault(pr.Author));
+
+        var wanted = ordered.Select(p => p.Id).ToHashSet();
+        for (var i = Cards.Count - 1; i >= 0; i--)
+        {
+            if (!wanted.Contains(Cards[i].Id)) Cards.RemoveAt(i);
+        }
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var pr = ordered[i];
+            if (i >= Cards.Count || Cards[i].Id != pr.Id)
+            {
+                var from = -1;
+                for (var j = i + 1; j < Cards.Count; j++)
+                {
+                    if (Cards[j].Id != pr.Id) continue;
+                    from = j;
+                    break;
+                }
+
+                if (from < 0)
+                {
+                    Cards.Insert(i, NewCard(pr));
+                    continue;
+                }
+
+                Cards.Move(from, i);
+            }
+
+            if (Cards[i].Key != PullRequestCardViewModel.KeyOf(pr)) Cards[i] = NewCard(pr);
+        }
     }
 
     private void UpdatePosition() =>
@@ -418,11 +546,12 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         // Newest day first, and newest entry first within a day: what just happened is at the top.
         var days = visible
             .OrderByDescending(e => e.At)
-            .GroupBy(e => e.At.ToLocalTime().Date)
+            .GroupBy(e => Humanize.DayOf(e.At))
             .Select(g => new TimelineDayViewModel(
                 Humanize.Day(g.First().At, now),
                 [.. g.Select(e => new TimelineItemViewModel(
-                    Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer)))]));
+                    Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer),
+                    TimelineTags.LabelOf(e.Kind), TimelineTags.ToneOf(e.Kind)))]));
 
         TimelineDays.Clear();
         foreach (var day in days) TimelineDays.Add(day);
@@ -444,6 +573,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             // A comment is shown when it belongs to at least one ticked group. AI comments have their own switch
             // and are not counted as "other people".
             var others = !mine && !ai && CommentsByOthers;
+            if (c.IsResolvedThread && !ShowResolvedComments) continue;
+            if (c.IsUnresolvedThread && !ShowUnresolvedComments) continue;
             if (!((mine && CommentsByMe) || others || (ai && CommentsFromAi) || (mentions && CommentsMentioningMe))) continue;
 
             Comments.Add(new CommentViewModel(
@@ -454,7 +585,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
                     CommentSource.Review => "Review summary",
                     _ => "Conversation",
                 },
-                c.Body, mine, mentions, ai));
+                c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread));
         }
 
         HasComments = Comments.Count > 0;
@@ -471,12 +602,12 @@ public sealed class MyPullRequestsViewModel : PageViewModel
                 Humanize.Stamp(e.At), e.Actor,
                 e.Kind switch
                 {
-                    TimelineEntryKind.Approved => "APPROVED",
-                    TimelineEntryKind.ChangesRequested => "CHANGES REQUESTED",
-                    TimelineEntryKind.ReviewDismissed => "REVIEW DISMISSED",
-                    TimelineEntryKind.ReviewRequested => "REVIEW REQUESTED",
-                    TimelineEntryKind.ReviewRequestRemoved => "REQUEST REMOVED",
-                    _ => "COMMENTED",
+                    TimelineEntryKind.Approved => "Approved",
+                    TimelineEntryKind.ChangesRequested => "Changes Requested",
+                    TimelineEntryKind.ReviewDismissed => "Review Dismissed",
+                    TimelineEntryKind.ReviewRequested => "Review Requested",
+                    TimelineEntryKind.ReviewRequestRemoved => "Request Removed",
+                    _ => "Commented",
                 },
                 e.Text, e.Kind.ToString()));
         }

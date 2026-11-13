@@ -42,6 +42,11 @@ public partial class PeopleView : UserControl
         if (sender is Control { DataContext: PersonPullRequestViewModel pr }) Page?.OpenUrlCommand.Execute(pr.Url);
     }
 
+    private void OnBranchTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: PendingBranchViewModel branch }) Page?.OpenUrlCommand.Execute(branch.Url);
+    }
+
     private void OnPersonEventTapped(object? sender, TappedEventArgs e)
     {
         if (sender is Control { DataContext: PersonEventViewModel ev }) Page?.OpenUrlCommand.Execute(ev.Url);

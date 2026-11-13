@@ -3,8 +3,25 @@
 
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
+      <LinearGradientBrush x:Key="VioletCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#3B2A8F" Offset="0" />
+        <GradientStop Color="#1B1F3A" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="CyanCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#0E5C73" Offset="0" />
+        <GradientStop Color="#141F33" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="AmberCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#7A4A12" Offset="0" />
+        <GradientStop Color="#231C24" Offset="1" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="IconTileBrush" Color="#33FFFFFF" />
+      <SolidColorBrush x:Key="IconTileFgBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrackBrush" Color="#22FFFFFF" />
       <SolidColorBrush x:Key="BgBrush" Color="#0B0D14" />
       <SolidColorBrush x:Key="SidebarBrush" Color="#0F121C" />
+      <x:Double x:Key="CardShadowOpacity">1</x:Double>
+      <x:Double x:Key="CardGlareScale">1</x:Double>
       <SolidColorBrush x:Key="SurfaceBrush" Color="#141826" />
       <SolidColorBrush x:Key="Surface2Brush" Color="#1B2032" />
       <SolidColorBrush x:Key="LineBrush" Color="#262C42" />
@@ -23,8 +40,26 @@
       <SolidColorBrush x:Key="DeskEdgeBrush" Color="#241810" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
+      <LinearGradientBrush x:Key="VioletCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#E6E0FF" Offset="0" />
+        <GradientStop Color="#F5F2FF" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="CyanCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#CBEEF8" Offset="0" />
+        <GradientStop Color="#EBF8FC" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="AmberCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#FFE3B5" Offset="0" />
+        <GradientStop Color="#FFF6E6" Offset="1" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="IconTileBrush" Color="#B3FFFFFF" />
+      <SolidColorBrush x:Key="IconTileFgBrush" Color="#4F46E5" />
+      <SolidColorBrush x:Key="TrackBrush" Color="#1A1A1F33" />
       <SolidColorBrush x:Key="BgBrush" Color="#F3F5FA" />
       <SolidColorBrush x:Key="SidebarBrush" Color="#FFFFFF" />
+      <!-- A white glare and a dark drop shadow only look odd on a light page, so the tilting card goes without them -->
+      <x:Double x:Key="CardShadowOpacity">0</x:Double>
+      <x:Double x:Key="CardGlareScale">0</x:Double>
       <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Surface2Brush" Color="#EEF1F8" />
       <SolidColorBrush x:Key="LineBrush" Color="#DDE2EE" />
@@ -56,22 +91,13 @@
   <SolidColorBrush x:Key="AmberBrush" Color="#FBBF24" />
   <SolidColorBrush x:Key="PinkBrush" Color="#F472B6" />
   <SolidColorBrush x:Key="RedBrush" Color="#FB7185" />
+  <SolidColorBrush x:Key="OrangeBrush" Color="#FB923C" />
+  <SolidColorBrush x:Key="PurpleBrush" Color="#A855F7" />
+  <SolidColorBrush x:Key="BlueBrush" Color="#3B82F6" />
 
   <LinearGradientBrush x:Key="AccentGradient" StartPoint="0%,0%" EndPoint="100%,100%">
     <GradientStop Color="#7C5CFF" Offset="0" />
     <GradientStop Color="#22D3EE" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="VioletCard" StartPoint="0%,0%" EndPoint="100%,100%">
-    <GradientStop Color="#3B2A8F" Offset="0" />
-    <GradientStop Color="#1B1F3A" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="CyanCard" StartPoint="0%,0%" EndPoint="100%,100%">
-    <GradientStop Color="#0E5C73" Offset="0" />
-    <GradientStop Color="#141F33" Offset="1" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="AmberCard" StartPoint="0%,0%" EndPoint="100%,100%">
-    <GradientStop Color="#7A4A12" Offset="0" />
-    <GradientStop Color="#231C24" Offset="1" />
   </LinearGradientBrush>
   <LinearGradientBrush x:Key="FloorBrush" StartPoint="0%,0%" EndPoint="100%,0%">
     <GradientStop Color="#7C5CFF" Offset="0" />
@@ -92,5 +118,8 @@
   <StreamGeometry x:Key="IconClose">M5,6.4 L6.4,5 L12,10.6 L17.6,5 L19,6.4 L13.4,12 L19,17.6 L17.6,19 L12,13.4 L6.4,19 L5,17.6 L10.6,12 Z</StreamGeometry>
   <StreamGeometry x:Key="IconPullRequest">M6,3 A3,3 0 1 0 7,8.8 V15.2 A3,3 0 1 0 9,15.2 V8.8 A3,3 0 0 0 6,3 Z M13,5 H15 A3,3 0 0 1 18,8 V15.2 A3,3 0 1 1 16,15.2 V8 A1,1 0 0 0 15,7 H13 V9.5 L9.8,6 L13,2.5 Z</StreamGeometry>
   <StreamGeometry x:Key="IconUser">M12,12 A4.5,4.5 0 1 0 12,3 A4.5,4.5 0 0 0 12,12 Z M3,21 C3,16.5 7,14 12,14 C17,14 21,16.5 21,21 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconSun">M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 Z M11,2 H13 V5 H11 Z M11,19 H13 V22 H11 Z M2,11 H5 V13 H2 Z M19,11 H22 V13 H19 Z M5.6,4.2 L7.8,6.4 L6.4,7.8 L4.2,5.6 Z M18.4,4.2 L19.8,5.6 L17.6,7.8 L16.2,6.4 Z M4.2,18.4 L6.4,16.2 L7.8,17.6 L5.6,19.8 Z M19.8,18.4 L18.4,19.8 L16.2,17.6 L17.6,16.2 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconMoon">M20,14.5 A8.5,8.5 0 0 1 9.5,4 A8.5,8.5 0 1 0 20,14.5 Z</StreamGeometry>
+  <StreamGeometry x:Key="IconSystem">M3,4 H21 V16 H3 Z M5,6 V14 H19 V6 Z M8,18 H16 V20 H8 Z</StreamGeometry>
   <StreamGeometry x:Key="IconCheck">M9.5,16.2 L5.3,12 L3.9,13.4 L9.5,19 L20.5,8 L19.1,6.6 Z</StreamGeometry>
 </ResourceDictionary>

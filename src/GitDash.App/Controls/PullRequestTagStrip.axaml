@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitDash.Presentation.ViewModels"
+             x:Class="GitDash.App.Controls.PullRequestTagStrip">
+  <!-- DataContext is the pull request's tag list; the same tags and colours are used on every page. -->
+  <UserControl.Styles>
+    <Style Selector="Border.badge.mini">
+      <Setter Property="Margin" Value="0,3,5,1" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="CornerRadius" Value="5" />
+    </Style>
+    <Style Selector="Border.badge.mini > TextBlock">
+      <Setter Property="FontSize" Value="9" />
+    </Style>
+  </UserControl.Styles>
+  <ItemsControl ItemsSource="{ReflectionBinding}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="vm:PullRequestTag">
+        <Border Classes="badge mini" Classes.error="{Binding IsError}" Classes.ok="{Binding IsOk}"
+                Classes.assigned="{Binding IsAssigned}" Classes.changes="{Binding IsChanges}"
+                Classes.unreviewed="{Binding IsUnreviewed}" Classes.open="{Binding IsOpen}"
+                Classes.draft="{Binding IsDraft}" ToolTip.Tip="{Binding Tip}">
+          <TextBlock Text="{Binding Text}" />
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

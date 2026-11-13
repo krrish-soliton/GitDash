@@ -12,7 +12,11 @@ public sealed record RepositoryRowViewModel(string Name, int Open, int Mine, dou
 /// <summary>One PR drawn as a book lying on the desk.</summary>
 public sealed record DeskBookViewModel(
     string Title, string Repository, string Number, string Accent, double Height, double Tilt, bool IsAssigned, bool NeedsApproval,
-    string Waiting, string Url);
+    string Waiting, string Url, IReadOnlyList<PullRequestTag> Tags, string Author)
+{
+    public bool HasTags => Tags.Count > 0;
+    public string Tip => $"{Title} · by {Author}";
+}
 
 /// <summary>One shelf of the bookcase.</summary>
 public sealed record ShelfViewModel(IReadOnlyList<DeskBookViewModel> Books);
@@ -34,6 +38,18 @@ public sealed class DashboardViewModel : PageViewModel
         _time = time;
         OpenUrlCommand = new RelayCommand<string>(url => launcher.Open(url));
         OpenSettingsCommand = new RelayCommand(openSettings);
+    }
+
+    /// <summary>The timers that are running right now (shared with the Timers page).</summary>
+    public ObservableCollection<RunningTimerViewModel> RunningTimers { get; private set; } = [];
+    public bool HasRunningTimers => RunningTimers.Count > 0;
+
+    public void AttachTimers(TimersViewModel timers)
+    {
+        RunningTimers = timers.RunningTimers;
+        RunningTimers.CollectionChanged += (_, _) => Raise(nameof(HasRunningTimers));
+        Raise(nameof(RunningTimers));
+        Raise(nameof(HasRunningTimers));
     }
 
     public int TotalOpen { get => _totalOpen; private set => Set(ref _totalOpen, value); }
@@ -70,8 +86,9 @@ public sealed class DashboardViewModel : PageViewModel
         var rows = state.Open
             .GroupBy(p => p.Id).Select(g => g.First())
             .GroupBy(p => p.Repository.FullName, StringComparer.OrdinalIgnoreCase)
-            .Select(g => (Name: g.Key, Open: g.Count(), Mine: g.Count(p => p.IsOnViewersDesk)))
-            .OrderByDescending(r => r.Open)
+            .Select(g => (Name: g.Key, Open: g.Count(), Mine: g.Count(p => p.IsOnViewersDesk),
+                Assigned: g.Count(p => p.IsAssignedToViewer), Review: g.Count(p => !p.IsAssignedToViewer && p.NeedsViewerApproval)))
+            .OrderByDescending(r => r.Assigned).ThenByDescending(r => r.Review).ThenByDescending(r => r.Open)
             .ToList();
         var max = Math.Max(1, rows.Count == 0 ? 1 : rows.Max(r => r.Open));
         Replace(Repositories, rows.Select(r => new RepositoryRowViewModel(r.Name, r.Open, r.Mine, (double)r.Open / max)));
@@ -79,18 +96,17 @@ public sealed class DashboardViewModel : PageViewModel
         var now = _time.GetUtcNow();
         var desk = state.Open.GroupBy(p => p.Id).Select(g => g.First())
             .Where(p => p.IsOnViewersDesk)
-            .OrderBy(p => p.ArrivedAt ?? p.CreatedAt)
+            .OrderBy(p => p.ViewerRank).ThenBy(p => p.ArrivedAt ?? p.CreatedAt)
             .ToList();
         DeskIsEmpty = desk.Count == 0;
         DeskOverflow = Math.Max(0, desk.Count - BooksPerShelf * ShelfCount);
         var books = desk.Select((p, i) =>
         {
-            var waiting = now - (p.ArrivedAt ?? p.CreatedAt);
-            // Older work makes a taller book; the tilt is deterministic so redraws do not shuffle the shelf.
-            var height = 40 + Math.Min(34, waiting.TotalDays * 5) + p.TotalComments % 5 * 2;
+            // A bigger change makes a taller book; the tilt is deterministic so redraws do not shuffle the shelf.
+            var height = BookHeightFor(p.Additions, p.Deletions, p.ChangedFiles);
             return new DeskBookViewModel(
-                p.Title, p.Repository.Name, $"#{p.Number}", Humanize.Accent(p.Repository.FullName), height,
-                (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url);
+                p.Title, p.Repository.Name, $"#{p.Number}", PullRequestStatus.ColorOf(p), height,
+                (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url, PullRequestStatus.TagsOf(p), p.Author);
         }).ToList();
         Replace(DeskBooks, books);
         Replace(Shelves, Enumerable.Range(0, ShelfCount)
@@ -129,6 +145,19 @@ public sealed class DashboardViewModel : PageViewModel
     };
 
     /// <summary>Records compare by value, so unchanged rows are left alone and the list does not flicker.</summary>
+    public const double MinBookHeight = 36, MaxBookHeight = 74;
+
+    /// <summary>
+    /// Book height from PR size: lines changed plus a weight per file, log-scaled so one huge PR does not flatten the rest.
+    /// Ranges from <see cref="MinBookHeight"/> (tiny) to <see cref="MaxBookHeight"/> (about 5,000 weighted lines).
+    /// </summary>
+    public static double BookHeightFor(int additions, int deletions, int files)
+    {
+        var size = Math.Max(0, additions) + Math.Max(0, deletions) + Math.Max(0, files) * 20.0;
+        var scale = Math.Min(1.0, Math.Log10(1 + size) / Math.Log10(5001));
+        return MinBookHeight + (MaxBookHeight - MinBookHeight) * scale;
+    }
+
     internal static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> items)
     {
         var fresh = items.ToList();

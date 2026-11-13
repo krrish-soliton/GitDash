@@ -17,8 +17,15 @@ public sealed record PullRequestComment(
     string Author,
     string Body,
     CommentSource Source,
-    string? Path = null)
+    string? Path = null,
+    bool? IsResolved = null)
 {
+    /// <summary>A code comment whose conversation was marked resolved.</summary>
+    public bool IsResolvedThread => IsResolved == true;
+
+    /// <summary>A code comment whose conversation is still open (other kinds of comment cannot be resolved).</summary>
+    public bool IsUnresolvedThread => IsResolved == false;
+
     /// <summary>Written by an AI review tool (Copilot, Claude, CodeRabbit, …).</summary>
     public bool IsAi => AiAuthors.IsAi(Author);
 

@@ -292,6 +292,14 @@
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding MiniWidget}" OnContent="" OffContent="" />
           </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Glass effect" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="A glowing glass finish with a slow sheen on the dynamic island (compact and expanded) and on the widgets." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding GlassEffect}" OnContent="" OffContent="" />
+          </Grid>
           <StackPanel Spacing="2">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="Widget position: horizontal" Foreground="{DynamicResource TextBrush}" />
@@ -327,6 +335,14 @@
                          Text="A small clock for your running Pomodoro, PR-review or task timer." />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowTimerWidget}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Show several timers at once" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="When Pomodoro, task and review timers run together, list each one on the timer widget and the island. Off shows only the most relevant one." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowMultipleTimers}" OnContent="" OffContent="" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
@@ -375,6 +391,33 @@
                          Text="Native icon in the Windows notification area or the macOS menu bar. Closing the window keeps the app running there." />
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowTrayIcon}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Hide to tray on minimise" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Minimising sends the window to the tray instead of the taskbar. Needs the tray icon." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideToTrayOnMinimize}" IsEnabled="{Binding ShowTrayIcon}"
+                          OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Hide to tray on close" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Closing the window keeps GitDash running in the tray. Off: closing quits the app. Needs the tray icon." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideToTrayOnClose}" IsEnabled="{Binding ShowTrayIcon}"
+                          OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Date and time" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="GitHub reports times in UTC. They are converted to your local time and shown in your system's regional format, or in a format you pick." />
+            </StackPanel>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding TimeFormatOptions}" SelectedIndex="{Binding TimeFormatIndex}"
+                      Width="210" VerticalAlignment="Center" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>

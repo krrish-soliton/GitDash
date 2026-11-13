@@ -13,7 +13,11 @@ public sealed record ProfileStatViewModel(string Label, string Value);
 
 /// <summary>A pull request assigned to me, shown at the top of the home page.</summary>
 public sealed record AssignedPullRequestViewModel(
-    string Title, string Repository, string Number, string Waiting, string Accent, bool IsOverdue, string Url);
+    string Title, string Repository, string Number, string Waiting, string Accent, bool IsOverdue, string Url,
+    IReadOnlyList<PullRequestTag> Tags)
+{
+    public bool HasTags => Tags.Count > 0;
+}
 
 /// <summary>"About me": the signed-in GitHub profile plus today's picture of the user's own work.</summary>
 public sealed class HomeViewModel : PageViewModel
@@ -97,7 +101,7 @@ public sealed class HomeViewModel : PageViewModel
             var waiting = now - (p.AssignedToViewerAt ?? p.CreatedAt);
             return new AssignedPullRequestViewModel(
                 p.Title, p.Repository.FullName, $"#{p.Number}", Humanize.Age(waiting),
-                Humanize.Accent(p.Repository.FullName), waiting > TimeSpan.FromDays(2), p.Url);
+                PullRequestStatus.ColorOf(p), waiting > TimeSpan.FromDays(2), p.Url, PullRequestStatus.TagsOf(p));
         }));
         Greeting = GreetingFor(_time.GetLocalNow().Hour);
         if (_loadedFor != FirstAccountId) _ = LoadAsync();
