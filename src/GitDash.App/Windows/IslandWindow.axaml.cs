@@ -219,6 +219,18 @@ public partial class IslandWindow : FloatingWindow
     {
         if (DataContext is not ShellViewModel shell) return;
         var w = shell.Widget;
+        if (shell.Timers.IsAnyRunning)
+        {
+            // A running timer takes the hover card: what it is and how far along.
+            TitleText.Text = shell.Timers.WidgetLabel;
+            MessageText.Text = $"{shell.Timers.WidgetClock}   ·   {w.Assigned} assigned, {w.Approval} to approve";
+            IconBadge.Background = ToneBrushConverter.Brush("Timer");
+            CloseButton.IsVisible = false;
+            Detail.IsVisible = true;
+            Expand(WideWidth, HoverHeight);
+            return;
+        }
+
         var any = w.HasOldest || w.HasOldestReview;
         TitleText.Text = any ? "Oldest waiting" : "Nothing is waiting on you";
         MessageText.Text = any

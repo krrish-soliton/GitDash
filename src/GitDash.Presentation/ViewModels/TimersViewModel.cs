@@ -168,12 +168,19 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         if (!_review.IsRunning) ToggleReview();
     }
 
+    /// <summary>Timer events are notifications too, so they also appear on the dynamic island.</summary>
+    private void Announce(string title, string message) =>
+        _ = _notifications.PublishAsync(new ToastRequest(title, message, ToastTone.Timer));
+
+    private string TaskTitle => string.IsNullOrWhiteSpace(TaskName) ? "Task" : TaskName.Trim();
+
     private void ToggleTask()
     {
         var now = _time.GetUtcNow();
         if (_task.IsRunning) _task.Pause(now);
         else _task.Start(now);
         Refresh();
+        Announce(_task.IsRunning ? "Task timer started" : "Task timer paused", $"{TaskTitle} · {TaskElapsed}");
     }
 
     private void FinishTask()
@@ -184,6 +191,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         {
             var label = string.IsNullOrWhiteSpace(TaskName) ? "Untitled task" : TaskName.Trim();
             Save(new TimerSession(Guid.NewGuid(), TimerKind.Task, label, started, _task.Elapsed(now)));
+            Announce("Task timer finished", $"{label} · {Humanize.Clock(_task.Elapsed(now))}");
         }
 
         _task.Reset();
@@ -204,6 +212,8 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         }
 
         Refresh();
+        Announce(_pomodoro.IsRunning ? $"Pomodoro started · {PomodoroPhase}" : $"Pomodoro paused · {PomodoroPhase}",
+            $"{PomodoroRemaining} remaining");
     }
 
     private void ResetPomodoro()
@@ -245,6 +255,8 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         if (_review.IsRunning) _review.Pause(now);
         else _review.Start(now);
         Refresh();
+        Announce(_review.IsRunning ? "Review timer started" : "Review timer paused",
+            $"{_selectedReviewTarget.Label} · {ReviewElapsed}");
     }
 
     private void FinishReview()
@@ -255,6 +267,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         {
             Save(new TimerSession(
                 Guid.NewGuid(), TimerKind.PullRequestReview, target.Label, started, _review.Elapsed(now), target.Url));
+            Announce("Review timer finished", $"{target.Label} · {Humanize.Clock(_review.Elapsed(now))}");
         }
 
         _review.Reset();
