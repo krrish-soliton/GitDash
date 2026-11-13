@@ -75,6 +75,20 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="8,3" />
   </Style>
+  <Style Selector="Border.badge.ok">
+    <Setter Property="Background" Value="{StaticResource GreenBrush}" />
+  </Style>
+
+  <!-- Review status of a pull request card: green = approved, orange = changes requested, red = not reviewed -->
+  <Style Selector="Border.card.approved">
+    <Setter Property="BorderBrush" Value="{StaticResource GreenBrush}" />
+  </Style>
+  <Style Selector="Border.card.changes">
+    <Setter Property="BorderBrush" Value="{StaticResource OrangeBrush}" />
+  </Style>
+  <Style Selector="Border.card.unreviewed">
+    <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
+  </Style>
   <Style Selector="Border.badge > TextBlock">
     <Setter Property="FontSize" Value="10" />
     <Setter Property="FontWeight" Value="Bold" />

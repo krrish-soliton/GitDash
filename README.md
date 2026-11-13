@@ -152,4 +152,4 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **Priority order everywhere:** pull requests assigned to you come first, then ones where you are a requested reviewer, then the rest (`PullRequest.ViewerRank`). Applied in My PRs, the Dashboard desk and repository rows, and the People floors.
 - **My PRs waiting times follow the status:** ASSIGNED (cyan) for how long it has been assigned to you, AWAITING REVIEW (amber) for how long your review has been awaited, both when it is both, and a plain AGE otherwise.
 - **Card flicker fixed:** the card list is now updated in place (remove / move / insert / replace only what changed) instead of being cleared and refilled, and the 3D tilt follows the pointer on the window against the card's fixed layout rectangle, so tilting no longer makes the card flicker at its edges. The tilt switches off while the details popup is open.
-
+- **Review status on My PRs cards:** the card border is green when the PR is approved, orange when changes were requested, and red when it has not been reviewed; approved PRs also get a green APPROVED tag (on the card and in the details popup).

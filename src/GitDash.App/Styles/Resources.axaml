@@ -56,6 +56,7 @@
   <SolidColorBrush x:Key="AmberBrush" Color="#FBBF24" />
   <SolidColorBrush x:Key="PinkBrush" Color="#F472B6" />
   <SolidColorBrush x:Key="RedBrush" Color="#FB7185" />
+  <SolidColorBrush x:Key="OrangeBrush" Color="#FB923C" />
 
   <LinearGradientBrush x:Key="AccentGradient" StartPoint="0%,0%" EndPoint="100%,100%">
     <GradientStop Color="#7C5CFF" Offset="0" />

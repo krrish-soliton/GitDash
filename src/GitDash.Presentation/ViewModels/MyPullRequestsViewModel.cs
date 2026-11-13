@@ -106,6 +106,11 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public bool HasReview => PullRequest.NeedsViewerApproval;
     public string ReviewWaiting { get; } =
         pr.NeedsViewerApproval ? Humanize.Age(now - (pr.ReviewRequestedFromViewerAt ?? pr.CreatedAt)) : string.Empty;
+    // Review status of the pull request as a whole (drives the card border colour and the approved tag).
+    public bool IsApproved => PullRequest.Verdict == ReviewState.Approved;
+    public bool IsChangesRequested => PullRequest.Verdict == ReviewState.ChangesRequested;
+    public bool IsUnreviewed => !IsApproved && !IsChangesRequested;
+
     /// <summary>Neither assigned nor awaiting my review: just how old the pull request is.</summary>
     public bool HasNoStatusWait => !PullRequest.IsOnViewersDesk;
 
@@ -113,7 +118,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public string Key { get; } = KeyOf(pr);
 
     public static string KeyOf(PullRequest p) =>
-        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}";
+        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}:{p.Verdict}";
     public string Waiting { get; } =
         Humanize.Age(now - (pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt));
     public string Age { get; } = Humanize.Age(now - pr.CreatedAt);

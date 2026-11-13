@@ -78,6 +78,9 @@
               <Panel Width="400" Height="480" Margin="0,24">
               <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000" />
               <Border Classes="card" Width="400" Height="480" Cursor="Hand" Tapped="OnCardTapped"
+                      BorderThickness="2"
+                      Classes.approved="{Binding IsApproved}" Classes.changes="{Binding IsChangesRequested}"
+                      Classes.unreviewed="{Binding IsUnreviewed}"
                       c:Tilt.Enabled="{Binding IsFront}">
                 <Panel>
                 <!-- Glowing frame for PRs that are assigned to me -->
@@ -104,6 +107,9 @@
                         <Run Text="{Binding Number}" Foreground="{StaticResource Accent2Brush}" />
                       </TextBlock>
                       <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" Grid.Column="1">
+                        <Border Classes="badge ok" IsVisible="{Binding IsApproved}">
+                          <TextBlock Text="APPROVED" />
+                        </Border>
                         <Border Classes="badge" IsVisible="{Binding IsReapproval}"
                                 ToolTip.Tip="You reviewed this before and were asked to look again">
                           <TextBlock Text="RE-APPROVAL" />
@@ -244,6 +250,9 @@
                 <Run Text="{Binding DetailCard.Repository}" />
                 <Run Text="{Binding DetailCard.Number}" />
               </TextBlock>
+              <Border Classes="badge ok" IsVisible="{Binding DetailCard.IsApproved}">
+                <TextBlock Text="APPROVED" />
+              </Border>
               <Border Classes="badge" IsVisible="{Binding DetailCard.IsReapproval}">
                 <TextBlock Text="RE-APPROVAL" />
               </Border>
