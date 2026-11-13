@@ -8,7 +8,8 @@ public sealed class AccountService(
     SettingsService settings,
     ISecretStore secrets,
     IGitHubGateway gitHub,
-    IDeviceFlowAuthenticator deviceFlow)
+    IDeviceFlowAuthenticator deviceFlow,
+    IGitHubCliTokenSource? gitHubCli = null)
 {
     private static string SecretKey(Guid accountId) => $"account:{accountId:N}";
 
@@ -33,6 +34,17 @@ public sealed class AccountService(
             Accounts = [.. s.Accounts.Where(a => a.Id != account.Id), account],
         }, ct).ConfigureAwait(false);
         return account;
+    }
+
+    /// <summary>
+    /// Signs in with the token of the user's GitHub CLI login. The token is copied into the secret store, so
+    /// running this again after <c>gh auth login</c> or <c>gh auth refresh</c> picks up the new token.
+    /// </summary>
+    public async Task<AccountSettings> AddFromGitHubCliAsync(CancellationToken ct = default)
+    {
+        if (gitHubCli is null) throw new InvalidOperationException("GitHub CLI sign-in is not available.");
+        var token = await gitHubCli.GetTokenAsync(ct).ConfigureAwait(false);
+        return await AddWithTokenAsync(token, AuthMethod.GitHubCli, ct).ConfigureAwait(false);
     }
 
     public Task<DeviceCodePrompt> BeginDeviceFlowAsync(CancellationToken ct = default)

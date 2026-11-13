@@ -16,9 +16,165 @@
       <!-- ===== Accounts ===== -->
       <Border Classes="card enter1">
         <StackPanel Spacing="16">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Classes="h2" Text="GitHub accounts" VerticalAlignment="Center" />
-            <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
+          <TextBlock Classes="h2" Text="GitHub accounts" />
+
+          <TextBlock Classes="muted" Text="No account yet. Add one below." IsVisible="{Binding !Accounts.Count}" />
+          <ItemsControl ItemsSource="{Binding Accounts}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AccountItemViewModel">
+                <Border Background="{DynamicResource Surface2Brush}" CornerRadius="14" Padding="14" Margin="0,0,0,10">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Panel Width="52" Height="52" Margin="0,0,14,0">
+                      <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Initials}" FontSize="16" FontWeight="Bold" Foreground="#0B0D14"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      <Border CornerRadius="26" ClipToBounds="True">
+                        <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                      </Border>
+                      <Ellipse Stroke="{StaticResource Accent2Brush}" StrokeThickness="2" />
+                    </Panel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                      <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource TextBrush}" />
+                      <TextBlock Text="{Binding Login}" Classes="muted" FontSize="12.5" />
+                      <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+                        <Border Classes="chip"><TextBlock Text="{Binding Method}" /></Border>
+                        <Border Classes="chip"><TextBlock Text="{Binding RepositoriesLabel}" /></Border>
+                      </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="ghost" Content="Remove" Click="OnRemoveAccountClick"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Removes the account and deletes its stored token" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <Border Height="1" Background="{DynamicResource LineBrush}" />
+
+          <TextBlock Text="Add an account" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+          <Grid ColumnDefinitions="*,24,*">
+            <!-- Classic access token (recommended) -->
+            <StackPanel Grid.Column="0" Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="Access token (classic)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                           VerticalAlignment="Center" />
+                <Border Classes="badge ok"><TextBlock Text="Recommended" /></Border>
+                <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
+                    ToolTip.Tip="How to create a classic access token">
+              <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Width="440" Spacing="10">
+                    <TextBlock Text="How to create a classic access token" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="A classic token belongs to you, so no organization has to approve an app. It works for private repositories and organizations unless the organization has blocked classic tokens." />
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="1." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="GitHub → your profile picture → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic). The button below opens that page with the right scopes already ticked." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="2." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Note: GitDash. Expiration: your choice, for example 90 days." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="3." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Scopes: repo and read:org." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="4." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Click Generate token and copy it now. GitHub shows it only once." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="5." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Organization with SAML single sign-on: next to the token, click Configure SSO, then Authorize your organization." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="6." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Paste the token into the box on the left and click Add account." />
+                    </Grid>
+                    <Button Classes="primary" Content="Open GitHub: New classic token" Click="OnOpenNewTokenClick"
+                            HorizontalAlignment="Left" Margin="0,4,0,0" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+              </StackPanel>
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="No app approval from your organization needed. Create a classic token with the repo and read:org scopes. A fine-grained token with read-only Pull requests and Metadata also works." />
+              <TextBox Text="{Binding TokenInput}" PasswordChar="●" Watermark="Paste token" MaxLength="255" />
+              <Button Classes="primary" Content="Add account" Command="{Binding AddTokenCommand}" />
+            </StackPanel>
+
+            <!-- GitHub CLI -->
+            <StackPanel Grid.Column="2" Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="GitHub CLI login" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                           VerticalAlignment="Center" />
+                <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
+                    ToolTip.Tip="How to sign in with GitHub CLI">
+              <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Width="440" Spacing="10">
+                    <TextBlock Text="How to sign in with GitHub CLI" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="GitDash can reuse the login of the GitHub CLI (gh) that is already on your computer. No token to copy and no OAuth App." />
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="1." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Install GitHub CLI from cli.github.com (Windows: winget install GitHub.cli, macOS: brew install gh)." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="2." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="In a terminal, run: gh auth login. Choose GitHub.com and sign in with the browser." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="3." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Using an organization with SAML single sign-on? Run: gh auth refresh -s read:org, then authorize the organization when GitHub asks." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="4." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Click &quot;Use GitHub CLI login&quot; here. GitDash copies the token into its own secure store." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="5." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="If you log in again later, click the button again to refresh the copy." />
+                    </Grid>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+              </StackPanel>
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Already use the GitHub CLI? Reuse its login: run gh auth login once in a terminal, then click the button. GitDash reads the token with gh auth token." />
+              <Button Classes="primary" Content="Use GitHub CLI login" Command="{Binding UseGitHubCliCommand}"
+                      HorizontalAlignment="Left" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Advanced: browser sign-in needs an OAuth App, which an organization may have to approve -->
+          <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+            <Expander.Header>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="Advanced: sign in with your browser (needs an OAuth App)" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Expander.Header>
+            <StackPanel Spacing="10">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Classes="muted" FontSize="12" VerticalAlignment="Center"
+                           Text="Organizations that restrict OAuth apps need an owner to approve it. Prefer a token or GitHub CLI there." />
+                <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
                     ToolTip.Tip="How to create a GitHub OAuth App (needed for browser sign-in)">
               <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
               <Button.Flyout>
@@ -69,53 +225,13 @@
                 </Flyout>
               </Button.Flyout>
             </Button>
-          </StackPanel>
-
-          <TextBlock Classes="muted" Text="No account yet. Add one below." IsVisible="{Binding !Accounts.Count}" />
-          <ItemsControl ItemsSource="{Binding Accounts}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:AccountItemViewModel">
-                <Border Background="{DynamicResource Surface2Brush}" CornerRadius="14" Padding="14" Margin="0,0,0,10">
-                  <Grid ColumnDefinitions="Auto,*,Auto">
-                    <Panel Width="52" Height="52" Margin="0,0,14,0">
-                      <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
-                      <TextBlock Text="{Binding Initials}" FontSize="16" FontWeight="Bold" Foreground="#0B0D14"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
-                      <Border CornerRadius="26" ClipToBounds="True">
-                        <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
-                      </Border>
-                      <Ellipse Stroke="{StaticResource Accent2Brush}" StrokeThickness="2" />
-                    </Panel>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                      <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
-                                 Foreground="{DynamicResource TextBrush}" />
-                      <TextBlock Text="{Binding Login}" Classes="muted" FontSize="12.5" />
-                      <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
-                        <Border Classes="chip"><TextBlock Text="{Binding Method}" /></Border>
-                        <Border Classes="chip"><TextBlock Text="{Binding RepositoriesLabel}" /></Border>
-                      </StackPanel>
-                    </StackPanel>
-                    <Button Grid.Column="2" Classes="ghost" Content="Remove" Click="OnRemoveAccountClick"
-                            VerticalAlignment="Center"
-                            ToolTip.Tip="Removes the account and deletes its stored token" />
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-
-          <Border Height="1" Background="{DynamicResource LineBrush}" />
-
-          <Grid ColumnDefinitions="*,24,*">
-            <!-- Browser sign-in -->
-            <StackPanel Grid.Column="0" Spacing="10">
-              <TextBlock Text="Sign in with your browser" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+              </StackPanel>
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                          Text="Uses GitHub's device flow. Needs the client ID of a GitHub OAuth App with device flow enabled — no client secret is involved." />
               <TextBox Text="{Binding ClientId}" Watermark="OAuth App client ID (e.g. Ov23li…)" MaxLength="64"
                        IsEnabled="{Binding !IsDeviceFlowPending}" />
               <Button Classes="primary" Content="Sign in with GitHub" Command="{Binding SignInCommand}"
-                      IsVisible="{Binding !IsDeviceFlowPending}" />
+                      HorizontalAlignment="Left" IsVisible="{Binding !IsDeviceFlowPending}" />
 
               <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="16"
                       IsVisible="{Binding IsDeviceFlowPending}">
@@ -132,16 +248,7 @@
                 </StackPanel>
               </Border>
             </StackPanel>
-
-            <!-- Token -->
-            <StackPanel Grid.Column="2" Spacing="10">
-              <TextBlock Text="Or use an access token" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="A fine-grained token with read-only access to Pull requests and Metadata is enough. Classic tokens need the repo and read:org scopes." />
-              <TextBox Text="{Binding TokenInput}" PasswordChar="●" Watermark="Paste token" MaxLength="255" />
-              <Button Classes="primary" Content="Add account" Command="{Binding AddTokenCommand}" />
-            </StackPanel>
-          </Grid>
+          </Expander>
 
           <TextBlock Text="{Binding AuthMessage}" Classes="muted" Classes.error="{Binding IsAuthError}"
                      TextWrapping="Wrap"
