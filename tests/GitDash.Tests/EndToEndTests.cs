@@ -80,7 +80,13 @@ public class EndToEndTests
 
     private sealed class NoLauncher : IUrlLauncher
     {
-        public bool Open(string url) => true;
+        public List<string> Opened { get; } = [];
+
+        public bool Open(string url)
+        {
+            Opened.Add(url);
+            return true;
+        }
     }
 
     private sealed class InlineDispatcher : IUiDispatcher
@@ -207,8 +213,9 @@ public class EndToEndTests
     public async Task View_models_render_synced_state()
     {
         var f = await CreateAsync();
+        var launcher = new NoLauncher();
         var shell = new ShellViewModel(
-            f.Monitor, f.Settings, f.Accounts, f.History, f.Router, f.PersonActivity, new NoLauncher(), new NoAlarm(), new InlineDispatcher(),
+            f.Monitor, f.Settings, f.Accounts, f.History, f.Router, f.PersonActivity, launcher, new NoAlarm(), new InlineDispatcher(),
             TimeProvider.System);
 
         await f.Monitor.SyncAsync();
@@ -285,14 +292,14 @@ public class EndToEndTests
         Assert.Empty(my.Comments);
 
         Assert.Contains("How to test", my.Description);
-        Assert.Contains(my.ReviewEvents, e => e.Verdict == "APPROVED");
-        Assert.Contains(my.ReviewEvents, e => e.Verdict == "CHANGES REQUESTED");
+        Assert.Contains(my.ReviewEvents, e => e.Verdict == "Approved");
+        Assert.Contains(my.ReviewEvents, e => e.Verdict == "Changes Requested");
 
         var reviewed = cards[1];
         my.StartReviewCommand.Execute(reviewed);
         Assert.False(my.IsDetailOpen);
-        Assert.Same(shell.Timers, shell.CurrentPage);
-        Assert.True(shell.Timers.IsReviewRunning);
+        Assert.True(shell.Timers.IsReviewRunning);   // the timer starts ...
+        Assert.Equal(reviewed.Url, launcher.Opened.Last()); // ... and the pull request page opens
         Assert.Equal(reviewed.Id, shell.Timers.SelectedReviewTarget?.Id);
 
         shell.Navigate(shell.Settings);

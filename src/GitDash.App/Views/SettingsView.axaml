@@ -386,6 +386,33 @@
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
+              <TextBlock Text="Hide to tray on minimise" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Minimising sends the window to the tray instead of the taskbar. Needs the tray icon." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideToTrayOnMinimize}" IsEnabled="{Binding ShowTrayIcon}"
+                          OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Hide to tray on close" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Closing the window keeps GitDash running in the tray. Off: closing quits the app. Needs the tray icon." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideToTrayOnClose}" IsEnabled="{Binding ShowTrayIcon}"
+                          OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Date and time" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="GitHub reports times in UTC. They are converted to your local time and shown in your system's regional format, or in a format you pick." />
+            </StackPanel>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding TimeFormatOptions}" SelectedIndex="{Binding TimeFormatIndex}"
+                      Width="210" VerticalAlignment="Center" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
               <TextBlock Text="Reduce motion" Foreground="{DynamicResource TextBrush}" />
               <TextBlock Classes="muted" FontSize="12" Text="Turns off looping and entrance animations." />
             </StackPanel>

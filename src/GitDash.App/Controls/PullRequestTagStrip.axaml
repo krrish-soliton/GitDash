@@ -20,7 +20,9 @@
     <ItemsControl.ItemTemplate>
       <DataTemplate x:DataType="vm:PullRequestTag">
         <Border Classes="badge mini" Classes.error="{Binding IsError}" Classes.ok="{Binding IsOk}"
-                Classes.assigned="{Binding IsAssigned}" ToolTip.Tip="{Binding Tip}">
+                Classes.assigned="{Binding IsAssigned}" Classes.changes="{Binding IsChanges}"
+                Classes.unreviewed="{Binding IsUnreviewed}" Classes.open="{Binding IsOpen}"
+                Classes.draft="{Binding IsDraft}" ToolTip.Tip="{Binding Tip}">
           <TextBlock Text="{Binding Text}" />
         </Border>
       </DataTemplate>

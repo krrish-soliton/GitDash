@@ -82,6 +82,24 @@
     <Setter Property="Background" Value="{StaticResource GreenBrush}" />
   </Style>
 
+  <Style Selector="Border.badge.changes">
+    <Setter Property="Background" Value="{StaticResource OrangeBrush}" />
+  </Style>
+  <Style Selector="Border.badge.unreviewed">
+    <Setter Property="Background" Value="{StaticResource PurpleBrush}" />
+  </Style>
+  <Style Selector="Border.badge.open">
+    <Setter Property="Background" Value="#2DD4BF" />
+  </Style>
+  <Style Selector="Border.badge.draft">
+    <Setter Property="Background" Value="#8B93AD" />
+  </Style>
+  <Style Selector="Border.badge.added">
+    <Setter Property="Background" Value="#60A5FA" />
+  </Style>
+  <Style Selector="Border.badge.removed">
+    <Setter Property="Background" Value="{StaticResource RedBrush}" />
+  </Style>
   <Style Selector="Border.badge.error">
     <Setter Property="Background" Value="{StaticResource RedBrush}" />
   </Style>

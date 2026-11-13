@@ -251,6 +251,18 @@ public static class PullRequestMapper
         var pr = data.Prop("repository").Prop("pullRequest");
         var entries = new List<TimelineEntry>();
         var comments = new List<PullRequestComment>();
+        // Which code comments belong to a conversation that has been resolved (true) or is still open (false).
+        var resolution = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var thread in pr.Nodes("reviewThreads"))
+        {
+            var resolved = thread.Bool("isResolved");
+            foreach (var c in thread.Nodes("comments"))
+            {
+                var id = c.Str("id");
+                if (id.Length > 0) resolution[id] = resolved;
+            }
+        }
+
         if (pr.Date("createdAt") is { } created)
         {
             entries.Add(new(created, TimelineEntryKind.Opened, pr.Prop("author").Str("login", Ghost), "Opened the pull request"));
@@ -292,7 +304,8 @@ public static class PullRequestMapper
                             inline.Prop("author").Str("login", reviewer),
                             Limit(inline.Str("body")),
                             CommentSource.Inline,
-                            ((JsonElement?)inline).StrOrNull("path")));
+                            ((JsonElement?)inline).StrOrNull("path"),
+                            resolution.TryGetValue(inline.Str("id"), out var isResolved) ? isResolved : null));
                     }
 
                     break;

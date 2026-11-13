@@ -37,14 +37,40 @@ public sealed class FilterOptionViewModel(PullRequestFilter filter, string label
     };
 }
 
-public sealed record TimelineItemViewModel(string Time, string Actor, string Text, string Kind, bool IsViewer);
+public sealed record TimelineItemViewModel(string Time, string Actor, string Text, string Kind, bool IsViewer, string Label, string Tone);
+
+/// <summary>The tag text and colour key of a timeline entry: people and reviewers added or removed, states, decisions.</summary>
+public static class TimelineTags
+{
+    public static string LabelOf(TimelineEntryKind kind) => kind switch
+    {
+        TimelineEntryKind.Assigned or TimelineEntryKind.ReviewRequested => "Added",
+        TimelineEntryKind.Unassigned or TimelineEntryKind.ReviewRequestRemoved => "Removed",
+        TimelineEntryKind.ChangesRequested => "Changes Requested",
+        TimelineEntryKind.ReviewDismissed => "Dismissed",
+        TimelineEntryKind.ReadyForReview => "Ready For Review",
+        TimelineEntryKind.ConvertedToDraft => "Draft",
+        TimelineEntryKind.ForcePushed => "Force Pushed",
+        TimelineEntryKind.Reopened => "Open",
+        _ => kind.ToString(),
+    };
+
+    /// <summary>Colour key understood by the tone converter; Added and Open get colours of their own.</summary>
+    public static string ToneOf(TimelineEntryKind kind) => kind switch
+    {
+        TimelineEntryKind.Assigned or TimelineEntryKind.ReviewRequested => "Added",
+        TimelineEntryKind.Reopened => "Open",
+        TimelineEntryKind.ConvertedToDraft => "Draft",
+        _ => kind.ToString(),
+    };
+}
 
 /// <summary>All timeline entries of one calendar day, under a date heading.</summary>
 public sealed record TimelineDayViewModel(string Header, IReadOnlyList<TimelineItemViewModel> Items);
 
 public sealed record CommentViewModel(
     string Author, string Initials, string Accent, string When, string Source, string Body,
-    bool IsMine, bool MentionsMe, bool IsAi = false)
+    bool IsMine, bool MentionsMe, bool IsAi = false, bool IsResolved = false, bool IsUnresolved = false)
 {
     /// <summary>Body rendered as Markdown blocks.</summary>
     public IReadOnlyList<GitDash.Presentation.Markdown.MarkdownBlock> Blocks { get; } =
@@ -119,6 +145,9 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public bool HasMergeConflict => PullRequest.HasMergeConflict;
     public bool PipelineFailed => PullRequest.PipelineFailed;
     public bool HasError => PullRequest.HasError;
+    /// <summary>Tags shown on the card and in the details header (the same set as on every other page).</summary>
+    public IReadOnlyList<PullRequestTag> Tags { get; } = PullRequestStatus.TagsOf(pr);
+    public IReadOnlyList<PullRequestTag> DetailTags { get; } = PullRequestStatus.TagsOf(pr, withState: true);
     public bool HasTags => IsApproved || HasAssigned || HasError || IsReapproval || HasStaleApproval || IsUpdatedSinceMyReview || HasStaleChangeRequest;
 
     /// <summary>Any review (or the viewer's own) is out of date because new commits arrived.</summary>
@@ -139,7 +168,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public string Key { get; } = KeyOf(pr);
 
     public static string KeyOf(PullRequest p) =>
-        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}:{p.ViewerReviewIsStale}:{p.Verdict}:{p.HasMergeConflict}:{p.PipelineFailed}";
+        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}:{p.ViewerReviewIsStale}:{p.Verdict}:{p.HasMergeConflict}:{p.PipelineFailed}:{Humanize.Format}";
     public string Waiting { get; } =
         Humanize.Age(now - (pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt));
     public string Age { get; } = Humanize.Age(now - pr.CreatedAt);
@@ -154,8 +183,8 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public string Verdict => PullRequest.Verdict switch
     {
         ReviewState.Approved => "Approved",
-        ReviewState.ChangesRequested => "Changes requested",
-        _ => PullRequest.IsDraft ? "Draft" : "Awaiting review",
+        ReviewState.ChangesRequested => "Changes Requested",
+        _ => PullRequest.IsDraft ? "Draft" : "Awaiting Review",
     };
 }
 
@@ -507,11 +536,12 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         // Newest day first, and newest entry first within a day: what just happened is at the top.
         var days = visible
             .OrderByDescending(e => e.At)
-            .GroupBy(e => e.At.ToLocalTime().Date)
+            .GroupBy(e => Humanize.DayOf(e.At))
             .Select(g => new TimelineDayViewModel(
                 Humanize.Day(g.First().At, now),
                 [.. g.Select(e => new TimelineItemViewModel(
-                    Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer)))]));
+                    Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer),
+                    TimelineTags.LabelOf(e.Kind), TimelineTags.ToneOf(e.Kind)))]));
 
         TimelineDays.Clear();
         foreach (var day in days) TimelineDays.Add(day);
@@ -543,7 +573,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
                     CommentSource.Review => "Review summary",
                     _ => "Conversation",
                 },
-                c.Body, mine, mentions, ai));
+                c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread));
         }
 
         HasComments = Comments.Count > 0;
@@ -560,12 +590,12 @@ public sealed class MyPullRequestsViewModel : PageViewModel
                 Humanize.Stamp(e.At), e.Actor,
                 e.Kind switch
                 {
-                    TimelineEntryKind.Approved => "APPROVED",
-                    TimelineEntryKind.ChangesRequested => "CHANGES REQUESTED",
-                    TimelineEntryKind.ReviewDismissed => "REVIEW DISMISSED",
-                    TimelineEntryKind.ReviewRequested => "REVIEW REQUESTED",
-                    TimelineEntryKind.ReviewRequestRemoved => "REQUEST REMOVED",
-                    _ => "COMMENTED",
+                    TimelineEntryKind.Approved => "Approved",
+                    TimelineEntryKind.ChangesRequested => "Changes Requested",
+                    TimelineEntryKind.ReviewDismissed => "Review Dismissed",
+                    TimelineEntryKind.ReviewRequested => "Review Requested",
+                    TimelineEntryKind.ReviewRequestRemoved => "Request Removed",
+                    _ => "Commented",
                 },
                 e.Text, e.Kind.ToString()));
         }

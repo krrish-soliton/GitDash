@@ -385,10 +385,13 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
 
     private void OnHistoryChanged() => _ui.Post(RefreshHistory);
 
+    /// <summary>The time format changed: redraw the session times.</summary>
+    public void Reformat() => RefreshHistory();
+
     private void RefreshHistory()
     {
         var now = _time.GetUtcNow();
-        var today = now.ToLocalTime().Date;
+        var today = Humanize.DayOf(now);
         DashboardViewModel.Replace(History, _history.Sessions.Take(25).Select(s => new SessionViewModel(
             s.Kind switch
             {
@@ -401,7 +404,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
             Humanize.Stamp(s.StartedAt))));
         HasHistory = History.Count > 0;
         TodayTotal = Humanize.Age(TimeSpan.FromTicks(_history.Sessions
-            .Where(s => s.StartedAt.ToLocalTime().Date == today)
+            .Where(s => Humanize.DayOf(s.StartedAt) == today)
             .Sum(s => s.Duration.Ticks))) is var total && total == "just now" ? "0m" : total;
         Refresh();
     }

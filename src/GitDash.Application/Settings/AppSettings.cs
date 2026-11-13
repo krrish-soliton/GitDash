@@ -26,6 +26,19 @@ public enum AppTheme
     System,
 }
 
+/// <summary>How dates and times are shown. Everything is converted from UTC (as GitHub reports it).</summary>
+public enum TimeFormat
+{
+    /// <summary>Local time in the operating system's regional format.</summary>
+    System,
+    /// <summary>Local time, 24-hour clock.</summary>
+    Hour24,
+    /// <summary>Local time, 12-hour clock with AM / PM.</summary>
+    Hour12,
+    /// <summary>UTC, 24-hour clock.</summary>
+    Utc,
+}
+
 public sealed record AccountSettings(Guid Id, string Login, string? Name, AuthMethod Method, string? AvatarUrl = null);
 
 /// <summary>
@@ -102,6 +115,11 @@ public sealed record AppSettings
     public int? IslandY { get; init; }
     public IReadOnlyList<AiToolSettings> AiTools { get; init; } = [];
     public bool ShowTrayIcon { get; init; } = true;
+    /// <summary>Minimising the window sends it to the tray instead of the taskbar (needs the tray icon).</summary>
+    public bool HideToTrayOnMinimize { get; init; }
+    /// <summary>Closing the window keeps the app running in the tray (needs the tray icon); off quits the app.</summary>
+    public bool HideToTrayOnClose { get; init; } = true;
+    public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();
 

@@ -69,7 +69,7 @@
             <Grid ColumnDefinitions="Auto,*,Auto">
               <c:CountUpText Classes="big" Value="{Binding AssignedToMe}" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="2">
-                <TextBlock Classes="label" Text="ASSIGNED TO ME" />
+                <TextBlock Classes="label" Text="Assigned To Me" />
                 <TextBlock Classes="muted" Text="Your first priority, the one waiting longest on top" />
               </StackPanel>
               <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
@@ -117,21 +117,21 @@
       <Grid ColumnDefinitions="*,20,*,20,*" IsVisible="{Binding HasAccount}">
         <Border Grid.Column="0" Classes="card lift enter2" Background="{DynamicResource CyanCard}">
           <StackPanel Spacing="4">
-            <TextBlock Classes="label" Text="ON MY DESK" />
+            <TextBlock Classes="label" Text="On My Desk" />
             <c:CountUpText Classes="big" Value="{Binding OnMyDesk}" />
             <TextBlock Classes="muted" Text="Assigned or review requested" />
           </StackPanel>
         </Border>
         <Border Grid.Column="2" Classes="card lift enter2" Background="{DynamicResource AmberCard}">
           <StackPanel Spacing="4">
-            <TextBlock Classes="label" Text="AWAITING MY APPROVAL" />
+            <TextBlock Classes="label" Text="Awaiting My Approval" />
             <c:CountUpText Classes="big" Value="{Binding AwaitingMyApproval}" />
             <TextBlock Classes="muted" Text="Your review was requested" />
           </StackPanel>
         </Border>
         <Border Grid.Column="4" Classes="card lift enter3" Background="{DynamicResource VioletCard}">
           <StackPanel Spacing="4">
-            <TextBlock Classes="label" Text="RAISED BY ME" />
+            <TextBlock Classes="label" Text="Raised By Me" />
             <c:CountUpText Classes="big" Value="{Binding RaisedByMe}" />
             <TextBlock Classes="muted" Text="Open pull requests I authored" />
           </StackPanel>

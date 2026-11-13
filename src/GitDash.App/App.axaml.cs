@@ -34,7 +34,7 @@ public partial class App : AvaloniaApplication
             window.Closing += (_, e) =>
             {
                 if (_quitting) return;
-                if (host.Settings.Current.ShowTrayIcon)
+                if (host.Settings.Current is { ShowTrayIcon: true, HideToTrayOnClose: true })
                 {
                     e.Cancel = true;
                     window.Hide();
@@ -43,6 +43,13 @@ public partial class App : AvaloniaApplication
                 {
                     Quit(desktop);
                 }
+            };
+            // Minimising goes to the tray (and out of the taskbar) when asked for and a tray icon exists.
+            window.PropertyChanged += (_, e) =>
+            {
+                if (e.Property != Window.WindowStateProperty || window.WindowState != WindowState.Minimized) return;
+                if (host.Settings.Current is not { ShowTrayIcon: true, HideToTrayOnMinimize: true }) return;
+                Dispatcher.UIThread.Post(window.Hide);
             };
             desktop.Exit += (_, _) => host.Dispose();
 

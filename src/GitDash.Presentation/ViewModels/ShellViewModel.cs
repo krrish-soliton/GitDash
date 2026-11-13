@@ -104,6 +104,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _settings = settings;
         _ui = ui;
         _reduceMotion = settings.Current.ReduceMotion;
+        Humanize.Format = settings.Current.TimeFormat;
 
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
         Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools };
@@ -112,10 +113,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Dashboard = new DashboardViewModel(launcher, time, () => Navigate(Settings));
         Dashboard.AttachTimers(Timers);
         People = new PeopleViewModel(launcher, time, personActivity);
+        // "Review timer" on a card: start timing, then open the pull request on GitHub.
         MyPullRequests = new MyPullRequestsViewModel(monitor, launcher, ui, time, pr =>
         {
-            Navigate(Timers);
             Timers.StartReviewFor(pr);
+            launcher.Open(pr.Url);
         });
 
         Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings];
@@ -254,6 +256,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         ReduceMotion = settings.ReduceMotion;
         Raise(nameof(SidebarPinned));
+        if (Humanize.Format != settings.TimeFormat)
+        {
+            // Times are turned into text when a page is built, so rebuild them in the new style.
+            Humanize.Format = settings.TimeFormat;
+            Timers.Reformat();
+            _renderedRevision = -1;
+            Render(_state);
+        }
     });
 
     private void OnStateChanged(MonitorState state)
@@ -276,11 +286,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Status = state switch
         {
             { LastCheckedAt: { } at } =>
-                $"Live · {at.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture)} · " +
+                $"Live · {Humanize.Time(at, seconds: true)} · " +
                 $"{state.RepositoryCount} {(state.RepositoryCount == 1 ? "repo" : "repos")}",
             { IsSyncing: true } => "Connecting…",
             { LastSyncedAt: { } saved } =>
-                $"Saved data from {saved.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture)} · updating…",
+                $"Saved data from {Humanize.Time(saved)} · updating…",
             _ => "Waiting for first sync",
         };
 

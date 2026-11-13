@@ -12,9 +12,10 @@ public sealed record RepositoryRowViewModel(string Name, int Open, int Mine, dou
 /// <summary>One PR drawn as a book lying on the desk.</summary>
 public sealed record DeskBookViewModel(
     string Title, string Repository, string Number, string Accent, double Height, double Tilt, bool IsAssigned, bool NeedsApproval,
-    string Waiting, string Url, IReadOnlyList<PullRequestTag> Tags)
+    string Waiting, string Url, IReadOnlyList<PullRequestTag> Tags, string Author)
 {
     public bool HasTags => Tags.Count > 0;
+    public string Tip => $"{Title} · by {Author}";
 }
 
 /// <summary>One shelf of the bookcase.</summary>
@@ -106,7 +107,7 @@ public sealed class DashboardViewModel : PageViewModel
             var height = 40 + Math.Min(34, waiting.TotalDays * 5) + p.TotalComments % 5 * 2;
             return new DeskBookViewModel(
                 p.Title, p.Repository.Name, $"#{p.Number}", PullRequestStatus.ColorOf(p), height,
-                (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url, PullRequestStatus.TagsOf(p));
+                (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url, PullRequestStatus.TagsOf(p), p.Author);
         }).ToList();
         Replace(DeskBooks, books);
         Replace(Shelves, Enumerable.Range(0, ShelfCount)

@@ -408,11 +408,11 @@ public class Round9Tests
 
         var tags = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(conflict).Select(t => t.Text).ToList();
 
-        Assert.True(tags.Contains("MERGE CONFLICT"));
-        Assert.True(tags.Contains("ASSIGNED"));
+        Assert.True(tags.Contains("Merge Conflict"));
+        Assert.True(tags.Contains("Assigned"));
         Assert.Equal("#FB7185", GitDash.Presentation.ViewModels.PullRequestStatus.ColorOf(conflict));
         Assert.Equal("#A855F7", GitDash.Presentation.ViewModels.PullRequestStatus.ColorOf(plain));
-        Assert.Empty(GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(plain));
+        Assert.Equal(["Unreviewed"], GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(plain).Select(t => t.Text).ToList());
     }
 
     [Fact]
@@ -427,5 +427,49 @@ public class Round9Tests
         Assert.False(mergeFilter.Matches(failing));
         Assert.True(pipeFilter.Matches(failing));
         Assert.False(pipeFilter.Matches(conflict));
+    }
+}
+
+public class Round10Tests
+{
+    [Fact]
+    public void Time_is_shown_in_the_chosen_style()
+    {
+        var at = new DateTimeOffset(2026, 11, 13, 14, 5, 0, TimeSpan.Zero);
+        var previous = GitDash.Presentation.Mvvm.Humanize.Format;
+        try
+        {
+            GitDash.Presentation.Mvvm.Humanize.Format = GitDash.Application.Settings.TimeFormat.Utc;
+            Assert.Equal("14:05 UTC", GitDash.Presentation.Mvvm.Humanize.Time(at));
+
+            GitDash.Presentation.Mvvm.Humanize.Format = GitDash.Application.Settings.TimeFormat.Hour24;
+            var local = at.ToLocalTime();
+            Assert.Equal(local.ToString("HH:mm"), GitDash.Presentation.Mvvm.Humanize.Time(at));
+
+            GitDash.Presentation.Mvvm.Humanize.Format = GitDash.Application.Settings.TimeFormat.Hour12;
+            Assert.True(GitDash.Presentation.Mvvm.Humanize.Time(at).EndsWith("M"));
+        }
+        finally
+        {
+            GitDash.Presentation.Mvvm.Humanize.Format = previous;
+        }
+    }
+
+    [Fact]
+    public void Pascal_case_and_timeline_tags()
+    {
+        Assert.Equal("Changes Requested", GitDash.Presentation.Mvvm.Humanize.Pascal("CHANGES_REQUESTED"));
+        Assert.Equal("Open", GitDash.Presentation.Mvvm.Humanize.Pascal("OPEN"));
+        Assert.Equal("Added", GitDash.Presentation.ViewModels.TimelineTags.LabelOf(GitDash.Domain.PullRequests.TimelineEntryKind.ReviewRequested));
+        Assert.Equal("Removed", GitDash.Presentation.ViewModels.TimelineTags.LabelOf(GitDash.Domain.PullRequests.TimelineEntryKind.Unassigned));
+    }
+
+    [Fact]
+    public void Card_tags_show_changes_requested_and_unreviewed()
+    {
+        var plain = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(TestData.Pr("p")).Select(t => t.Text).ToList();
+        Assert.True(plain.Contains("Unreviewed"));
+        var withState = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(TestData.Pr("p"), withState: true).Select(t => t.Text).ToList();
+        Assert.Equal("Open", withState[0]);
     }
 }

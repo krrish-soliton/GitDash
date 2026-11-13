@@ -253,7 +253,7 @@ public sealed class PeopleViewModel : PageViewModel
         DashboardViewModel.Replace(RecentPullRequests, a.RecentPullRequests.Select(p => new PersonPullRequestViewModel(
             p.Title,
             $"#{p.Number} · {(p.ClosedAt is { } closed ? Humanize.Ago(now - closed) : "opened " + Humanize.Ago(now - p.CreatedAt))}",
-            p.IsDraft ? "DRAFT" : p.State, p.Url)));
+            p.IsDraft ? "Draft" : Humanize.Pascal(p.State), p.Url)));
         HasRecentPrs = RecentPullRequests.Count > 0;
         DashboardViewModel.Replace(ActivityEvents, a.Events.Take(30).Select(e => new PersonEventViewModel(
             Humanize.Ago(now - e.At), e.Kind.ToString(), $"#{e.Number} {e.PullRequestTitle}", e.Text, e.Url)));
