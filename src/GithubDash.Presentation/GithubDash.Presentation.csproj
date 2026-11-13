@@ -1,5 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="..\GithubDash.Application\GithubDash.Application.csproj" />
-  </ItemGroup>
-</Project>

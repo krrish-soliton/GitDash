@@ -1,4 +1,4 @@
-# GithubDash
+# GitDash
 
 A lightweight, animated desktop radar for GitHub pull requests — Windows and macOS, C# / .NET 10, Avalonia 11.
 
@@ -22,16 +22,16 @@ Requires the .NET 10 SDK.
 
 ```
 dotnet build
-dotnet run --project src/GithubDash.App
-dotnet run --project src/GithubDash.App -- --demo     # offline sample data, nothing is saved
+dotnet run --project src/GitDash.App
+dotnet run --project src/GitDash.App -- --demo     # offline sample data, nothing is saved
 dotnet test
 ```
 
 Publish a self-contained build:
 
 ```
-dotnet publish src/GithubDash.App -c Release -r win-x64   --self-contained
-dotnet publish src/GithubDash.App -c Release -r osx-arm64 --self-contained
+dotnet publish src/GitDash.App -c Release -r win-x64   --self-contained
+dotnet publish src/GitDash.App -c Release -r osx-arm64 --self-contained
 ```
 
 ## Signing in
@@ -50,16 +50,16 @@ Clean architecture; dependencies point inwards only.
 
 ```
 src/
-  GithubDash.Domain          Entities and pure rules: PullRequest, change detection, people insights, timers. No dependencies.
-  GithubDash.Application     Use cases and ports: PullRequestMonitor, AccountService, SettingsService, NotificationRouter.
-  GithubDash.Infrastructure  Adapters: GitHub GraphQL/REST gateway, device flow, secret stores, JSON stores, OS notifications, demo data.
-  GithubDash.Presentation    View-models (framework-free MVVM, unit-testable without a UI).
-  GithubDash.App             Avalonia views, windows, custom controls and the composition root (Services/AppHost.cs).
+  GitDash.Domain          Entities and pure rules: PullRequest, change detection, people insights, timers. No dependencies.
+  GitDash.Application     Use cases and ports: PullRequestMonitor, AccountService, SettingsService, NotificationRouter.
+  GitDash.Infrastructure  Adapters: GitHub GraphQL/REST gateway, device flow, secret stores, JSON stores, OS notifications, demo data.
+  GitDash.Presentation    View-models (framework-free MVVM, unit-testable without a UI).
+  GitDash.App             Avalonia views, windows, custom controls and the composition root (Services/AppHost.cs).
 tests/
-  GithubDash.Tests           xUnit tests for domain rules, JSON mapping, security helpers and view-models.
+  GitDash.Tests           xUnit tests for domain rules, JSON mapping, security helpers and view-models.
 ```
 
-Only `GithubDash.App` (Avalonia) and the test project use NuGet packages.
+Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 
 ## Security
 
@@ -108,7 +108,7 @@ Only `GithubDash.App` (Avalonia) and the test project use NuGet packages.
 ## Batch 2
 
 - **People office**: avatars walk in and sit at desks; click a person for a full activity dashboard (PRs raised/open/merged/closed, comments, reviews, pending branches, recent PRs and events).
-- **SQLite storage** (`githubdash.db`, next to settings): PR snapshots, person activity and timer sessions. On start the saved data shows instantly and a normal sync then updates it (ETag-based). Settings stay as editable JSON. Needs a NuGet restore for `Microsoft.Data.Sqlite`.
+- **SQLite storage** (`gitdash.db`, next to settings): PR snapshots, person activity and timer sessions. On start the saved data shows instantly and a normal sync then updates it (ETag-based). Settings stay as editable JSON. Needs a NuGet restore for `Microsoft.Data.Sqlite`.
 - **Dynamic island** (Settings > Floating widgets): a pill at top centre with your counts and timer. It grows to show notifications (replacing corner toasts while on) and on hover shows the oldest waiting PR. "Nusa" was not specified, so this is my interpretation of a notch-style island.
 
 ## Refinements (round 4)
