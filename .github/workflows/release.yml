@@ -1,7 +1,7 @@
 name: Release
 
-# Push a tag such as v1.0.0 to build the Windows installer and publish it on the GitHub Releases page.
-# "Run workflow" (manual) builds the installer and keeps it as a workflow artifact only, without a release.
+# Push a tag such as v1.0.0 to build the Windows installer and the macOS disk images and publish them on the
+# GitHub Releases page. "Run workflow" (manual) builds everything and keeps it as workflow artifacts only.
 on:
   push:
     tags: ["v*"]
@@ -47,15 +47,100 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: GitDash-${{ steps.version.outputs.value }}
+          name: dist-windows
           path: dist/*
 
+  macos-dmg:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        rid: [osx-arm64, osx-x64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Work out the version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then v="${GITHUB_REF_NAME#v}"; else v="0.0.0-dev.$GITHUB_RUN_NUMBER"; fi
+          echo "value=$v" >> "$GITHUB_OUTPUT"
+          # CFBundleShortVersionString must be numeric (1.2.3), without a pre-release suffix.
+          echo "plist=${v%%-*}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish (self-contained, ${{ matrix.rid }})
+        run: >
+          dotnet publish src/GitDash.App/GitDash.App.csproj -c Release -r ${{ matrix.rid }} --self-contained true
+          -p:Version=${{ steps.version.outputs.value }} -p:DebugType=None -p:DebugSymbols=false -o publish
+
+      - name: Build GitDash.app
+        run: |
+          app="build/GitDash.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          cp -R publish/. "$app/Contents/MacOS/"
+          chmod +x "$app/Contents/MacOS/GitDash"
+
+          # Icon: .icns from the 256 px PNG
+          set="build/AppIcon.iconset"; mkdir -p "$set"
+          png="src/GitDash.App/Assets/app.png"
+          for s in 16 32 64 128 256; do sips -z $s $s "$png" --out "$set/icon_${s}x${s}.png" >/dev/null; done
+          cp "$set/icon_32x32.png"   "$set/icon_16x16@2x.png"
+          cp "$set/icon_64x64.png"   "$set/icon_32x32@2x.png"
+          cp "$set/icon_256x256.png" "$set/icon_128x128@2x.png"
+          rm "$set/icon_64x64.png"
+          iconutil -c icns "$set" -o "$app/Contents/Resources/AppIcon.icns"
+
+          cat > "$app/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>GitDash</string>
+            <key>CFBundleDisplayName</key><string>GitDash</string>
+            <key>CFBundleIdentifier</key><string>com.solitontech.gitdash</string>
+            <key>CFBundleExecutable</key><string>GitDash</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>${{ steps.version.outputs.plist }}</string>
+            <key>CFBundleVersion</key><string>${{ github.run_number }}</string>
+            <key>LSMinimumSystemVersion</key><string>12.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Ad-hoc signature: required for the app to start on Apple silicon. It is not notarised (see README note).
+          codesign --force --deep --sign - "$app"
+
+      - name: Build the disk image
+        run: |
+          mkdir -p dist dmg
+          cp -R build/GitDash.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "GitDash" -srcfolder dmg -ov -format UDZO \
+            "dist/GitDash-${{ steps.version.outputs.value }}-${{ matrix.rid }}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-${{ matrix.rid }}
+          path: dist/*
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [windows-installer, macos-dmg]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+
       - name: Publish the GitHub release
-        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          name: GitDash ${{ steps.version.outputs.value }}
+          name: GitDash ${{ github.ref_name }}
           generate_release_notes: true
-          files: |
-            dist/GitDash-Setup-${{ steps.version.outputs.value }}.exe
-            dist/GitDash-${{ steps.version.outputs.value }}-win-x64-portable.zip
+          files: dist/*
