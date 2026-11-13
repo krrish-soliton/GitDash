@@ -472,4 +472,31 @@ public class Round10Tests
         var withState = GitDash.Presentation.ViewModels.PullRequestStatus.TagsOf(TestData.Pr("p"), withState: true).Select(t => t.Text).ToList();
         Assert.Equal("Open", withState[0]);
     }
+
+    [Fact]
+    public void Shelf_book_height_grows_with_pr_size()
+    {
+        var tiny = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(1, 0, 1);
+        var medium = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(200, 50, 8);
+        var huge = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(50000, 20000, 400);
+        Assert.True(tiny < medium);
+        Assert.True(medium < huge);
+        Assert.True(tiny >= GitDash.Presentation.ViewModels.DashboardViewModel.MinBookHeight);
+        Assert.True(huge <= GitDash.Presentation.ViewModels.DashboardViewModel.MaxBookHeight);
+    }
+
+    [Fact]
+    public void Desk_books_are_coloured_by_type_and_capped()
+    {
+        var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(2, 1, 1);
+        Assert.Equal(4, books.Count);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.AssignedBookColor, books[0].Color);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.ReviewBookColor, books[2].Color);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor, books[3].Color);
+
+        var capped = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(20, 20, 20);
+        Assert.Equal(GitDash.Presentation.ViewModels.PersonViewModel.MaxDeskBooks, capped.Count);
+        Assert.True(capped.Any(b => b.Color == GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor));
+        Assert.Equal(0, GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(0, 0, 0).Count);
+    }
 }

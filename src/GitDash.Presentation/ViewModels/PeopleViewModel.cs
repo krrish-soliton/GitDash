@@ -18,6 +18,9 @@ public sealed class EntranceRegistry
     public bool TryEnter(string key) => _seen.Add(key);
 }
 
+/// <summary>One book on a desk: a hex colour for the type of PR waiting and a height in pixels.</summary>
+public sealed record DeskBookItem(string Color, double Height);
+
 /// <summary>One animated person standing on a floor.</summary>
 public sealed record PersonViewModel(
     string Login, string Repository, string Initials, string Accent, string? AvatarUrl,
@@ -37,12 +40,44 @@ public sealed record PersonViewModel(
     /// <summary>Sits at the desk and types; people with nothing on their plate stand around instead.</summary>
     public bool IsWorking => Raised > 0 || Assigned > 0 || AssignedUnder > 0;
     public bool IsIdle => !IsWorking;
-    // One sheet of paper on the desk per raised PR, up to five.
-    public bool Paper1 => Raised >= 1;
-    public bool Paper2 => Raised >= 2;
-    public bool Paper3 => Raised >= 3;
-    public bool Paper4 => Raised >= 4;
-    public bool Paper5 => Raised >= 5;
+    /// <summary>Open pull requests where this person's review is requested.</summary>
+    public int ToReview { get; init; }
+
+    /// <summary>
+    /// Books stacked on the desk, one per waiting item and coloured by type: Assigned cyan, Review Requested amber,
+    /// PR Raised violet. At most <see cref="MaxDeskBooks"/> are drawn; every type present keeps at least one.
+    /// </summary>
+    public IReadOnlyList<DeskBookItem> DeskBooks => BuildDeskBooks(Assigned, ToReview, Raised);
+
+    public const int MaxDeskBooks = 7;
+    public const string AssignedBookColor = "#22D3EE", ReviewBookColor = "#F59E0B", RaisedBookColor = "#A78BFA";
+    private static readonly int[] BookHeights = [9, 7, 10, 8, 6, 9, 7];
+
+    public static IReadOnlyList<DeskBookItem> BuildDeskBooks(int assigned, int toReview, int raised)
+    {
+        var counts = new[] { assigned, toReview, raised };
+        var colors = new[] { AssignedBookColor, ReviewBookColor, RaisedBookColor };
+        var take = new int[3];
+        var left = MaxDeskBooks;
+        while (left > 0)
+        {
+            var progressed = false;
+            for (var t = 0; t < 3 && left > 0; t++)
+            {
+                if (take[t] >= counts[t]) continue;
+                take[t]++; left--; progressed = true;
+            }
+
+            if (!progressed) break;
+        }
+
+        var books = new List<DeskBookItem>();
+        for (var t = 0; t < 3; t++)
+            for (var i = 0; i < take[t]; i++)
+                books.Add(new DeskBookItem(colors[t], BookHeights[books.Count % BookHeights.Length]));
+        return books;
+    }
+
     public bool IsBusy => Raised + Assigned >= 3;
     /// <summary>Assigned first, then PR, then Waiting.</summary>
     public string StatusLine => $"Assigned {Assigned} · PR {Raised} · Waiting {AssignedUnder}";
@@ -306,7 +341,7 @@ public sealed class PeopleViewModel : PageViewModel
                 avatars.GetValueOrDefault(p.Login), p.Raised, p.Assigned, p.AssignedUnder,
                 p.OldestAssignedSince is { } since ? Humanize.Age(DateTimeOffset.UtcNow - since) : "",
                 p.OldestReviewSince is { } reviewSince ? Humanize.Age(DateTimeOffset.UtcNow - reviewSince) : "",
-                viewers.Contains(p.Login), i % 3) { Entrance = _entrance }),
+                viewers.Contains(p.Login), i % 3) { Entrance = _entrance, ToReview = p.ToReview }),
         ],
         floor.OpenCount,
         floor.DraftCount,

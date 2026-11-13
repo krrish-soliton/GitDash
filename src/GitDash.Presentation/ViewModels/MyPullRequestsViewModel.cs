@@ -177,6 +177,9 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public int MyComments => PullRequest.CommentsByViewer;
     public int Commits => PullRequest.CommitCount;
     public string Changes => $"+{PullRequest.Additions}  −{PullRequest.Deletions}";
+    public string AdditionsText => $"+{PullRequest.Additions:N0}";
+    public string DeletionsText => $"−{PullRequest.Deletions:N0}";
+    public string OpenText => $"Open {Age}";
     public int Files => PullRequest.ChangedFiles;
     public string Summary => PullRequest.Summary.Length == 0 ? "No description provided." : PullRequest.Summary;
 
@@ -343,6 +346,13 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public bool CommentsByOthers { get => _commentsByOthers; set { if (Set(ref _commentsByOthers, value)) RebuildComments(); } }
     public bool CommentsFromAi { get => _commentsFromAi; set { if (Set(ref _commentsFromAi, value)) RebuildComments(); } }
     public bool CommentsMentioningMe { get => _commentsMentioningMe; set { if (Set(ref _commentsMentioningMe, value)) RebuildComments(); } }
+
+    /// <summary>Resolved inline threads are shown while this is on.</summary>
+    public bool ShowResolvedComments { get => _showResolvedComments; set { if (Set(ref _showResolvedComments, value)) RebuildComments(); } }
+
+    /// <summary>Unresolved inline threads are shown while this is on.</summary>
+    public bool ShowUnresolvedComments { get => _showUnresolvedComments; set { if (Set(ref _showUnresolvedComments, value)) RebuildComments(); } }
+    private bool _showResolvedComments = true, _showUnresolvedComments = true;
 
     public ObservableCollection<ReviewEventViewModel> ReviewEvents { get; } = [];
     public bool HasReviews { get => _hasReviews; private set => Set(ref _hasReviews, value); }
@@ -563,6 +573,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             // A comment is shown when it belongs to at least one ticked group. AI comments have their own switch
             // and are not counted as "other people".
             var others = !mine && !ai && CommentsByOthers;
+            if (c.IsResolvedThread && !ShowResolvedComments) continue;
+            if (c.IsUnresolvedThread && !ShowUnresolvedComments) continue;
             if (!((mine && CommentsByMe) || others || (ai && CommentsFromAi) || (mentions && CommentsMentioningMe))) continue;
 
             Comments.Add(new CommentViewModel(

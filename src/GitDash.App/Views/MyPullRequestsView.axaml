@@ -151,40 +151,31 @@
 
                     <UniformGrid Columns="4">
                       <StackPanel>
-                        <TextBlock Text="{Binding TotalComments}" FontSize="20" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextBrush}" />
-                        <TextBlock Classes="muted" FontSize="11" Text="comments" />
+                        <TextBlock Text="{Binding TotalComments}" FontSize="20" FontWeight="Bold" Foreground="#22D3EE" />
+                        <TextBlock Classes="muted" FontSize="11" Text="Comments" />
                       </StackPanel>
                       <StackPanel>
-                        <TextBlock Text="{Binding MyComments}" FontSize="20" FontWeight="Bold"
-                                   Foreground="{StaticResource Accent2Brush}" />
-                        <TextBlock Classes="muted" FontSize="11" Text="by me" />
+                        <TextBlock Text="{Binding MyComments}" FontSize="20" FontWeight="Bold" Foreground="#A78BFA" />
+                        <TextBlock Classes="muted" FontSize="11" Text="By Me" />
                       </StackPanel>
                       <StackPanel>
-                        <TextBlock Text="{Binding Commits}" FontSize="20" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextBrush}" />
-                        <TextBlock Classes="muted" FontSize="11" Text="commits" />
+                        <TextBlock Text="{Binding Commits}" FontSize="20" FontWeight="Bold" Foreground="#818CF8" />
+                        <TextBlock Classes="muted" FontSize="11" Text="Commits" />
                       </StackPanel>
                       <StackPanel>
-                        <TextBlock Text="{Binding Files}" FontSize="20" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextBrush}" />
-                        <TextBlock Classes="muted" FontSize="11" Text="files" />
+                        <TextBlock Text="{Binding Files}" FontSize="20" FontWeight="Bold" Foreground="#FBBF24" />
+                        <TextBlock Classes="muted" FontSize="11" Text="Files" />
                       </StackPanel>
                     </UniformGrid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <Border Classes="chip">
-                        <TextBlock Text="{Binding Changes}" />
-                      </Border>
-                      <Border Classes="chip">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <Border Classes="badge added"><TextBlock Text="{Binding AdditionsText}" /></Border>
+                      <Border Classes="badge removed"><TextBlock Text="{Binding DeletionsText}" /></Border>
+                      <Border Classes="badge" Classes.ok="{Binding IsApproved}" Classes.changes="{Binding IsChangesRequested}"
+                              Classes.unreviewed="{Binding IsUnreviewed}">
                         <TextBlock Text="{Binding Verdict}" />
                       </Border>
-                      <Border Classes="chip">
-                        <TextBlock>
-                          <Run Text="open" />
-                          <Run Text="{Binding Age}" />
-                        </TextBlock>
-                      </Border>
+                      <Border Classes="badge open"><TextBlock Text="{Binding OpenText}" /></Border>
                     </StackPanel>
 
                     <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="12.5" TextWrapping="Wrap"
@@ -237,7 +228,8 @@
               <Border Classes="chip">
                 <TextBlock Text="{Binding DetailCard.Role}" />
               </Border>
-              <Border Classes="chip">
+              <Border Classes="badge" Classes.ok="{Binding DetailCard.IsApproved}" Classes.changes="{Binding DetailCard.IsChangesRequested}"
+                      Classes.unreviewed="{Binding DetailCard.IsUnreviewed}">
                 <TextBlock Text="{Binding DetailCard.Verdict}" />
               </Border>
               <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsDetailLoading}"
@@ -334,27 +326,21 @@
           <TabItem Header="Description">
             <DockPanel Margin="0,12,0,0">
               <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
-                <Border Classes="chip">
+                <Border Classes="badge commits">
                   <TextBlock>
-                    <Run Text="{Binding DetailCard.Commits}" FontWeight="Bold" />
-                    <Run Text="commits" />
+                    <Run Text="{Binding DetailCard.Commits}" />
+                    <Run Text="Commits" />
                   </TextBlock>
                 </Border>
-                <Border Classes="chip">
+                <Border Classes="badge files">
                   <TextBlock>
-                    <Run Text="{Binding DetailCard.Files}" FontWeight="Bold" />
-                    <Run Text="files" />
+                    <Run Text="{Binding DetailCard.Files}" />
+                    <Run Text="Files" />
                   </TextBlock>
                 </Border>
-                <Border Classes="chip">
-                  <TextBlock Text="{Binding DetailCard.Changes}" />
-                </Border>
-                <Border Classes="chip">
-                  <TextBlock>
-                    <Run Text="open" />
-                    <Run Text="{Binding DetailCard.Age}" />
-                  </TextBlock>
-                </Border>
+                <Border Classes="badge added"><TextBlock Text="{Binding DetailCard.AdditionsText}" /></Border>
+                <Border Classes="badge removed"><TextBlock Text="{Binding DetailCard.DeletionsText}" /></Border>
+                <Border Classes="badge open"><TextBlock Text="{Binding DetailCard.OpenText}" /></Border>
               </StackPanel>
               <ScrollViewer>
                 <c:MarkdownView Blocks="{Binding DescriptionBlocks}" Margin="0,0,14,0" />
@@ -366,12 +352,15 @@
           <TabItem Header="{Binding CommentsHeader}">
             <DockPanel Margin="0,12,0,0">
               <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
-                <TextBlock Classes="muted" FontSize="12" Text="Show comments" VerticalAlignment="Center"
+                <TextBlock Classes="muted" FontSize="12" Text="Show Comments" VerticalAlignment="Center"
                            Margin="0,0,4,0" />
                 <ToggleButton Classes="filter" Content="By me" IsChecked="{Binding CommentsByMe}" />
-                <ToggleButton Classes="filter" Content="By other people" IsChecked="{Binding CommentsByOthers}" />
-                <ToggleButton Classes="filter" Content="AI comments" IsChecked="{Binding CommentsFromAi}" />
-                <ToggleButton Classes="filter" Content="That mention me" IsChecked="{Binding CommentsMentioningMe}" />
+                <ToggleButton Classes="filter" Content="By Other People" IsChecked="{Binding CommentsByOthers}" />
+                <ToggleButton Classes="filter" Content="AI Comments" IsChecked="{Binding CommentsFromAi}" />
+                <ToggleButton Classes="filter" Content="That Mention Me" IsChecked="{Binding CommentsMentioningMe}" />
+                <Border Width="1" Height="18" Background="{DynamicResource LineBrush}" Margin="4,0" />
+                <ToggleButton Classes="filter" Content="Resolved" IsChecked="{Binding ShowResolvedComments}" />
+                <ToggleButton Classes="filter" Content="Unresolved" IsChecked="{Binding ShowUnresolvedComments}" />
               </StackPanel>
               <Panel>
                 <TextBlock Classes="muted" Text="No comments match these filters." IsVisible="{Binding !HasComments}" />

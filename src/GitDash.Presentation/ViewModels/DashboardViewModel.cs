@@ -102,9 +102,8 @@ public sealed class DashboardViewModel : PageViewModel
         DeskOverflow = Math.Max(0, desk.Count - BooksPerShelf * ShelfCount);
         var books = desk.Select((p, i) =>
         {
-            var waiting = now - (p.ArrivedAt ?? p.CreatedAt);
-            // Older work makes a taller book; the tilt is deterministic so redraws do not shuffle the shelf.
-            var height = 40 + Math.Min(34, waiting.TotalDays * 5) + p.TotalComments % 5 * 2;
+            // A bigger change makes a taller book; the tilt is deterministic so redraws do not shuffle the shelf.
+            var height = BookHeightFor(p.Additions, p.Deletions, p.ChangedFiles);
             return new DeskBookViewModel(
                 p.Title, p.Repository.Name, $"#{p.Number}", PullRequestStatus.ColorOf(p), height,
                 (i % 5 - 2) * 1.2, p.IsAssignedToViewer, p.NeedsViewerApproval, WaitText(p, now), p.Url, PullRequestStatus.TagsOf(p), p.Author);
@@ -146,6 +145,19 @@ public sealed class DashboardViewModel : PageViewModel
     };
 
     /// <summary>Records compare by value, so unchanged rows are left alone and the list does not flicker.</summary>
+    public const double MinBookHeight = 36, MaxBookHeight = 74;
+
+    /// <summary>
+    /// Book height from PR size: lines changed plus a weight per file, log-scaled so one huge PR does not flatten the rest.
+    /// Ranges from <see cref="MinBookHeight"/> (tiny) to <see cref="MaxBookHeight"/> (about 5,000 weighted lines).
+    /// </summary>
+    public static double BookHeightFor(int additions, int deletions, int files)
+    {
+        var size = Math.Max(0, additions) + Math.Max(0, deletions) + Math.Max(0, files) * 20.0;
+        var scale = Math.Min(1.0, Math.Log10(1 + size) / Math.Log10(5001));
+        return MinBookHeight + (MaxBookHeight - MinBookHeight) * scale;
+    }
+
     internal static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> items)
     {
         var fresh = items.ToList();

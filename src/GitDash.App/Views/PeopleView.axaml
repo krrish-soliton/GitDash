@@ -366,14 +366,19 @@
                                       <Border Width="8" Height="8" VerticalAlignment="Bottom" Background="{DynamicResource LineBrush}" />
                                     </Panel>
 
-                                    <!-- Paper: one sheet per PR raised, up to five -->
-                                    <Panel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,60" Width="38" Height="22">
-                                      <Border Width="30" Height="4" Margin="0,0,0,0" VerticalAlignment="Bottom" CornerRadius="1" Background="White" IsVisible="{Binding Paper1}" />
-                                      <Border Width="30" Height="4" Margin="2,0,0,4" VerticalAlignment="Bottom" CornerRadius="1" Background="#E2E8F0" IsVisible="{Binding Paper2}" />
-                                      <Border Width="30" Height="4" Margin="0,0,0,8" VerticalAlignment="Bottom" CornerRadius="1" Background="White" IsVisible="{Binding Paper3}" />
-                                      <Border Width="30" Height="4" Margin="2,0,0,12" VerticalAlignment="Bottom" CornerRadius="1" Background="#E2E8F0" IsVisible="{Binding Paper4}" />
-                                      <Border Width="30" Height="4" Margin="0,0,0,16" VerticalAlignment="Bottom" CornerRadius="1" Background="White" IsVisible="{Binding Paper5}" />
-                                    </Panel>
+                                    <!-- Books: one per waiting item, coloured by type (Assigned / Review Requested / PR Raised) -->
+                                    <ItemsControl HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,60"
+                                                  ItemsSource="{Binding DeskBooks}">
+                                      <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="1" /></ItemsPanelTemplate>
+                                      </ItemsControl.ItemsPanel>
+                                      <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:DeskBookItem">
+                                          <Border Width="6" Height="{Binding Height}" VerticalAlignment="Bottom" CornerRadius="1,1,0,0"
+                                                  Background="{Binding Color, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                        </DataTemplate>
+                                      </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
                                     <!-- Typing hands (only for people who are working) -->
                                     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
@@ -472,7 +477,7 @@
           </ItemsControl>
 
           <StackPanel Orientation="Horizontal" Spacing="18">
-            <TextBlock Classes="muted" FontSize="12" Text="sheets on the desk = PR raised" />
+            <TextBlock Classes="muted" FontSize="12" Text="books on the desk = Assigned (cyan) · Review Requested (amber) · PR Raised (violet)" />
             <TextBlock Classes="muted" FontSize="12" Text="circles on the desk = Assigned (cyan) · PR (violet) · Waiting (red)" />
             <TextBlock Classes="muted" FontSize="12" Text="standing = nothing on their plate" />
             <TextBlock Classes="muted" FontSize="12" Text="white ring = you" />

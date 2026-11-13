@@ -100,6 +100,18 @@
   <Style Selector="Border.badge.removed">
     <Setter Property="Background" Value="{StaticResource RedBrush}" />
   </Style>
+  <Style Selector="Border.badge.comments">
+    <Setter Property="Background" Value="#22D3EE" />
+  </Style>
+  <Style Selector="Border.badge.byme">
+    <Setter Property="Background" Value="#A78BFA" />
+  </Style>
+  <Style Selector="Border.badge.commits">
+    <Setter Property="Background" Value="#818CF8" />
+  </Style>
+  <Style Selector="Border.badge.files">
+    <Setter Property="Background" Value="#FBBF24" />
+  </Style>
   <Style Selector="Border.badge.error">
     <Setter Property="Background" Value="{StaticResource RedBrush}" />
   </Style>
