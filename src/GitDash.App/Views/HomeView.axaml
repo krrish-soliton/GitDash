@@ -1,0 +1,179 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitDash.Presentation.ViewModels"
+             xmlns:c="using:GitDash.App.Controls"
+             xmlns:conv="using:GitDash.App.Converters"
+             x:Class="GitDash.App.Views.HomeView"
+             x:DataType="vm:HomeViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="36,30,36,36" Spacing="24" MaxWidth="1100" HorizontalAlignment="Left">
+
+      <StackPanel Classes="enter" Spacing="4">
+        <TextBlock Classes="muted" Text="{Binding Greeting}" />
+        <TextBlock Classes="h1" Text="{Binding Name}" />
+      </StackPanel>
+
+      <!-- Not signed in -->
+      <Border Classes="card enter1" IsVisible="{Binding !HasAccount}" Padding="28">
+        <StackPanel Spacing="6">
+          <TextBlock Classes="h2" Text="Welcome to GitDash" />
+          <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Message}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Profile hero -->
+      <Border Classes="card enter1" Padding="0" ClipToBounds="True" IsVisible="{Binding HasAccount}">
+        <Panel>
+          <Border Height="96" VerticalAlignment="Top" Background="{StaticResource AccentGradient}" Opacity="0.85" />
+          <Grid ColumnDefinitions="Auto,*,Auto" Margin="28,46,28,24">
+            <Panel Width="104" Height="104" VerticalAlignment="Top">
+              <Ellipse Fill="{DynamicResource SurfaceBrush}" Margin="-4" />
+              <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+              <TextBlock Text="{Binding Initials}" FontSize="32" FontWeight="Bold" Foreground="#0B0D14"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <Border CornerRadius="52" ClipToBounds="True">
+                <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+              </Border>
+            </Panel>
+
+            <StackPanel Grid.Column="1" Margin="22,52,0,0" Spacing="4">
+              <TextBlock Text="{Binding Name}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="{Binding Login}" Classes="muted" />
+              <TextBlock Text="{Binding Bio}" Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"
+                         IsVisible="{Binding Bio, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <TextBlock Text="{Binding Meta}" Classes="muted" Margin="0,4,0,0"
+                         IsVisible="{Binding Meta, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <TextBlock Text="{Binding Since}" Classes="muted" FontSize="12"
+                         IsVisible="{Binding Since, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Margin="0,52,0,0" Spacing="8" VerticalAlignment="Top">
+              <Button Classes="primary" Content="Open on GitHub ↗" Command="{Binding OpenProfileCommand}"
+                      IsEnabled="{Binding HasProfile}" />
+              <Button Classes="ghost" Content="Refresh" Command="{Binding RefreshCommand}" />
+              <Ellipse Classes="pulse" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
+                       HorizontalAlignment="Center" IsVisible="{Binding IsLoading}" />
+            </StackPanel>
+          </Grid>
+        </Panel>
+      </Border>
+
+      <TextBlock Classes="error" Text="{Binding Message}" TextWrapping="Wrap"
+                 IsVisible="{Binding HasAccount}" />
+
+      <!-- Priority: pull requests assigned to me, longest waiting first -->
+      <Border Classes="card enter2" IsVisible="{Binding HasAccount}" Padding="0" CornerRadius="18"
+              BorderBrush="{StaticResource Accent2Brush}" BorderThickness="2" ClipToBounds="True">
+        <StackPanel>
+          <Border Background="{StaticResource CyanCard}" Padding="24,16" CornerRadius="16,16,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <c:CountUpText Classes="big" Value="{Binding AssignedToMe}" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="2">
+                <TextBlock Classes="label" Text="ASSIGNED TO ME" />
+                <TextBlock Classes="muted" Text="Your first priority, the one waiting longest on top" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                <TextBlock FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="White">
+                  <Run Text="Oldest Assigned " /><Run Text="{Binding OldestAssigned}" />
+                </TextBlock>
+                <TextBlock FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="White">
+                  <Run Text="Oldest Review " /><Run Text="{Binding OldestReview}" />
+                </TextBlock>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <TextBlock Classes="muted" Margin="24,18" Text="Nothing is assigned to you right now." IsVisible="{Binding !HasAssigned}" />
+          <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasAssigned}">
+            <ItemsControl ItemsSource="{Binding Assigned}" Margin="12,6,16,10">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AssignedPullRequestViewModel">
+                  <Border Background="Transparent" Cursor="Hand" Padding="12,9" Tapped="OnAssignedTapped">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="5" CornerRadius="3" Margin="0,2,12,2"
+                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" />
+                        <TextBlock Classes="muted" FontSize="12">
+                          <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" />
+                        </TextBlock>
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Waiting}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right"
+                                   Classes="waitTime" Classes.overdue="{Binding IsOverdue}" />
+                        <TextBlock Text="assigned" Classes="muted" FontSize="10.5" HorizontalAlignment="Right" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+
+      <!-- Today on my desk -->
+      <Grid ColumnDefinitions="*,20,*,20,*" IsVisible="{Binding HasAccount}">
+        <Border Grid.Column="0" Classes="card lift enter2" Background="{StaticResource CyanCard}">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="ON MY DESK" />
+            <c:CountUpText Classes="big" Value="{Binding OnMyDesk}" />
+            <TextBlock Classes="muted" Text="Assigned or review requested" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="2" Classes="card lift enter2" Background="{StaticResource AmberCard}">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="AWAITING MY APPROVAL" />
+            <c:CountUpText Classes="big" Value="{Binding AwaitingMyApproval}" />
+            <TextBlock Classes="muted" Text="Your review was requested" />
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="4" Classes="card lift enter3" Background="{StaticResource VioletCard}">
+          <StackPanel Spacing="4">
+            <TextBlock Classes="label" Text="RAISED BY ME" />
+            <c:CountUpText Classes="big" Value="{Binding RaisedByMe}" />
+            <TextBlock Classes="muted" Text="Open pull requests I authored" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- GitHub numbers -->
+      <Border Classes="card enter3" IsVisible="{Binding HasProfile}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="My GitHub" />
+          <ItemsControl ItemsSource="{Binding Stats}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProfileStatViewModel">
+                <Border Background="{DynamicResource Surface2Brush}" CornerRadius="14" Padding="18,12" Margin="0,0,12,12"
+                        MinWidth="130">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding Value}" FontSize="24" FontWeight="Bold"
+                               Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Text="{Binding Label}" Classes="muted" FontSize="12" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <StackPanel Spacing="8" IsVisible="{Binding HasOrganizations}">
+            <TextBlock Classes="label" Text="ORGANIZATIONS" />
+            <ItemsControl ItemsSource="{Binding Organizations}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <Border Classes="chip" Margin="0,0,8,8"><TextBlock Text="{Binding}" /></Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

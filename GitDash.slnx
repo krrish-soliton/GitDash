@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitDash.App/GitDash.App.csproj" />
+    <Project Path="src/GitDash.Application/GitDash.Application.csproj" />
+    <Project Path="src/GitDash.Domain/GitDash.Domain.csproj" />
+    <Project Path="src/GitDash.Infrastructure/GitDash.Infrastructure.csproj" />
+    <Project Path="src/GitDash.Persistence.Sqlite/GitDash.Persistence.Sqlite.csproj" />
+    <Project Path="src/GitDash.Presentation/GitDash.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GitDash.Tests/GitDash.Tests.csproj" />
+  </Folder>
+</Solution>

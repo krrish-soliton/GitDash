@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\GithubDash.Application\GithubDash.Application.csproj" />
-  </ItemGroup>
-</Project>
