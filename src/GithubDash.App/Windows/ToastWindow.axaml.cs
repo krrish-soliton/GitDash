@@ -21,8 +21,8 @@ public partial class ToastWindow : Window
     private readonly bool _autoClose = true;
     private bool _dismissed;
 
-    /// <summary>True when the person closed or clicked it (not the timer, and not another notification surface).</summary>
-    public bool UserInitiated { get; private set; }
+    /// <summary>True when it ended here (close button, click or its own timer) rather than because the island closed the same notification.</summary>
+    public bool ClosedLocally { get; private set; }
 
     // Required by the XAML loader and the previewer.
     public ToastWindow()
@@ -70,23 +70,22 @@ public partial class ToastWindow : Window
     private void OnCardPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.Source is Visual source && source.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
-        UserInitiated = true;
         Dismiss(activated: true);
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e)
     {
-        UserInitiated = true;
         Dismiss(activated: false);
     }
 
     /// <summary>Closes it because the same notification was closed somewhere else (the dynamic island).</summary>
-    public void DismissFromOutside() => Dismiss(activated: false);
+    public void DismissFromOutside() => Dismiss(activated: false, fromOutside: true);
 
-    private async void Dismiss(bool activated)
+    private async void Dismiss(bool activated, bool fromOutside = false)
     {
         if (_dismissed) return;
         _dismissed = true;
+        ClosedLocally = !fromOutside;
         _timer?.Stop();
 
         if (_animate)

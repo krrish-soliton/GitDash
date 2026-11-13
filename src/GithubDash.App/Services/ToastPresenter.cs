@@ -17,8 +17,8 @@ public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow,
     /// <summary>When set and it accepts the request (island switched on), no corner toast is shown.</summary>
     public Func<ToastRequest, bool>? Island { get; set; }
 
-    /// <summary>Raised when the person closes or clicks a toast, so the same notification can be closed on the island too.</summary>
-    public event Action<ToastRequest>? UserClosed;
+    /// <summary>Raised when a toast ends (closed, clicked or timed out), so the same notification closes on the island too.</summary>
+    public event Action<ToastRequest>? Closed;
 
     /// <summary>Closes the toast (or drops it from the queue) for a notification that was closed on the island.</summary>
     public void CloseFor(ToastRequest request) => Dispatcher.UIThread.Post(() =>
@@ -56,7 +56,7 @@ public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow,
     private void OnDismissed(ToastWindow window, bool activated)
     {
         _open.Remove(window);
-        if (window.UserInitiated) UserClosed?.Invoke(window.Request);
+        if (window.ClosedLocally) Closed?.Invoke(window.Request);
         if (activated)
         {
             if (window.Request.Url is { } url) launcher.Open(url);

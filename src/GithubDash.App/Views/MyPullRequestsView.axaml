@@ -74,7 +74,8 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:PullRequestCardViewModel">
               <Border Classes="card" Width="400" Height="480" Margin="0,24" Cursor="Hand"
-                      BoxShadow="0 18 40 0 #90000000" Tapped="OnCardTapped">
+                      BoxShadow="0 18 40 0 #90000000" Tapped="OnCardTapped"
+                      c:Tilt.Enabled="{Binding IsFront}">
                 <Panel>
                 <!-- Glowing frame for PRs that are assigned to me -->
                 <Border Classes="assignedGlow" IsVisible="{Binding IsAssignedToMe}" IsHitTestVisible="False"
@@ -86,11 +87,12 @@
                   <TextBlock Text="ASSIGNED TO YOU" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
                 </Border>
                 <DockPanel>
-                  <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
-                    <Button Classes="primary" Content="Open details" Click="OnDetailsClick" />
-                    <Button Classes="ghost" Content="Start review timer" Click="OnStartReviewClick" />
-                    <Button Classes="ghost" Content="GitHub ↗" Click="OnOpenClick" />
-                  </StackPanel>
+                  <!-- Three equal-width buttons that always fit the card -->
+                  <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*,*" Margin="0,14,0,0">
+                    <Button Classes="primary compact" Content="Details" Click="OnDetailsClick" Margin="0,0,4,0" />
+                    <Button Grid.Column="1" Classes="ghost compact" Content="Review timer" Click="OnStartReviewClick" Margin="4,0" />
+                    <Button Grid.Column="2" Classes="ghost compact" Content="GitHub ↗" Click="OnOpenClick" Margin="4,0,0,0" />
+                  </Grid>
 
                   <StackPanel Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
@@ -189,6 +191,8 @@
                                MaxLines="4" TextTrimming="CharacterEllipsis" LineHeight="18" />
                   </StackPanel>
                 </DockPanel>
+                <!-- Glare that follows the mouse (driven by c:Tilt) -->
+                <Border x:Name="Shine" IsHitTestVisible="False" Opacity="0" Margin="-22" CornerRadius="18" />
                 </Panel>
               </Border>
             </DataTemplate>

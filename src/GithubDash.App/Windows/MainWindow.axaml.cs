@@ -1,6 +1,9 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using GithubDash.Presentation.ViewModels;
 
 namespace GithubDash.App.Windows;
@@ -32,7 +35,44 @@ public partial class MainWindow : Window
     {
         base.OnPropertyChanged(change);
         if (change.Property == WindowStateProperty || change.Property == IsVisibleProperty) UpdateMotion();
+        if (change.Property == WindowStateProperty) UpdateChrome();
     }
+
+    /// <summary>Square corners and the "restore" glyph while maximised; rounded corners and "maximise" otherwise.</summary>
+    private void UpdateChrome()
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        if (this.FindControl<Border>("Frame") is { } frame)
+        {
+            frame.CornerRadius = new CornerRadius(maximized ? 0 : 14);
+            frame.BorderThickness = new Thickness(maximized ? 0 : 1);
+        }
+
+        if (this.FindControl<PathIcon>("MaxIcon") is { } max) max.IsVisible = !maximized;
+        if (this.FindControl<PathIcon>("RestoreIcon") is { } restore) restore.IsVisible = maximized;
+    }
+
+    private void OnTitlePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (e.Source is Visual v && v.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
+        BeginMoveDrag(e);
+    }
+
+    private void OnTitleDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Source is Visual v && v.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
+        ToggleMaximize();
+    }
+
+    private void ToggleMaximize() =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void OnMinimizeClick(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void OnMaximizeClick(object? sender, RoutedEventArgs e) => ToggleMaximize();
+
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 
     /// <summary>
     /// All looping animations are styled under "Window.motion". Dropping the class while the window is
