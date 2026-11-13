@@ -115,6 +115,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public bool HasMergeConflict => PullRequest.HasMergeConflict;
     public bool PipelineFailed => PullRequest.PipelineFailed;
     public bool HasError => PullRequest.HasError;
+    public bool HasTags => IsApproved || HasAssigned || HasError || IsReapproval || HasStaleApproval || IsUpdatedSinceMyReview || HasStaleChangeRequest;
 
     /// <summary>Any review (or the viewer's own) is out of date because new commits arrived.</summary>
     public bool IsStale => PullRequest.HasStaleReview || PullRequest.ViewerReviewIsStale;

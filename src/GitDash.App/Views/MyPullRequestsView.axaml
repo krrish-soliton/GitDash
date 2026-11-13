@@ -75,9 +75,9 @@
             <DataTemplate x:DataType="vm:PullRequestCardViewModel">
               <!-- The shadow sits on its own layer behind the card: a blurred shadow on the tilting card itself
                    was rasterised with hard edges outside the card while it moved in 3D. -->
-              <Panel Width="400" Height="480" Margin="0,24">
+              <Panel Width="400" Height="520" Margin="0,24">
               <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000" />
-              <Border Classes="card" Width="400" Height="480" Cursor="Hand" Tapped="OnCardTapped"
+              <Border Classes="card" Width="400" Height="520" Cursor="Hand" Tapped="OnCardTapped"
                       BorderThickness="2"
                       Classes.stateError="{Binding StateError}" Classes.stateStale="{Binding StateStale}"
                       Classes.stateApproved="{Binding StateApproved}" Classes.stateChanges="{Binding StateChanges}"
@@ -93,12 +93,14 @@
                   </Grid>
 
                   <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
+                    <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
                         <Run Text="{Binding Repository}" />
                         <Run Text="{Binding Number}" Foreground="{StaticResource Accent2Brush}" />
                       </TextBlock>
-                      <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" Grid.Column="1">
+                    <WrapPanel IsVisible="{Binding HasTags}">
+                      <WrapPanel.Styles>
+                        <Style Selector="Border.badge"><Setter Property="Margin" Value="0,0,6,4" /></Style>
+                      </WrapPanel.Styles>
                         <Border Classes="badge error" IsVisible="{Binding PipelineFailed}"
                                 ToolTip.Tip="The checks on the latest commit failed">
                           <TextBlock Text="PIPELINE FAILED" />
@@ -127,8 +129,7 @@
                         <Border Classes="badge" IsVisible="{Binding HasStaleChangeRequest}" ToolTip.Tip="{Binding StaleChangeRequestTip}">
                           <TextBlock Text="STALE REVIEW" />
                         </Border>
-                      </StackPanel>
-                    </Grid>
+                                          </WrapPanel>
 
                     <TextBlock Text="{Binding Title}" FontSize="19" FontWeight="Bold" TextWrapping="Wrap"
                                MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}"
