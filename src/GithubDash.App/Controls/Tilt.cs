@@ -42,7 +42,8 @@ public static class Tilt
         public readonly Rotate3DTransform Transform = new() { Depth = 900 };
         public readonly RadialGradientBrush Glare = new()
         {
-            Radius = 0.75,
+            RadiusX = new RelativeScalar(0.75, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.75, RelativeUnit.Relative),
             GradientStops =
             [
                 new GradientStop(Color.FromArgb(0x70, 255, 255, 255), 0),

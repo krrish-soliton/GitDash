@@ -71,7 +71,7 @@
         </Transitions>
       </Setter>
     </Style>
-    <Style Selector="Border#Sidebar .hc">
+    <Style Selector="Border#Sidebar :is(Control).hc">
       <Setter Property="Opacity" Value="1" />
       <Setter Property="Transitions">
         <Transitions>
@@ -79,16 +79,16 @@
         </Transitions>
       </Setter>
     </Style>
-    <Style Selector="Border#Sidebar.collapsed .hc">
+    <Style Selector="Border#Sidebar.collapsed :is(Control).hc">
       <Setter Property="Opacity" Value="0" />
     </Style>
-    <Style Selector="Border#Sidebar .sc">
+    <Style Selector="Border#Sidebar :is(Control).sc">
       <Setter Property="IsVisible" Value="False" />
     </Style>
-    <Style Selector="Border#Sidebar.collapsed .sc">
+    <Style Selector="Border#Sidebar.collapsed :is(Control).sc">
       <Setter Property="IsVisible" Value="True" />
     </Style>
-    <Style Selector="Border#Sidebar.collapsed .hv">
+    <Style Selector="Border#Sidebar.collapsed :is(Control).hv">
       <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector="Border#Sidebar.floating">
