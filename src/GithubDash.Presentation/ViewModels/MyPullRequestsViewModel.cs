@@ -51,7 +51,13 @@ public sealed record ReviewEventViewModel(string When, string Actor, string Verd
 
 /// <summary>One cover-flow card.</summary>
 public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now, string? authorAvatarUrl = null)
+    : ObservableObject
 {
+    private bool _isFront;
+
+    /// <summary>The card at the front of the cover flow (it gets the 3D tilt).</summary>
+    public bool IsFront { get => _isFront; set => Set(ref _isFront, value); }
+
     public PullRequest PullRequest { get; } = pr;
     public string Id => PullRequest.Id;
     public string Title => PullRequest.Title;
@@ -197,8 +203,17 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         set
         {
             var clamped = Cards.Count == 0 ? 0 : Math.Clamp(value, 0, Cards.Count - 1);
-            if (Set(ref _selectedIndex, clamped)) UpdatePosition();
+            if (Set(ref _selectedIndex, clamped))
+            {
+                UpdatePosition();
+                MarkFront();
+            }
         }
+    }
+
+    private void MarkFront()
+    {
+        for (var i = 0; i < Cards.Count; i++) Cards[i].IsFront = i == _selectedIndex;
     }
 
     public string Position { get => _position; private set => Set(ref _position, value); }

@@ -9,7 +9,92 @@
         Icon="/Assets/app.ico"
         Width="1280" Height="820" MinWidth="1080" MinHeight="680"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BgBrush}">
+        SystemDecorations="Full"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent">
+
+  <Window.Styles>
+    <!-- Custom caption buttons: background fades in, the glyph pops; close turns red and spins. -->
+    <Style Selector="Button.caption">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.caption /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.16" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.caption:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="0.75" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#E5484D" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.caption PathIcon">
+      <Setter Property="RenderTransform" Value="scale(1)" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.caption:pointerover PathIcon">
+      <Setter Property="RenderTransform" Value="scale(1.22)" />
+    </Style>
+    <Style Selector="Button.caption.close:pointerover PathIcon">
+      <Setter Property="RenderTransform" Value="rotate(90deg) scale(1.1)" />
+    </Style>
+
+    <!-- Collapsible sidebar: widths animate; labels fade; the collapsed state shows only icons -->
+    <Style Selector="Panel#SidebarHost, Border#Sidebar">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border#Sidebar :is(Control).hc">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed :is(Control).hc">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border#Sidebar :is(Control).sc">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed :is(Control).sc">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed :is(Control).hv">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border#Sidebar.floating">
+      <Setter Property="BoxShadow" Value="0 0 34 0 #80000000" />
+    </Style>
+  </Window.Styles>
 
   <Window.DataTemplates>
     <DataTemplate DataType="vm:HomeViewModel">
@@ -32,30 +117,68 @@
     </DataTemplate>
   </Window.DataTemplates>
 
-  <Grid ColumnDefinitions="232,*">
+  <!-- Rounded window frame: the window itself is transparent, this border draws the rounded shape. -->
+  <Border x:Name="Frame" Background="{DynamicResource BgBrush}" CornerRadius="14" ClipToBounds="True"
+          BorderBrush="{DynamicResource LineBrush}" BorderThickness="1">
+    <DockPanel>
+      <!-- Custom title bar: drag to move, double-click to maximise -->
+      <Border x:Name="TitleBar" DockPanel.Dock="Top" Height="40" Background="Transparent"
+              PointerPressed="OnTitlePressed" DoubleTapped="OnTitleDoubleTapped">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+            <Border Width="20" Height="20" CornerRadius="6" Background="{StaticResource AccentGradient}">
+              <PathIcon Data="{StaticResource IconPullRequest}" Width="11" Height="11" Foreground="White" />
+            </Border>
+            <TextBlock Text="GithubDash" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal">
+            <Button Classes="caption" Click="OnMinimizeClick" ToolTip.Tip="Minimise">
+              <PathIcon Data="M0,4.5 H10 V5.5 H0 Z" Width="10" Height="10" />
+            </Button>
+            <Button Classes="caption" Click="OnMaximizeClick" ToolTip.Tip="Maximise / restore">
+              <Panel>
+                <PathIcon x:Name="MaxIcon" Data="M0,0 H10 V10 H0 Z M1,1 V9 H9 V1 Z" Width="10" Height="10" />
+                <PathIcon x:Name="RestoreIcon" IsVisible="False"
+                          Data="M2,0 H10 V8 H8 V7 H9 V1 H3 V2 H2 Z M0,2 H8 V10 H0 Z M1,3 V9 H7 V3 Z" Width="10" Height="10" />
+              </Panel>
+            </Button>
+            <Button Classes="caption close" Click="OnCloseClick" ToolTip.Tip="Close">
+              <PathIcon Data="M1,0 L5,4 L9,0 L10,1 L6,5 L10,9 L9,10 L5,6 L1,10 L0,9 L4,5 L0,1 Z" Width="10" Height="10" />
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+  <Grid ColumnDefinitions="Auto,*">
 
     <!-- Sidebar -->
-    <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}"
-            BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,22,16,16">
+    <Panel x:Name="SidebarHost" Grid.Column="0" Width="232" ZIndex="10">
+    <Border x:Name="Sidebar" Width="232" HorizontalAlignment="Left" ClipToBounds="True"
+            Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,22,16,16"
+            PointerEntered="OnSidebarEntered" PointerExited="OnSidebarExited">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="6,0,0,26">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="4,0,0,26">
           <Border Width="36" Height="36" CornerRadius="11" Background="{StaticResource AccentGradient}">
             <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="White" />
           </Border>
-          <StackPanel VerticalAlignment="Center">
+          <StackPanel Classes="hc" VerticalAlignment="Center">
             <TextBlock Text="GithubDash" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
             <TextBlock Text="Pull request radar" Classes="muted" FontSize="11" />
           </StackPanel>
         </StackPanel>
 
-        <!-- Sync status -->
+        <!-- Sync status, refresh and the pin button -->
         <StackPanel DockPanel.Dock="Bottom" Spacing="10">
-          <Border IsVisible="{Binding HasError}" Background="{DynamicResource ErrorBoxBrush}" CornerRadius="10" Padding="10"
-                  ToolTip.Tip="{Binding Error}">
-            <TextBlock Text="{Binding Error}" Classes="error" FontSize="11" TextWrapping="Wrap" MaxLines="4"
-                       TextTrimming="CharacterEllipsis" />
-          </Border>
-          <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Classes="hc">
+            <Border IsVisible="{Binding HasError}" Background="{DynamicResource ErrorBoxBrush}" CornerRadius="10" Padding="10"
+                    ToolTip.Tip="{Binding Error}">
+              <TextBlock Text="{Binding Error}" Classes="error" FontSize="11" TextWrapping="Wrap" MaxLines="4"
+                         TextTrimming="CharacterEllipsis" />
+            </Border>
+          </StackPanel>
+          <Grid Classes="hv" ColumnDefinitions="Auto,*,Auto">
             <Panel Width="10" Height="10" VerticalAlignment="Center" Margin="6,0,10,0">
               <Ellipse Fill="{StaticResource GreenBrush}" IsVisible="{Binding !IsSyncing}" />
               <Ellipse Classes="pulse" Fill="{StaticResource Accent2Brush}" IsVisible="{Binding IsSyncing}" />
@@ -67,6 +190,18 @@
               <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
             </Button>
           </Grid>
+          <!-- Collapsed: only the refresh icon, lined up with the nav icons -->
+          <Button Classes="round sc" Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
+                  Command="{Binding RefreshCommand}" ToolTip.Tip="Sync now">
+            <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+          </Button>
+          <Button Classes="round" Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
+                  Click="OnPinClick" ToolTip.Tip="Collapse or pin the sidebar">
+            <Panel>
+              <PathIcon x:Name="CollapseIcon" Data="{StaticResource IconLeft}" Width="14" Height="14" />
+              <PathIcon x:Name="PinIcon" Data="{StaticResource IconRight}" Width="14" Height="14" IsVisible="False" />
+            </Panel>
+          </Button>
         </StackPanel>
 
         <ListBox Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
@@ -75,13 +210,14 @@
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <PathIcon Width="17" Height="17"
                           Data="{Binding Icon, Converter={x:Static conv:GeometryKeyConverter.Instance}}" />
-                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                <TextBlock Classes="hc" Text="{Binding Title}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
       </DockPanel>
     </Border>
+    </Panel>
 
     <!-- Pages -->
     <DockPanel Grid.Column="1">
@@ -100,4 +236,6 @@
       </TransitioningContentControl>
     </DockPanel>
   </Grid>
+    </DockPanel>
+  </Border>
 </Window>

@@ -138,3 +138,11 @@ Only `GithubDash.App` (Avalonia) and the test project use NuGet packages.
 - **Mini widget switch:** on (default) = small circle that expands on hover; off = the full card always.
 - **Tray / menu-bar menu:** Show floating widget, Mini widget, Show dynamic island, Move widgets and island (check items kept in sync with Settings).
 - **Taskbar / Dock badge:** the assigned-to-me count as an overlay badge on the Windows taskbar button and the macOS Dock tile (hidden when 0; re-applied when the window is shown).
+
+## Round 7 changes
+
+- **Custom window chrome:** the main window is transparent with a rounded frame, a custom title bar (drag to move, double-click to maximise) and custom minimise / maximise / close buttons with hover animation (fading background, popping glyph; close turns red and spins). Corners square off while maximised. If your GPU/driver draws black corners, remove `TransparencyLevelHint` in `MainWindow.axaml` and set the frame's `CornerRadius` to 0.
+- **Notification timeouts are synced:** a notification that ends on the toast (close, click or timeout) also ends on the dynamic island, and vice versa.
+- **My PRs buttons** are now three equal-width buttons (Details, Review timer, GitHub) that always fit the card.
+- **Steam-style 3D tilt:** the front card in My PRs leans towards the mouse in 3D with a moving glare (`Controls/Tilt.cs`, driven by `PullRequestCardViewModel.IsFront`).
+- **Collapsible sidebar:** the arrow button at the bottom of the sidebar collapses it to an icon strip (remembered in settings as `SidebarPinned`). While collapsed it opens automatically over the pages when the mouse is over it and closes when the mouse leaves; the pages do not move.

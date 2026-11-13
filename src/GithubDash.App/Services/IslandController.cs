@@ -20,8 +20,8 @@ public sealed class IslandController(
 
     public bool IsActive => _window is not null;
 
-    /// <summary>Raised when the person closes or clicks a notification on the island.</summary>
-    public event Action<ToastRequest>? UserClosed;
+    /// <summary>Raised when a notification on the island ends (closed, clicked or timed out).</summary>
+    public event Action<ToastRequest>? Closed;
 
     /// <summary>Closes the notification (or drops it from the queue) because it was closed as a corner toast.</summary>
     public void CloseFor(ToastRequest request) => Dispatcher.UIThread.Post(() =>
@@ -48,7 +48,7 @@ public sealed class IslandController(
         if (s.ShowDynamicIsland && _window is null)
         {
             _window = new IslandWindow(OnActivated) { DataContext = shell };
-            _window.UserDismissed += request => UserClosed?.Invoke(request);
+            _window.Dismissed += request => Closed?.Invoke(request);
             _window.Show();
             _window.PlaceAt(s.IslandX, s.IslandY);
         }

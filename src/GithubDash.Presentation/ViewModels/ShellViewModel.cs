@@ -223,6 +223,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public bool HasError { get => _hasError; private set => Set(ref _hasError, value); }
     public bool ReduceMotion { get => _reduceMotion; private set => Set(ref _reduceMotion, value); }
 
+    /// <summary>True: the sidebar stays open. False: it shows only icons and opens while hovered.</summary>
+    public bool SidebarPinned
+    {
+        get => _settings.Current.SidebarPinned;
+        set
+        {
+            if (_settings.Current.SidebarPinned == value) return;
+            _ = _settings.UpdateAsync(s => s with { SidebarPinned = value });
+        }
+    }
+
     public ICommand NavigateCommand { get; }
     public ICommand RefreshCommand { get; }
 
@@ -238,7 +249,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         CurrentPage = page;
     }
 
-    private void OnSettingsChanged(AppSettings settings) => _ui.Post(() => ReduceMotion = settings.ReduceMotion);
+    private void OnSettingsChanged(AppSettings settings) => _ui.Post(() =>
+    {
+        ReduceMotion = settings.ReduceMotion;
+        Raise(nameof(SidebarPinned));
+    });
 
     private void OnStateChanged(MonitorState state)
     {

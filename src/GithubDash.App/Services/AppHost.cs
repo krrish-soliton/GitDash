@@ -99,8 +99,8 @@ public sealed class AppHost : IDisposable
         _island = new IslandController(Shell, Settings, launcher, showMainWindow);
         toasts.Island = _island.TryShow;
         // Closing a notification on one surface closes the same notification on the other.
-        toasts.UserClosed += _island.CloseFor;
-        _island.UserClosed += toasts.CloseFor;
+        toasts.Closed += _island.CloseFor;
+        _island.Closed += toasts.CloseFor;
         _tray = new TrayController(Shell.Widget, Settings, showMainWindow, quit);
     }
 

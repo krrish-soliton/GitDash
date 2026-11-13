@@ -45,13 +45,13 @@ public partial class IslandWindow : FloatingWindow
 
     public bool IsShowingNotification => _current is not null;
 
-    /// <summary>Raised when the person closes or clicks the notification (not when its timer ends).</summary>
-    public event Action<ToastRequest>? UserDismissed;
+    /// <summary>Raised when the notification ends here (closed, clicked or timed out).</summary>
+    public event Action<ToastRequest>? Dismissed;
 
     /// <summary>Closes the notification because the same one was closed somewhere else (the corner toast).</summary>
     public void DismissFromOutside(ToastRequest request)
     {
-        if (ReferenceEquals(_current, request)) Dismiss(byUser: false);
+        if (ReferenceEquals(_current, request)) Dismiss(fromOutside: true);
     }
 
     /// <summary>Mouse passes through unless click-through is off, it is being moved, or it shows a notification that must be closed by hand.</summary>
@@ -187,7 +187,7 @@ public partial class IslandWindow : FloatingWindow
         }
     }
 
-    private void Dismiss(bool byUser = false)
+    private void Dismiss(bool fromOutside = false)
     {
         var closed = _current;
         _current = null;
@@ -198,7 +198,7 @@ public partial class IslandWindow : FloatingWindow
         Life.Classes.Remove("run");
         if (_hoverOpen && IsLocked) ShowHoverDetails();
         else Collapse();
-        if (byUser && closed is not null) UserDismissed?.Invoke(closed);
+        if (!fromOutside && closed is not null) Dismissed?.Invoke(closed);
     }
 
     protected override void OnHoverChanged(bool hovering)
@@ -257,9 +257,9 @@ public partial class IslandWindow : FloatingWindow
         if (!IsLocked) return; // dragging
         if (e.Source is Visual v && v.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
         var request = _current;
-        if (request is not null) Dismiss(byUser: true);
+        if (request is not null) Dismiss();
         _activated(request);
     }
 
-    private void OnCloseClick(object? sender, RoutedEventArgs e) => Dismiss(byUser: true);
+    private void OnCloseClick(object? sender, RoutedEventArgs e) => Dismiss();
 }
