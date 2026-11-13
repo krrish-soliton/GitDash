@@ -62,6 +62,9 @@ public sealed record AppSettings
     /// <summary>With the dynamic island on: also show the ordinary corner toast, not only the island.</summary>
     public bool ShowToastWithIsland { get; init; } = true;
 
+    /// <summary>Sidebar stays open (true) or collapses to icons and opens while the mouse is over it (false).</summary>
+    public bool SidebarPinned { get; init; } = true;
+
     public bool ShowFloatingWidget { get; init; }
 
     /// <summary>Locked: the widget ignores the mouse (clicks go to whatever is underneath). Unlocked: it can be dragged.</summary>

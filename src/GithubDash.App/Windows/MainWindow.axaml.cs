@@ -11,6 +11,7 @@ namespace GithubDash.App.Windows;
 public partial class MainWindow : Window
 {
     private ShellViewModel? _shell;
+    private bool _sidebarHover;
 
     public MainWindow()
     {
@@ -24,11 +25,53 @@ public partial class MainWindow : Window
         _shell = shell;
         if (_shell is not null) _shell.PropertyChanged += OnShellChanged;
         UpdateMotion();
+        UpdateSidebar();
     }
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ShellViewModel.ReduceMotion)) UpdateMotion();
+        if (e.PropertyName == nameof(ShellViewModel.SidebarPinned)) UpdateSidebar();
+    }
+
+    private const double SidebarOpen = 232, SidebarIcons = 78;
+
+    /// <summary>
+    /// Pinned: the sidebar is open and pushes the pages aside. Not pinned: it rests as an icon strip and, while the
+    /// mouse is over it, opens over the pages without moving them.
+    /// </summary>
+    private void UpdateSidebar()
+    {
+        var pinned = _shell?.SidebarPinned ?? true;
+        var open = pinned || _sidebarHover;
+        if (this.FindControl<Panel>("SidebarHost") is { } host) host.Width = pinned ? SidebarOpen : SidebarIcons;
+        if (this.FindControl<Border>("Sidebar") is { } bar)
+        {
+            bar.Width = open ? SidebarOpen : SidebarIcons;
+            bar.Classes.Set("collapsed", !open);
+            bar.Classes.Set("floating", !pinned && open);
+        }
+
+        if (this.FindControl<PathIcon>("CollapseIcon") is { } collapse) collapse.IsVisible = pinned;
+        if (this.FindControl<PathIcon>("PinIcon") is { } pin) pin.IsVisible = !pinned;
+    }
+
+    private void OnSidebarEntered(object? sender, PointerEventArgs e)
+    {
+        _sidebarHover = true;
+        UpdateSidebar();
+    }
+
+    private void OnSidebarExited(object? sender, PointerEventArgs e)
+    {
+        _sidebarHover = false;
+        UpdateSidebar();
+    }
+
+    private void OnPinClick(object? sender, RoutedEventArgs e)
+    {
+        if (_shell is null) return;
+        _shell.SidebarPinned = !_shell.SidebarPinned;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

@@ -145,4 +145,4 @@ Only `GithubDash.App` (Avalonia) and the test project use NuGet packages.
 - **Notification timeouts are synced:** a notification that ends on the toast (close, click or timeout) also ends on the dynamic island, and vice versa.
 - **My PRs buttons** are now three equal-width buttons (Details, Review timer, GitHub) that always fit the card.
 - **Steam-style 3D tilt:** the front card in My PRs leans towards the mouse in 3D with a moving glare (`Controls/Tilt.cs`, driven by `PullRequestCardViewModel.IsFront`).
-
+- **Collapsible sidebar:** the arrow button at the bottom of the sidebar collapses it to an icon strip (remembered in settings as `SidebarPinned`). While collapsed it opens automatically over the pages when the mouse is over it and closes when the mouse leaves; the pages do not move.

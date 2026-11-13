@@ -62,6 +62,38 @@
     <Style Selector="Button.caption.close:pointerover PathIcon">
       <Setter Property="RenderTransform" Value="rotate(90deg) scale(1.1)" />
     </Style>
+
+    <!-- Collapsible sidebar: widths animate; labels fade; the collapsed state shows only icons -->
+    <Style Selector="Panel#SidebarHost, Border#Sidebar">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Width" Duration="0:0:0.22" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border#Sidebar .hc">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed .hc">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border#Sidebar .sc">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed .sc">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Border#Sidebar.collapsed .hv">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border#Sidebar.floating">
+      <Setter Property="BoxShadow" Value="0 0 34 0 #80000000" />
+    </Style>
   </Window.Styles>
 
   <Window.DataTemplates>
@@ -118,30 +150,35 @@
         </Grid>
       </Border>
 
-  <Grid ColumnDefinitions="232,*">
+  <Grid ColumnDefinitions="Auto,*">
 
     <!-- Sidebar -->
-    <Border Grid.Column="0" Background="{DynamicResource SidebarBrush}"
-            BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,22,16,16">
+    <Panel x:Name="SidebarHost" Grid.Column="0" Width="232" ZIndex="10">
+    <Border x:Name="Sidebar" Width="232" HorizontalAlignment="Left" ClipToBounds="True"
+            Background="{DynamicResource SidebarBrush}"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,22,16,16"
+            PointerEntered="OnSidebarEntered" PointerExited="OnSidebarExited">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="6,0,0,26">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="4,0,0,26">
           <Border Width="36" Height="36" CornerRadius="11" Background="{StaticResource AccentGradient}">
             <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="White" />
           </Border>
-          <StackPanel VerticalAlignment="Center">
+          <StackPanel Classes="hc" VerticalAlignment="Center">
             <TextBlock Text="GithubDash" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
             <TextBlock Text="Pull request radar" Classes="muted" FontSize="11" />
           </StackPanel>
         </StackPanel>
 
-        <!-- Sync status -->
+        <!-- Sync status, refresh and the pin button -->
         <StackPanel DockPanel.Dock="Bottom" Spacing="10">
-          <Border IsVisible="{Binding HasError}" Background="{DynamicResource ErrorBoxBrush}" CornerRadius="10" Padding="10"
-                  ToolTip.Tip="{Binding Error}">
-            <TextBlock Text="{Binding Error}" Classes="error" FontSize="11" TextWrapping="Wrap" MaxLines="4"
-                       TextTrimming="CharacterEllipsis" />
-          </Border>
-          <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Classes="hc">
+            <Border IsVisible="{Binding HasError}" Background="{DynamicResource ErrorBoxBrush}" CornerRadius="10" Padding="10"
+                    ToolTip.Tip="{Binding Error}">
+              <TextBlock Text="{Binding Error}" Classes="error" FontSize="11" TextWrapping="Wrap" MaxLines="4"
+                         TextTrimming="CharacterEllipsis" />
+            </Border>
+          </StackPanel>
+          <Grid Classes="hv" ColumnDefinitions="Auto,*,Auto">
             <Panel Width="10" Height="10" VerticalAlignment="Center" Margin="6,0,10,0">
               <Ellipse Fill="{StaticResource GreenBrush}" IsVisible="{Binding !IsSyncing}" />
               <Ellipse Classes="pulse" Fill="{StaticResource Accent2Brush}" IsVisible="{Binding IsSyncing}" />
@@ -153,6 +190,18 @@
               <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
             </Button>
           </Grid>
+          <!-- Collapsed: only the refresh icon, lined up with the nav icons -->
+          <Button Classes="round sc" Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
+                  Command="{Binding RefreshCommand}" ToolTip.Tip="Sync now">
+            <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+          </Button>
+          <Button Classes="round" Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
+                  Click="OnPinClick" ToolTip.Tip="Collapse or pin the sidebar">
+            <Panel>
+              <PathIcon x:Name="CollapseIcon" Data="{StaticResource IconLeft}" Width="14" Height="14" />
+              <PathIcon x:Name="PinIcon" Data="{StaticResource IconRight}" Width="14" Height="14" IsVisible="False" />
+            </Panel>
+          </Button>
         </StackPanel>
 
         <ListBox Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
@@ -161,13 +210,14 @@
               <StackPanel Orientation="Horizontal" Spacing="12">
                 <PathIcon Width="17" Height="17"
                           Data="{Binding Icon, Converter={x:Static conv:GeometryKeyConverter.Instance}}" />
-                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
+                <TextBlock Classes="hc" Text="{Binding Title}" FontSize="14" FontWeight="Medium" VerticalAlignment="Center" />
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
       </DockPanel>
     </Border>
+    </Panel>
 
     <!-- Pages -->
     <DockPanel Grid.Column="1">
