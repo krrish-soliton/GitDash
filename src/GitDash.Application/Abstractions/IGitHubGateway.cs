@@ -49,6 +49,11 @@ public interface IGitHubGateway
     Task<PersonActivity> GetPersonActivityAsync(
         string token, RepositoryRef repository, string login, CancellationToken ct);
 
+    /// <summary>Workflow runs triggered by one person since the two given moments, and in total. Counts only; no run details.</summary>
+    Task<PipelineRunCounts> GetPipelineRunCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct);
+
     /// <summary>
     /// Cheap "did anything change?" check for one repository. Pass the ETag from the previous probe;
     /// an unchanged repository answers "not modified", which does not use up API quota.

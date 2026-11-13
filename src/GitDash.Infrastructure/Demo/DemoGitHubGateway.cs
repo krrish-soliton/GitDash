@@ -223,6 +223,14 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
         });
     }
 
+    public Task<PipelineRunCounts> GetPipelineRunCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        var seed = Math.Abs(login.GetHashCode()) % 7;
+        return Task.FromResult(new PipelineRunCounts(6 + seed * 2, 24 + seed * 9, 310 + seed * 85));
+    }
+
     public Task<PullRequestDetails> GetDetailsAsync(
         string token, RepositoryRef repository, int number, CancellationToken ct)
     {

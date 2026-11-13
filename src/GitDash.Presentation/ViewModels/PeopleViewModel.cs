@@ -129,6 +129,9 @@ public sealed class PeopleViewModel : PageViewModel
 
     // ----- Person dashboard (loaded from GitHub when a person is opened) -----
     public ObservableCollection<PersonTileViewModel> ActivityTiles { get; } = [];
+
+    /// <summary>The single small card: merge rate and pipeline runs this week, this month and in total.</summary>
+    public ObservableCollection<PersonTileViewModel> SummaryStats { get; } = [];
     public ObservableCollection<PersonPullRequestViewModel> RecentPullRequests { get; } = [];
     public ObservableCollection<PersonEventViewModel> ActivityEvents { get; } = [];
     public ObservableCollection<string> PendingBranches { get; } = [];
@@ -179,6 +182,7 @@ public sealed class PeopleViewModel : PageViewModel
         ActivityError = string.Empty;
         Raise(nameof(HasActivityError));
         ActivityTiles.Clear();
+        SummaryStats.Clear();
         RecentPullRequests.Clear();
         ActivityEvents.Clear();
         PendingBranches.Clear();
@@ -231,11 +235,18 @@ public sealed class PeopleViewModel : PageViewModel
             new("Merged", a.Merged.ToString("N0", inv), "Green"),
             new("Closed unmerged", a.Closed.ToString("N0", inv), "Red"),
             new("Drafts", a.Draft.ToString("N0", inv), "Muted"),
-            new("Merge rate", a.Merged + a.Closed == 0 ? "–" : a.MergeRate.ToString("P0", inv), "Green"),
             new("PRs commented on", a.PullRequestsCommentedOn.ToString("N0", inv), "Cyan"),
             new("PRs reviewed", a.PullRequestsReviewed.ToString("N0", inv), "Amber"),
             new("Comments (recent)", a.CommentsInRecent.ToString("N0", inv), "Cyan"),
             new("Pending branches", a.PendingBranches.Count.ToString("N0", inv), a.PendingBranches.Count > 0 ? "Amber" : "Muted"),
+        ]);
+        static string Runs(int? n) => n is { } v ? v.ToString("N0", CultureInfo.InvariantCulture) : "–";
+        DashboardViewModel.Replace(SummaryStats,
+        [
+            new("Merge rate", a.Merged + a.Closed == 0 ? "–" : a.MergeRate.ToString("P0", inv), "Green"),
+            new("Runs this week", Runs(a.PipelineRuns.Week), "Cyan"),
+            new("Runs this month", Runs(a.PipelineRuns.Month), "Violet"),
+            new("Total runs", Runs(a.PipelineRuns.Total), "Amber"),
         ]);
         DashboardViewModel.Replace(PendingBranches, a.PendingBranches);
         HasPendingBranches = PendingBranches.Count > 0;

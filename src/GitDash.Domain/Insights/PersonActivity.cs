@@ -6,6 +6,15 @@ public enum PersonEventKind { Opened, Merged, Closed, Comment, Review }
 public sealed record PersonEvent(
     DateTimeOffset At, PersonEventKind Kind, int Number, string PullRequestTitle, string Text, string Url);
 
+/// <summary>
+/// How many GitHub Actions workflow runs a person triggered. A count is null when GitHub would not tell us
+/// (for example Actions is disabled or the token cannot read it).
+/// </summary>
+public sealed record PipelineRunCounts(int? Week, int? Month, int? Total)
+{
+    public static PipelineRunCounts Unknown { get; } = new(null, null, null);
+}
+
 public sealed record PersonPullRequest(
     int Number, string Title, string Url, string State, bool IsDraft, DateTimeOffset CreatedAt, DateTimeOffset? ClosedAt);
 
@@ -35,6 +44,9 @@ public sealed record PersonActivity
     /// work that is still waiting to go somewhere.
     /// </summary>
     public IReadOnlyList<string> PendingBranches { get; init; } = [];
+
+    /// <summary>Workflow runs triggered by the person: this week, this month and in total.</summary>
+    public PipelineRunCounts PipelineRuns { get; init; } = PipelineRunCounts.Unknown;
 
     public IReadOnlyList<PersonPullRequest> RecentPullRequests { get; init; } = [];
 

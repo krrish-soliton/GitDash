@@ -117,6 +117,38 @@ public sealed partial class GitHubGateway(HttpClient http) : IGitHubGateway
         return PullRequestMapper.MapPersonActivity(data, repository, login);
     }
 
+    public async Task<PipelineRunCounts> GetPipelineRunCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        if (!LoginPattern().IsMatch(login)) return PipelineRunCounts.Unknown;
+
+        // Each call asks for one run only: the answer we want is the "total_count" field.
+        var week = RunCountAsync(token, repository, login, weekStart, ct);
+        var month = RunCountAsync(token, repository, login, monthStart, ct);
+        var total = RunCountAsync(token, repository, login, null, ct);
+        return new PipelineRunCounts(await week.ConfigureAwait(false), await month.ConfigureAwait(false),
+            await total.ConfigureAwait(false));
+    }
+
+    private async Task<int?> RunCountAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset? since, CancellationToken ct)
+    {
+        var created = since is { } s ? "&created=" + Uri.EscapeDataString(">=" + s.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")) : string.Empty;
+        var uri = new Uri(
+            $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
+            $"{Uri.EscapeDataString(repository.Name)}/actions/runs?actor={Uri.EscapeDataString(login)}&per_page=1{created}");
+        using var request = Authorized(HttpMethod.Get, uri, token);
+        using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+        // No Actions access (or Actions turned off) is normal; the card shows a dash instead of failing.
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.Unauthorized) return null;
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        using var doc = await JsonDocument
+            .ParseAsync(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), default, ct)
+            .ConfigureAwait(false);
+        return doc.RootElement.Int("total_count");
+    }
+
     public async Task<PullRequestDetails> GetDetailsAsync(
         string token, RepositoryRef repository, int number, CancellationToken ct)
     {

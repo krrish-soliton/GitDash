@@ -523,6 +523,28 @@
             <TextBlock Classes="error" Text="{Binding ActivityError}" TextWrapping="Wrap"
                        IsVisible="{Binding HasActivityError}" />
 
+            <!-- One small card: merge rate and pipeline runs -->
+            <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="16,10" HorizontalAlignment="Left"
+                    IsVisible="{Binding HasActivity}">
+              <StackPanel Spacing="6">
+                <TextBlock Text="MERGE RATE · PIPELINE RUNS" Classes="muted" FontSize="10.5" FontWeight="Bold" LetterSpacing="1" />
+                <ItemsControl ItemsSource="{Binding SummaryStats}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="26" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PersonTileViewModel">
+                      <StackPanel Spacing="0">
+                        <TextBlock Text="{Binding Value}" FontSize="20" FontWeight="Bold"
+                                   Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                        <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+
             <ItemsControl ItemsSource="{Binding ActivityTiles}" IsVisible="{Binding HasActivity}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
