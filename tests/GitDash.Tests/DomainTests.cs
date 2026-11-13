@@ -499,4 +499,48 @@ public class Round10Tests
         Assert.True(capped.Any(b => b.Color == GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor));
         Assert.Equal(0, GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(0, 0, 0).Count);
     }
+
+    [Fact]
+    public void Desk_books_are_ordered_assigned_then_review_then_raised()
+    {
+        var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 2, 3);
+        Assert.Equal(6, books.Count);
+        var colors = books.Select(b => b.Color).ToList();
+        var assigned = colors.IndexOf(GitDash.Presentation.ViewModels.PersonViewModel.AssignedBookColor);
+        var review = colors.IndexOf(GitDash.Presentation.ViewModels.PersonViewModel.ReviewBookColor);
+        var raised = colors.IndexOf(GitDash.Presentation.ViewModels.PersonViewModel.RaisedBookColor);
+        Assert.True(assigned < review);
+        Assert.True(review < raised);
+    }
+
+    [Fact]
+    public void Pending_branch_colours_follow_pr_and_age()
+    {
+        var now = Now;
+        var withPr = new GitDash.Domain.Insights.PendingBranch("a", now.AddDays(-30), true);
+        var fresh = new GitDash.Domain.Insights.PendingBranch("b", now.AddDays(-3), false);
+        var old = new GitDash.Domain.Insights.PendingBranch("c", now.AddDays(-15), false);
+        Assert.Equal("Green", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(withPr, now).Tone);
+        Assert.Equal("Amber", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(fresh, now).Tone);
+        Assert.Equal("Red", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(old, now).Tone);
+    }
+
+    [Fact]
+    public void Repository_option_reports_clicks_but_not_silent_updates()
+    {
+        var clicks = 0;
+        var option = new GitDash.Presentation.ViewModels.RepositoryOptionViewModel("o/r", false, _ => clicks++);
+        option.SetChecked(true);
+        Assert.Equal(0, clicks);
+        option.IsSelected = false;
+        Assert.Equal(1, clicks);
+    }
+
+    [Fact]
+    public void Window_placement_and_repository_selection_have_safe_defaults()
+    {
+        var settings = new GitDash.Application.Settings.AppSettings();
+        Assert.True(settings.MainWindow is null);
+        Assert.Equal(0, settings.SelectedRepositories.Count);
+    }
 }

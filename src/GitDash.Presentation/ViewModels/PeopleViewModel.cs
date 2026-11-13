@@ -18,8 +18,8 @@ public sealed class EntranceRegistry
     public bool TryEnter(string key) => _seen.Add(key);
 }
 
-/// <summary>One book on a desk: a hex colour for the type of PR waiting and a height in pixels.</summary>
-public sealed record DeskBookItem(string Color, double Height);
+/// <summary>One book lying in the pile on a desk: a hex colour for the type of PR waiting and a width in pixels.</summary>
+public sealed record DeskBookItem(string Color, double Width);
 
 /// <summary>One animated person standing on a floor.</summary>
 public sealed record PersonViewModel(
@@ -44,14 +44,14 @@ public sealed record PersonViewModel(
     public int ToReview { get; init; }
 
     /// <summary>
-    /// Books stacked on the desk, one per waiting item and coloured by type: Assigned cyan, Review Requested amber,
+    /// Books piled on the desk from top to bottom, one per waiting item and coloured by type: Assigned cyan, Review Requested amber,
     /// PR Raised violet. At most <see cref="MaxDeskBooks"/> are drawn; every type present keeps at least one.
     /// </summary>
     public IReadOnlyList<DeskBookItem> DeskBooks => BuildDeskBooks(Assigned, ToReview, Raised);
 
     public const int MaxDeskBooks = 7;
     public const string AssignedBookColor = "#22D3EE", ReviewBookColor = "#F59E0B", RaisedBookColor = "#A78BFA";
-    private static readonly int[] BookHeights = [9, 7, 10, 8, 6, 9, 7];
+    private static readonly int[] BookWidths = [30, 26, 32, 28, 24, 31, 27];
 
     public static IReadOnlyList<DeskBookItem> BuildDeskBooks(int assigned, int toReview, int raised)
     {
@@ -74,7 +74,7 @@ public sealed record PersonViewModel(
         var books = new List<DeskBookItem>();
         for (var t = 0; t < 3; t++)
             for (var i = 0; i < take[t]; i++)
-                books.Add(new DeskBookItem(colors[t], BookHeights[books.Count % BookHeights.Length]));
+                books.Add(new DeskBookItem(colors[t], BookWidths[books.Count % BookWidths.Length]));
         return books;
     }
 
@@ -116,6 +116,21 @@ public sealed record FloorViewModel(
 public sealed record PullRequestLinkViewModel(string Title, string Subtitle, string Url);
 
 public sealed record PersonTileViewModel(string Label, string Value, string Tone);
+
+/// <summary>A branch chip: green with a pull request, yellow without one, red without one for over two weeks.</summary>
+public sealed record PendingBranchViewModel(string Name, string Tone, string Tip)
+{
+    public static PendingBranchViewModel From(PendingBranch branch, DateTimeOffset now)
+    {
+        var age = branch.LastCommitAt is { } at ? $"last commit {Humanize.Age(now - at)} ago" : "last commit unknown";
+        return branch.HealthAt(now) switch
+        {
+            PendingBranchHealth.HasPullRequest => new(branch.Name, "Green", $"Has an open pull request · {age}"),
+            PendingBranchHealth.Stale => new(branch.Name, "Red", $"No pull request for over two weeks · {age}"),
+            _ => new(branch.Name, "Amber", $"No pull request yet · {age}"),
+        };
+    }
+}
 
 public sealed record PersonEventViewModel(string When, string Kind, string Title, string Text, string Url);
 
@@ -169,7 +184,10 @@ public sealed class PeopleViewModel : PageViewModel
     public ObservableCollection<PersonTileViewModel> SummaryStats { get; } = [];
     public ObservableCollection<PersonPullRequestViewModel> RecentPullRequests { get; } = [];
     public ObservableCollection<PersonEventViewModel> ActivityEvents { get; } = [];
-    public ObservableCollection<string> PendingBranches { get; } = [];
+    public ObservableCollection<PendingBranchViewModel> PendingBranches { get; } = [];
+
+    /// <summary>Live counts for the open person: waiting on them, assigned to them, raised by them.</summary>
+    public ObservableCollection<PersonTileViewModel> LiveTiles { get; } = [];
     public bool IsActivityLoading { get => _isActivityLoading; private set => Set(ref _isActivityLoading, value); }
     public bool HasActivity { get => _hasActivity; private set => Set(ref _hasActivity, value); }
     public bool HasPendingBranches { get => _hasPendingBranches; private set => Set(ref _hasPendingBranches, value); }
@@ -274,6 +292,8 @@ public sealed class PeopleViewModel : PageViewModel
             new("PRs reviewed", a.PullRequestsReviewed.ToString("N0", inv), "Amber"),
             new("Comments (recent)", a.CommentsInRecent.ToString("N0", inv), "Cyan"),
             new("Pending branches", a.PendingBranches.Count.ToString("N0", inv), a.PendingBranches.Count > 0 ? "Amber" : "Muted"),
+            new("Branches without PR > 2 weeks", a.PendingBranches.Count(b => b.HealthAt(now) == PendingBranchHealth.Stale).ToString("N0", inv),
+                a.PendingBranches.Any(b => b.HealthAt(now) == PendingBranchHealth.Stale) ? "Red" : "Muted"),
         ]);
         static string Runs(int? n) => n is { } v ? v.ToString("N0", CultureInfo.InvariantCulture) : "–";
         DashboardViewModel.Replace(SummaryStats,
@@ -283,7 +303,7 @@ public sealed class PeopleViewModel : PageViewModel
             new("Runs this month", Runs(a.PipelineRuns.Month), "Violet"),
             new("Total runs", Runs(a.PipelineRuns.Total), "Amber"),
         ]);
-        DashboardViewModel.Replace(PendingBranches, a.PendingBranches);
+        DashboardViewModel.Replace(PendingBranches, a.PendingBranches.Select(b => PendingBranchViewModel.From(b, now)));
         HasPendingBranches = PendingBranches.Count > 0;
         DashboardViewModel.Replace(RecentPullRequests, a.RecentPullRequests.Select(p => new PersonPullRequestViewModel(
             p.Title,
@@ -326,6 +346,13 @@ public sealed class PeopleViewModel : PageViewModel
                 _ => $"review requested · by {p.Author}",
             })));
 
+        var assignedCount = onFloor.Count(p => p.Assignees.ContainsLogin(person.Login));
+        DashboardViewModel.Replace(LiveTiles,
+        [
+            new("Waiting On Them", WaitingItems.Count.ToString("N0", CultureInfo.InvariantCulture), "Red"),
+            new("Assigned", assignedCount.ToString("N0", CultureInfo.InvariantCulture), "Cyan"),
+            new("Raised", RaisedItems.Count.ToString("N0", CultureInfo.InvariantCulture), "Violet"),
+        ]);
         HasRaisedItems = RaisedItems.Count > 0;
         HasWaitingItems = WaitingItems.Count > 0;
         PersonSubtitle = $"{person.Repository} · {RaisedItems.Count} raised · {WaitingItems.Count} waiting on them";

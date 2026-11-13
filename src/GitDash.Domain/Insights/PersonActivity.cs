@@ -1,5 +1,27 @@
 namespace GitDash.Domain.Insights;
 
+/// <summary>A branch that has not been merged: with an open pull request, or without any pull request.</summary>
+public sealed record PendingBranch(string Name, DateTimeOffset? LastCommitAt, bool HasPullRequest)
+{
+    /// <summary>A branch without a pull request for longer than this is considered neglected.</summary>
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromDays(14);
+
+    public PendingBranchHealth HealthAt(DateTimeOffset now) =>
+        HasPullRequest ? PendingBranchHealth.HasPullRequest
+        : LastCommitAt is { } at && now - at > StaleAfter ? PendingBranchHealth.Stale
+        : PendingBranchHealth.Waiting;
+}
+
+public enum PendingBranchHealth
+{
+    /// <summary>Has a pull request (green).</summary>
+    HasPullRequest,
+    /// <summary>No pull request yet (yellow).</summary>
+    Waiting,
+    /// <summary>No pull request and untouched for more than two weeks (red).</summary>
+    Stale,
+}
+
 public enum PersonEventKind { Opened, Merged, Closed, Comment, Review }
 
 /// <summary>One thing a person did on a pull request.</summary>
@@ -41,9 +63,9 @@ public sealed record PersonActivity
 
     /// <summary>
     /// Branches whose newest commit is theirs and that were never merged through a pull request —
-    /// work that is still waiting to go somewhere.
+    /// work that is still waiting to go somewhere. Branches with an open pull request are included.
     /// </summary>
-    public IReadOnlyList<string> PendingBranches { get; init; } = [];
+    public IReadOnlyList<PendingBranch> PendingBranches { get; init; } = [];
 
     /// <summary>Workflow runs triggered by the person: this week, this month and in total.</summary>
     public PipelineRunCounts PipelineRuns { get; init; } = PipelineRunCounts.Unknown;

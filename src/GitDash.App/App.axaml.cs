@@ -27,6 +27,7 @@ public partial class App : AvaloniaApplication
             var window = new MainWindow();
             var host = _host = AppHost.Create(demo, () => ShowMainWindow(window), () => Quit(desktop));
             window.DataContext = host.Shell;
+            new WindowPlacementKeeper(window, host.Settings).Restore();
             ApplyTheme(host.Settings.Current.Theme);
             host.Settings.Changed += s => Dispatcher.UIThread.Post(() => ApplyTheme(s.Theme));
             desktop.MainWindow = window;

@@ -84,8 +84,9 @@ internal static class GitHubQueries
             refs(refPrefix: "refs/heads/", first: 100, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
               nodes {
                 name
-                target { ... on Commit { author { user { login } } } }
-                associatedPullRequests(states: [MERGED], first: 1) { totalCount }
+                target { ... on Commit { committedDate author { user { login } } } }
+                mergedPullRequests: associatedPullRequests(states: [MERGED], first: 1) { totalCount }
+                openPullRequests: associatedPullRequests(states: [OPEN], first: 1) { totalCount }
               }
             }
           }

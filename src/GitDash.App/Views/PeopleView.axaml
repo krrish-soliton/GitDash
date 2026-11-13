@@ -97,20 +97,51 @@
         </Animation>
       </Style.Animations>
     </Style>
-    <!-- Typing hands -->
-    <Style Selector="Window.motion Border.hand1">
+    <!-- Keyboard: keys light up in three alternating groups; mouse: nudges and its button clicks -->
+    <Style Selector="Border.key">
+      <Setter Property="Background" Value="#3B4262" />
+      <Setter Property="CornerRadius" Value="1" />
+    </Style>
+    <Style Selector="Window.motion Border.key.k0">
       <Style.Animations>
-        <Animation Duration="0:0:0.17" IterationCount="INFINITE" PlaybackDirection="Alternate">
-          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
-          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="-3" /></KeyFrame>
+        <Animation Duration="0:0:0.34" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
         </Animation>
       </Style.Animations>
     </Style>
-    <Style Selector="Window.motion Border.hand2">
+    <Style Selector="Window.motion Border.key.k1">
       <Style.Animations>
-        <Animation Duration="0:0:0.21" Delay="0:0:0.08" IterationCount="INFINITE" PlaybackDirection="Alternate">
-          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="-3" /></KeyFrame>
-          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
+        <Animation Duration="0:0:0.23" Delay="0:0:0.11" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Border.key.k2">
+      <Style.Animations>
+        <Animation Duration="0:0:0.41" Delay="0:0:0.05" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.5" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Panel.mouse">
+      <Style.Animations>
+        <Animation Duration="0:0:1.2" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-1.5" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="2" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Window.motion Border.click">
+      <Style.Animations>
+        <Animation Duration="0:0:0.9" IterationCount="INFINITE">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="60%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="68%"><Setter Property="Opacity" Value="0.15" /></KeyFrame>
+          <KeyFrame Cue="80%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
         </Animation>
       </Style.Animations>
     </Style>
@@ -170,6 +201,19 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="Bold" />
     </Style>
+    <!-- Count in a heading -->
+    <Style Selector="Border.countBadge">
+      <Setter Property="Background" Value="{StaticResource Accent2Brush}" />
+      <Setter Property="CornerRadius" Value="999" />
+      <Setter Property="Padding" Value="8,1" />
+      <Setter Property="MinWidth" Value="22" />
+    </Style>
+    <Style Selector="Border.countBadge > TextBlock">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="#0B0D14" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
     <Style Selector="Border.station:pointerover">
       <Setter Property="Background" Value="#14FFFFFF" />
     </Style>
@@ -182,7 +226,7 @@
         <StackPanel Spacing="4">
           <TextBlock Classes="h1" Text="The office" />
           <TextBlock Classes="muted" TextWrapping="Wrap"
-                     Text="Every repository is an office. People walk in and sit down at a desk when they have pull requests to deal with — one sheet of paper per PR they raised. Click anyone for their full activity." />
+                     Text="Every repository is an office. People walk in and sit down at a desk when they have pull requests to deal with — a pile of books on the desk, one per PR waiting (Assigned on top, then Review Requested, then Raised). Click anyone for their full activity." />
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <Border Classes="chip">
@@ -366,31 +410,51 @@
                                       <Border Width="8" Height="8" VerticalAlignment="Bottom" Background="{DynamicResource LineBrush}" />
                                     </Panel>
 
-                                    <!-- Books: one per waiting item, coloured by type (Assigned / Review Requested / PR Raised) -->
+                                    <!-- Book pile, top to bottom: Assigned (cyan), Review Requested (amber), PR Raised (violet) -->
                                     <ItemsControl HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,60"
                                                   ItemsSource="{Binding DeskBooks}">
                                       <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="1" /></ItemsPanelTemplate>
+                                        <ItemsPanelTemplate><StackPanel Orientation="Vertical" Spacing="1" /></ItemsPanelTemplate>
                                       </ItemsControl.ItemsPanel>
                                       <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:DeskBookItem">
-                                          <Border Width="6" Height="{Binding Height}" VerticalAlignment="Bottom" CornerRadius="1,1,0,0"
+                                          <Border Width="{Binding Width}" Height="5" HorizontalAlignment="Right" CornerRadius="1.5"
                                                   Background="{Binding Color, Converter={x:Static conv:HexBrushConverter.Instance}}" />
                                         </DataTemplate>
                                       </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <!-- Typing hands (only for people who are working) -->
-                                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
-                                                VerticalAlignment="Bottom" Margin="0,0,0,58" IsVisible="{Binding IsWorking}">
-                                      <Border Classes="hand1" Width="14" Height="8" CornerRadius="4"
-                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}">
-                                        <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+                                    <!-- Keyboard and mouse (only for people who are working): keys flicker, the mouse button clicks -->
+                                    <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"
+                                                VerticalAlignment="Bottom" Margin="0,0,0,57" IsVisible="{Binding IsWorking}">
+                                      <Border Width="38" Height="13" CornerRadius="3" Background="#0B0D14"
+                                              BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="1.5">
+                                        <UniformGrid Rows="2" Columns="7">
+                                          <Border Classes="key k0" Margin="0.5"></Border>
+                                          <Border Classes="key k1" Margin="0.5"></Border>
+                                          <Border Classes="key k2" Margin="0.5"></Border>
+                                          <Border Classes="key k0" Margin="0.5"></Border>
+                                          <Border Classes="key k1" Margin="0.5"></Border>
+                                          <Border Classes="key k2" Margin="0.5"></Border>
+                                          <Border Classes="key k0" Margin="0.5"></Border>
+                                          <Border Classes="key k1" Margin="0.5"></Border>
+                                          <Border Classes="key k2" Margin="0.5"></Border>
+                                          <Border Classes="key k0" Margin="0.5"></Border>
+                                          <Border Classes="key k1" Margin="0.5"></Border>
+                                          <Border Classes="key k2" Margin="0.5"></Border>
+                                          <Border Classes="key k0" Margin="0.5"></Border>
+                                          <Border Classes="key k1" Margin="0.5"></Border>
+                                        </UniformGrid>
                                       </Border>
-                                      <Border Classes="hand2" Width="14" Height="8" CornerRadius="4"
-                                              Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}">
-                                        <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
-                                      </Border>
+                                      <Panel Width="12" Height="17" VerticalAlignment="Bottom" Classes="mouse">
+                                        <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
+                                        <Border CornerRadius="6,6,5,5" Background="#E2E8F0" BorderBrush="#0B0D14" BorderThickness="1" />
+                                        <Border Classes="click" Width="5" Height="7" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                Margin="1,1,0,0" CornerRadius="5,0,0,0"
+                                                Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                                        <Border Width="1" Height="7" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,1,0,0"
+                                                Background="#0B0D14" />
+                                      </Panel>
                                     </StackPanel>
 
                                     <!-- Standing person with nothing to do: paces next to the desk -->
@@ -477,7 +541,7 @@
           </ItemsControl>
 
           <StackPanel Orientation="Horizontal" Spacing="18">
-            <TextBlock Classes="muted" FontSize="12" Text="books on the desk = Assigned (cyan) · Review Requested (amber) · PR Raised (violet)" />
+            <TextBlock Classes="muted" FontSize="12" Text="book pile on the desk, top to bottom = Assigned (cyan) · Review Requested (amber) · PR Raised (violet)" />
             <TextBlock Classes="muted" FontSize="12" Text="circles on the desk = Assigned (cyan) · PR (violet) · Waiting (red)" />
             <TextBlock Classes="muted" FontSize="12" Text="standing = nothing on their plate" />
             <TextBlock Classes="muted" FontSize="12" Text="white ring = you" />
@@ -528,14 +592,32 @@
             <TextBlock Classes="error" Text="{Binding ActivityError}" TextWrapping="Wrap"
                        IsVisible="{Binding HasActivityError}" />
 
-            <!-- One small card: merge rate and pipeline runs -->
-            <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="16,10" HorizontalAlignment="Left"
+            <!-- Live counts: waiting on them, assigned to them, raised by them -->
+            <ItemsControl ItemsSource="{Binding LiveTiles}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PersonTileViewModel">
+                  <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10" Margin="0,0,8,0">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Value}" FontSize="24" FontWeight="Bold"
+                                 Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- One card across the full width: merge rate and pipeline runs -->
+            <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="16,12" HorizontalAlignment="Stretch"
                     IsVisible="{Binding HasActivity}">
               <StackPanel Spacing="6">
                 <TextBlock Text="Merge Rate · Pipeline Runs" Classes="muted" FontSize="10.5" FontWeight="Bold" LetterSpacing="1" />
                 <ItemsControl ItemsSource="{Binding SummaryStats}">
                   <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="26" /></ItemsPanelTemplate>
+                    <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:PersonTileViewModel">
@@ -568,22 +650,39 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <Expander Classes="section" Header="Pending branches (newest commit is theirs, never merged)" IsExpanded="True" IsVisible="{Binding HasPendingBranches}">
+            <Expander Classes="section" IsExpanded="True" IsVisible="{Binding HasPendingBranches}">
+              <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Pending Branches" VerticalAlignment="Center" />
+                  <Border Classes="countBadge">
+                    <TextBlock Text="{Binding PendingBranches.Count}" />
+                  </Border>
+                </StackPanel>
+              </Expander.Header>
               <ItemsControl ItemsSource="{Binding PendingBranches}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <Border Background="{DynamicResource WarnChipBrush}" CornerRadius="8" Padding="8,3" Margin="0,0,6,6">
-                      <TextBlock Text="{Binding}" FontSize="11.5" Foreground="{DynamicResource WarnChipTextBrush}" />
+                  <DataTemplate x:DataType="vm:PendingBranchViewModel">
+                    <Border CornerRadius="8" Padding="8,3" Margin="0,0,6,6" ToolTip.Tip="{Binding Tip}"
+                            Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                      <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" Foreground="#0B0D14" />
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </Expander>
 
-            <Expander Classes="section" Header="Recent pull requests" IsExpanded="True" IsVisible="{Binding HasRecentPrs}">
+            <Expander Classes="section" IsExpanded="True" IsVisible="{Binding HasRecentPrs}">
+              <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Recent Pull Requests" VerticalAlignment="Center" />
+                  <Border Classes="countBadge">
+                    <TextBlock Text="{Binding RecentPullRequests.Count}" />
+                  </Border>
+                </StackPanel>
+              </Expander.Header>
             <ItemsControl ItemsSource="{Binding RecentPullRequests}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PersonPullRequestViewModel">
@@ -603,7 +702,15 @@
             </ItemsControl>
             </Expander>
 
-            <Expander Classes="section" Header="Activity on pull requests (comments, reviews, opened, merged)" IsExpanded="True" IsVisible="{Binding HasEvents}">
+            <Expander Classes="section" IsExpanded="True" IsVisible="{Binding HasEvents}">
+              <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Activity On Pull Requests" VerticalAlignment="Center" />
+                  <Border Classes="countBadge">
+                    <TextBlock Text="{Binding ActivityEvents.Count}" />
+                  </Border>
+                </StackPanel>
+              </Expander.Header>
             <ItemsControl ItemsSource="{Binding ActivityEvents}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PersonEventViewModel">
@@ -627,7 +734,15 @@
             </Expander>
 
             <!-- Right now (from the live sync) -->
-            <Expander Classes="section" Header="PR raised by them, open now" IsExpanded="True">
+            <Expander Classes="section" IsExpanded="True">
+              <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="PR Raised By Them, Open Now" VerticalAlignment="Center" />
+                  <Border Classes="countBadge">
+                    <TextBlock Text="{Binding RaisedItems.Count}" />
+                  </Border>
+                </StackPanel>
+              </Expander.Header>
 <StackPanel>
             <TextBlock Classes="muted" Text="Nothing open." IsVisible="{Binding !HasRaisedItems}" Margin="0,0,0,8" />
             <ItemsControl ItemsSource="{Binding RaisedItems}">
@@ -645,7 +760,15 @@
             </ItemsControl></StackPanel>
             </Expander>
 
-            <Expander Classes="section" Header="Waiting on them" IsExpanded="True">
+            <Expander Classes="section" IsExpanded="True">
+              <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Waiting On Them" VerticalAlignment="Center" />
+                  <Border Classes="countBadge">
+                    <TextBlock Text="{Binding WaitingItems.Count}" />
+                  </Border>
+                </StackPanel>
+              </Expander.Header>
 <StackPanel>
             <TextBlock Classes="muted" Text="Nothing is waiting on them." IsVisible="{Binding !HasWaitingItems}" />
             <ItemsControl ItemsSource="{Binding WaitingItems}">

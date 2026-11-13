@@ -39,6 +39,9 @@ public enum TimeFormat
     Utc,
 }
 
+/// <summary>Where the main window was last: position and size when not maximised, and whether it was maximised.</summary>
+public sealed record WindowPlacement(int X, int Y, double Width, double Height, bool Maximized);
+
 public sealed record AccountSettings(Guid Id, string Login, string? Name, AuthMethod Method, string? AvatarUrl = null);
 
 /// <summary>
@@ -64,6 +67,13 @@ public sealed record AppSettings
     public NotificationStyle NotificationStyle { get; init; } = NotificationStyle.Custom;
     /// <summary>How often each repository is asked "anything new?". Unchanged repositories cost no API quota.</summary>
     public int LiveCheckSeconds { get; init; } = 10;
+    /// <summary>Last window placement; null on first start, when the window opens maximised.</summary>
+    public WindowPlacement? MainWindow { get; init; }
+
+    /// <summary>
+    /// Repositories (owner/name) the list pages are limited to. Empty means "All repositories", which is the default.
+    /// </summary>
+    public IReadOnlyList<string> SelectedRepositories { get; init; } = [];
     public bool ReduceMotion { get; init; }
     public AppTheme Theme { get; init; } = AppTheme.Dark;
 

@@ -270,8 +270,25 @@
       <Border DockPanel.Dock="Top" IsVisible="{Binding ShowRepositoryFilter}" Padding="36,14,36,0">
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
           <TextBlock Text="Repository" Classes="label" VerticalAlignment="Center" />
-          <ComboBox ItemsSource="{Binding RepositoryOptions}" SelectedItem="{Binding SelectedRepository}"
-                    MinWidth="240" MaxDropDownHeight="360" />
+          <Button Classes="ghost" MinWidth="240" HorizontalContentAlignment="Stretch" ToolTip.Tip="Choose one or more repositories">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding RepositorySummary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="1" Text="▾" Margin="10,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <ScrollViewer MaxHeight="360" MinWidth="260">
+                  <ItemsControl ItemsSource="{Binding RepositoryOptions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:RepositoryOptionViewModel">
+                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" Margin="4,2" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
         </StackPanel>
       </Border>
       <TransitioningContentControl Content="{Binding CurrentPage}">

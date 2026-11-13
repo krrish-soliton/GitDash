@@ -217,7 +217,12 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
             Draft = seed % 2,
             PullRequestsCommentedOn = 40 + seed * 5,
             PullRequestsReviewed = 31 + seed * 4,
-            PendingBranches = seed % 3 == 0 ? Array.Empty<string>() : new[] { "feature/sync-retry", "spike/parallel-fetch" }[..(1 + seed % 2)],
+            PendingBranches = seed % 3 == 0 ? Array.Empty<PendingBranch>() : new[]
+            {
+                new PendingBranch("feature/sync-retry", DateTimeOffset.UtcNow.AddDays(-2), true),
+                new PendingBranch("spike/parallel-fetch", DateTimeOffset.UtcNow.AddDays(-5), false),
+                new PendingBranch("old/experiment", DateTimeOffset.UtcNow.AddDays(-40), false),
+            }[..(1 + seed % 3)],
             RecentPullRequests = recent,
             Events = [.. events.OrderByDescending(e => e.At)],
         });

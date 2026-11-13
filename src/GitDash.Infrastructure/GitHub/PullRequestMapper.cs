@@ -42,8 +42,9 @@ public static class PullRequestMapper
         var pending = repo.Nodes("refs")
             .Where(r => !string.Equals(r.Str("name"), defaultBranch, StringComparison.Ordinal))
             .Where(r => Login.Same(r.Prop("target").Prop("author").Prop("user").StrOrNull("login"), login))
-            .Where(r => r.Prop("associatedPullRequests").Int("totalCount") == 0)
-            .Select(r => r.Str("name"))
+            .Where(r => r.Prop("mergedPullRequests").Int("totalCount") == 0)
+            .Select(r => new PendingBranch(
+                r.Str("name"), r.Prop("target").Date("committedDate"), r.Prop("openPullRequests").Int("totalCount") > 0))
             .Take(50)
             .ToList();
 
