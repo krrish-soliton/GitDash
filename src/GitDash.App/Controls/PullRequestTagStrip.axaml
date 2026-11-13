@@ -5,7 +5,7 @@
   <!-- DataContext is the pull request's tag list; the same tags and colours are used on every page. -->
   <UserControl.Styles>
     <Style Selector="Border.badge.mini">
-      <Setter Property="Margin" Value="0,0,5,4" />
+      <Setter Property="Margin" Value="0,3,5,1" />
       <Setter Property="Padding" Value="6,1" />
       <Setter Property="CornerRadius" Value="5" />
     </Style>

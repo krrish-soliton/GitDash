@@ -97,7 +97,7 @@
                         <TextBlock Classes="muted" FontSize="12">
                           <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" />
                         </TextBlock>
-                        <c:PullRequestTagStrip DataContext="{Binding Tags}" IsVisible="{Binding HasTags}" Margin="0,3,0,0" />
+                        <c:PullRequestTagStrip DataContext="{Binding Tags}" />
                       </StackPanel>
                       <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Waiting}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right"
