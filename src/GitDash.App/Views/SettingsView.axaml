@@ -16,7 +16,60 @@
       <!-- ===== Accounts ===== -->
       <Border Classes="card enter1">
         <StackPanel Spacing="16">
-          <TextBlock Classes="h2" Text="GitHub accounts" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="h2" Text="GitHub accounts" VerticalAlignment="Center" />
+            <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
+                    ToolTip.Tip="How to create a GitHub OAuth App (needed for browser sign-in)">
+              <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Width="440" Spacing="10">
+                    <TextBlock Text="How to create a GitHub OAuth App" FontSize="15" FontWeight="Bold"
+                               Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                               Text="Browser sign-in uses GitHub's device flow, which needs the Client ID of an OAuth App that you register once. Prefer not to? Add a personal access token below instead." />
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="1." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Open GitHub, then Settings → Developer settings → OAuth Apps → New OAuth App. The button below opens that page." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="2." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Application name: anything, for example GitDash. Homepage URL: any valid link, for example https://github.com/krrish-soliton/GitDash." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="3." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Authorization callback URL: http://localhost (GitHub requires one, but the device flow never uses it)." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="4." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Tick &quot;Enable Device Flow&quot;, then click Register application." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="5." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Copy the Client ID shown on the app's page (it starts with Ov23li). You do not need a client secret." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="6." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Paste the Client ID into the box under &quot;Sign in with your browser&quot; and click Sign in with GitHub." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="7." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Repositories of an organization that restricts OAuth apps need an owner to approve the app first (Organization settings → Third-party access)." />
+                    </Grid>
+                    <Button Classes="primary" Content="Open GitHub: New OAuth App" Click="OnOpenOAuthAppsClick"
+                            HorizontalAlignment="Left" Margin="0,4,0,0" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+          </StackPanel>
 
           <TextBlock Classes="muted" Text="No account yet. Add one below." IsVisible="{Binding !Accounts.Count}" />
           <ItemsControl ItemsSource="{Binding Accounts}">

@@ -34,6 +34,13 @@ dotnet publish src/GitDash.App -c Release -r win-x64   --self-contained
 dotnet publish src/GitDash.App -c Release -r osx-arm64 --self-contained
 ```
 
+## Installing
+
+Download the installer for your system from the [Releases](../../releases) page.
+
+- **Windows** (`GitDash-Setup-<version>.exe`): the installer asks whether to install **for all users** (needs administrator rights, installs under Program Files) or **only for me** (no administrator rights, installs under your own profile). The same choice can be made from a script: `GitDash-Setup-<version>.exe /CURRENTUSER` or `/ALLUSERS`, plus `/VERYSILENT` for an unattended install. A portable zip is also provided.
+- **macOS** (`GitDash-<version>-osx-arm64.dmg` for Apple silicon, `-osx-x64.dmg` for Intel): open the disk image and drag GitDash to Applications. Drag it to `~/Applications` instead to install for your own account only. The app is not notarised, so open it the first time with right-click, then Open.
+
 ## Signing in
 
 **Browser sign-in (device flow).** Register an OAuth App once at GitHub → Settings → Developer settings → OAuth Apps,

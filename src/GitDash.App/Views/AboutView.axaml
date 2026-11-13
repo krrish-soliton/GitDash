@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitDash.Presentation.ViewModels"
+             x:Class="GitDash.App.Views.AboutView"
+             x:DataType="vm:AboutViewModel">
+  <ScrollViewer>
+    <StackPanel Margin="36,30,36,36" Spacing="22" MaxWidth="760" HorizontalAlignment="Left">
+
+      <StackPanel Classes="enter" Spacing="4">
+        <TextBlock Classes="h1" Text="About" />
+        <TextBlock Classes="muted" Text="The app and the person behind it." />
+      </StackPanel>
+
+      <!-- The app -->
+      <Border Classes="card enter1">
+        <Grid ColumnDefinitions="Auto,*" >
+          <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource AccentGradient}" Margin="0,0,18,0"
+                  VerticalAlignment="Top">
+            <PathIcon Data="{StaticResource IconPullRequest}" Width="30" Height="30" Foreground="White" />
+          </Border>
+          <StackPanel Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+            <TextBlock Text="{Binding AppName}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+            <TextBlock Text="{Binding Tagline}" Classes="muted" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+              <Border Classes="badge assigned"><TextBlock Text="{Binding VersionLine}" /></Border>
+              <Border Classes="chip"><TextBlock Text="{Binding BuiltWith}" /></Border>
+            </StackPanel>
+            <Button Classes="ghost" Content="View on GitHub" Command="{Binding OpenRepositoryCommand}"
+                    HorizontalAlignment="Left" Margin="0,6,0,0" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- The author -->
+      <Border Classes="card enter2">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h2" Text="Author" />
+          <Grid ColumnDefinitions="Auto,*">
+            <Panel Width="64" Height="64" Margin="0,0,18,0" VerticalAlignment="Top">
+              <Ellipse Fill="{StaticResource AccentGradient}" />
+              <TextBlock Text="{Binding AuthorInitials}" FontSize="22" FontWeight="Bold" Foreground="White"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Panel>
+            <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="{Binding AuthorName}" FontSize="19" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="{Binding Organization}" Classes="muted" />
+              <SelectableTextBlock Text="{Binding Email}" Foreground="{StaticResource Accent2Brush}" Margin="0,2,0,0" />
+              <Button Classes="ghost" Content="Copy email address" Click="OnCopyEmailClick"
+                      HorizontalAlignment="Left" Margin="0,6,0,0" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

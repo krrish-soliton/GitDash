@@ -146,6 +146,9 @@
     <DataTemplate DataType="vm:SettingsViewModel">
       <views:SettingsView />
     </DataTemplate>
+    <DataTemplate DataType="vm:AboutViewModel">
+      <views:AboutView />
+    </DataTemplate>
   </Window.DataTemplates>
 
   <!-- Rounded window frame: the window itself is transparent, this border draws the rounded shape. -->
