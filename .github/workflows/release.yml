@@ -1,0 +1,61 @@
+name: Release
+
+# Push a tag such as v1.0.0 to build the Windows installer and publish it on the GitHub Releases page.
+# "Run workflow" (manual) builds the installer and keeps it as a workflow artifact only, without a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Work out the version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v') } else { $v = "0.0.0-dev.$env:GITHUB_RUN_NUMBER" }
+          "value=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Publish (self-contained, win-x64)
+        shell: pwsh
+        run: >
+          dotnet publish src/GitDash.App/GitDash.App.csproj -c Release -r win-x64 --self-contained true
+          -p:Version=${{ steps.version.outputs.value }} -p:DebugType=None -p:DebugSymbols=false -o publish
+
+      - name: Build the installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & $iscc "/DAppVersion=${{ steps.version.outputs.value }}" installer\GitDash.iss
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed" }
+
+      - name: Portable zip
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath dist\GitDash-${{ steps.version.outputs.value }}-win-x64-portable.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GitDash-${{ steps.version.outputs.value }}
+          path: dist/*
+
+      - name: Publish the GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: GitDash ${{ steps.version.outputs.value }}
+          generate_release_notes: true
+          files: |
+            dist/GitDash-Setup-${{ steps.version.outputs.value }}.exe
+            dist/GitDash-${{ steps.version.outputs.value }}-win-x64-portable.zip
