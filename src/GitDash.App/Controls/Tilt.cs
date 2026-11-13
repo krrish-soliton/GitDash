@@ -66,7 +66,6 @@ public static class Tilt
         var state = new State { Card = card };
         States.Add(card, state);
         card.RenderTransformOrigin = RelativePoint.Center;
-        card.RenderTransform = state.Transform;
         card.AttachedToVisualTree += OnAttached;
         card.DetachedFromVisualTree += OnDetached;
         if (card.IsAttachedToVisualTree()) Hook(state);
@@ -81,8 +80,7 @@ public static class Tilt
         state.Timer?.Stop();
         state.Timer = null;
         States.Remove(card);
-        card.RenderTransform = null;
-        if (state.Shine is not null) state.Shine.Opacity = 0;
+        Release(state);
     }
 
     private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
@@ -140,6 +138,7 @@ public static class Tilt
         state.TargetY = (nx - 0.5) * 2 * MaxAngle;
         state.TargetX = -(ny - 0.5) * 2 * MaxAngle;
         state.TargetGlare = MaxGlare;
+        Engage(state);
 
         state.Shine ??= card.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "Shine");
         if (state.Shine is not null)
@@ -149,6 +148,23 @@ public static class Tilt
         }
 
         Run(state);
+    }
+
+    // The 3D transform and the glare layer exist only while the card is actually tilting. At rest the card is drawn
+    // plainly: a perspective transform at 0 degrees still goes through the 3D path and showed thin streaks.
+    private static void Engage(State state)
+    {
+        if (!ReferenceEquals(state.Card.RenderTransform, state.Transform)) state.Card.RenderTransform = state.Transform;
+        state.Shine ??= state.Card.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "Shine");
+        if (state.Shine is not null && !state.Shine.IsVisible) state.Shine.IsVisible = true;
+    }
+
+    private static void Release(State state)
+    {
+        state.Card.RenderTransform = null;
+        if (state.Shine is null) return;
+        state.Shine.Opacity = 0;
+        state.Shine.IsVisible = false;
     }
 
     private static void Rest(State state)
@@ -188,5 +204,6 @@ public static class Tilt
 
         state.Timer?.Stop();
         state.Timer = null;
+        Release(state);
     }
 }

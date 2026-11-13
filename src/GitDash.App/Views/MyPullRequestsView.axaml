@@ -210,7 +210,7 @@
                   </StackPanel>
                 </DockPanel>
                 <!-- Glare that follows the mouse (driven by c:Tilt) -->
-                <Border x:Name="Shine" IsHitTestVisible="False" Opacity="0" Margin="-22" CornerRadius="18" />
+                <Border x:Name="Shine" IsHitTestVisible="False" IsVisible="False" Opacity="0" Margin="-22" CornerRadius="18" />
                 </Panel>
               </Border>
             </DataTemplate>
