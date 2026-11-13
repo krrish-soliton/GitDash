@@ -378,4 +378,22 @@ public class Round7Tests
         Assert.Equal(2, other.ViewerRank);
         Assert.Equal(["assigned", "both", "review", "other"], ordered);
     }
+
+    [Fact]
+    public void Card_border_state_is_exactly_one_colour_and_errors_win()
+    {
+        static GitDash.Presentation.ViewModels.PullRequestCardViewModel Card(PullRequest p) => new(p, TestData.Now);
+        static int Count(GitDash.Presentation.ViewModels.PullRequestCardViewModel c) =>
+            new[] { c.StateError, c.StateStale, c.StateApproved, c.StateChanges, c.StateUnreviewed }.Count(b => b);
+
+        var plain = Card(TestData.Pr("plain"));
+        var failing = Card(TestData.Pr("failing", with: p => p with { PipelineFailed = true }));
+        var conflict = Card(TestData.Pr("conflict", with: p => p with { HasMergeConflict = true }));
+
+        foreach (var c in new[] { plain, failing, conflict }) Assert.Equal(1, Count(c));
+        Assert.True(plain.StateUnreviewed);   // purple
+        Assert.True(failing.StateError);      // red
+        Assert.True(conflict.StateError);
+        Assert.False(failing.StateUnreviewed);
+    }
 }

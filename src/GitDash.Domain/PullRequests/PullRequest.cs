@@ -40,6 +40,15 @@ public sealed record PullRequest
 
     public int CommitCount { get; init; }
 
+    /// <summary>GitHub reports that this branch cannot be merged cleanly into its base.</summary>
+    public bool HasMergeConflict { get; init; }
+
+    /// <summary>The checks (CI pipeline) on the newest commit failed or errored.</summary>
+    public bool PipelineFailed { get; init; }
+
+    /// <summary>Something blocks the merge on its own: a failed pipeline or a merge conflict.</summary>
+    public bool HasError => HasMergeConflict || PipelineFailed;
+
     /// <summary>When the newest commit was made; reviews older than this were given on an earlier version of the code.</summary>
     public DateTimeOffset? LastCommitAt { get; init; }
     public int Additions { get; init; }

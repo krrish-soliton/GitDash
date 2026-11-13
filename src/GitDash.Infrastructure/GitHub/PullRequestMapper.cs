@@ -186,6 +186,10 @@ public static class PullRequestMapper
                 _ => PullRequestState.Open,
             },
             IsDraft = node.Bool("isDraft"),
+            HasMergeConflict = node.Str("mergeable") == "CONFLICTING",
+            PipelineFailed = node.Nodes("commits")
+                .Select(n => n.Prop("commit").Prop("statusCheckRollup").StrOrNull("state"))
+                .FirstOrDefault() is "FAILURE" or "ERROR",
             CreatedAt = node.Date("createdAt") ?? DateTimeOffset.MinValue,
             UpdatedAt = node.Date("updatedAt") ?? DateTimeOffset.MinValue,
             MergedAt = node.Date("mergedAt"),

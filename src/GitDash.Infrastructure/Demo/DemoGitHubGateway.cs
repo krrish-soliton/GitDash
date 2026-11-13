@@ -118,6 +118,8 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
                 Url = $"https://github.com/{repository.FullName}/pull/{90 + seed}",
                 Author = author,
                 IsDraft = i % 6 == 4,
+                HasMergeConflict = seed % 11 == 3,
+                PipelineFailed = seed % 7 == 2,
                 CreatedAt = created,
                 UpdatedAt = now - TimeSpan.FromMinutes(seed % 300),
                 Assignees = mine && i == 0 ? [viewerLogin] : i % 2 == 0 ? [reviewer] : [],

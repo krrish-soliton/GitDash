@@ -79,8 +79,9 @@
               <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000" />
               <Border Classes="card" Width="400" Height="480" Cursor="Hand" Tapped="OnCardTapped"
                       BorderThickness="2"
-                      Classes.approved="{Binding IsApproved}" Classes.changes="{Binding IsChangesRequested}"
-                      Classes.unreviewed="{Binding IsUnreviewed}"
+                      Classes.stateError="{Binding StateError}" Classes.stateStale="{Binding StateStale}"
+                      Classes.stateApproved="{Binding StateApproved}" Classes.stateChanges="{Binding StateChanges}"
+                      Classes.stateUnreviewed="{Binding StateUnreviewed}"
                       c:Tilt.Enabled="{Binding IsFront}">
                 <Panel>
                 <DockPanel>
@@ -98,6 +99,14 @@
                         <Run Text="{Binding Number}" Foreground="{StaticResource Accent2Brush}" />
                       </TextBlock>
                       <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" Grid.Column="1">
+                        <Border Classes="badge error" IsVisible="{Binding PipelineFailed}"
+                                ToolTip.Tip="The checks on the latest commit failed">
+                          <TextBlock Text="PIPELINE FAILED" />
+                        </Border>
+                        <Border Classes="badge error" IsVisible="{Binding HasMergeConflict}"
+                                ToolTip.Tip="This branch has conflicts with its base branch">
+                          <TextBlock Text="MERGE CONFLICT" />
+                        </Border>
                         <Border Classes="badge assigned" IsVisible="{Binding HasAssigned}">
                           <TextBlock Text="ASSIGNED" />
                         </Border>
@@ -244,6 +253,12 @@
                 <Run Text="{Binding DetailCard.Repository}" />
                 <Run Text="{Binding DetailCard.Number}" />
               </TextBlock>
+              <Border Classes="badge error" IsVisible="{Binding DetailCard.PipelineFailed}">
+                <TextBlock Text="PIPELINE FAILED" />
+              </Border>
+              <Border Classes="badge error" IsVisible="{Binding DetailCard.HasMergeConflict}">
+                <TextBlock Text="MERGE CONFLICT" />
+              </Border>
               <Border Classes="badge assigned" IsVisible="{Binding DetailCard.HasAssigned}">
                 <TextBlock Text="ASSIGNED" />
               </Border>

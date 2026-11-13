@@ -82,15 +82,27 @@
     <Setter Property="Background" Value="{StaticResource GreenBrush}" />
   </Style>
 
-  <!-- Review status of a pull request card: green = approved, orange = changes requested, red = not reviewed -->
-  <Style Selector="Border.card.approved">
+  <Style Selector="Border.badge.error">
+    <Setter Property="Background" Value="{StaticResource RedBrush}" />
+  </Style>
+
+  <!-- One border colour per card, by state (first match wins in the view model):
+       red = pipeline failed or merge conflict, blue = stale review, green = approved,
+       orange = changes requested, purple = not reviewed yet. -->
+  <Style Selector="Border.card.stateError">
+    <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
+  </Style>
+  <Style Selector="Border.card.stateStale">
+    <Setter Property="BorderBrush" Value="{StaticResource BlueBrush}" />
+  </Style>
+  <Style Selector="Border.card.stateApproved">
     <Setter Property="BorderBrush" Value="{StaticResource GreenBrush}" />
   </Style>
-  <Style Selector="Border.card.changes">
+  <Style Selector="Border.card.stateChanges">
     <Setter Property="BorderBrush" Value="{StaticResource OrangeBrush}" />
   </Style>
-  <Style Selector="Border.card.unreviewed">
-    <Setter Property="BorderBrush" Value="{StaticResource RedBrush}" />
+  <Style Selector="Border.card.stateUnreviewed">
+    <Setter Property="BorderBrush" Value="{StaticResource PurpleBrush}" />
   </Style>
   <Style Selector="Border.badge > TextBlock">
     <Setter Property="FontSize" Value="10" />

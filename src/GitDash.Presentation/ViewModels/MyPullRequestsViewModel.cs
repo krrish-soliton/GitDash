@@ -111,6 +111,22 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public bool IsChangesRequested => PullRequest.Verdict == ReviewState.ChangesRequested;
     public bool IsUnreviewed => !IsApproved && !IsChangesRequested;
 
+    // Errors that block the merge.
+    public bool HasMergeConflict => PullRequest.HasMergeConflict;
+    public bool PipelineFailed => PullRequest.PipelineFailed;
+    public bool HasError => PullRequest.HasError;
+
+    /// <summary>Any review (or the viewer's own) is out of date because new commits arrived.</summary>
+    public bool IsStale => PullRequest.HasStaleReview || PullRequest.ViewerReviewIsStale;
+
+    // Exactly one of these is true, which picks the single border colour. First match wins:
+    // error (red), stale review (blue), approved (green), changes requested (orange), not reviewed (purple).
+    public bool StateError => HasError;
+    public bool StateStale => !HasError && IsStale;
+    public bool StateApproved => !HasError && !IsStale && IsApproved;
+    public bool StateChanges => !HasError && !IsStale && IsChangesRequested;
+    public bool StateUnreviewed => !HasError && !IsStale && IsUnreviewed;
+
     /// <summary>Neither assigned nor awaiting my review: just how old the pull request is.</summary>
     public bool HasNoStatusWait => !PullRequest.IsOnViewersDesk;
 
@@ -118,7 +134,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public string Key { get; } = KeyOf(pr);
 
     public static string KeyOf(PullRequest p) =>
-        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}:{p.Verdict}";
+        $"{p.Id}:{p.UpdatedAt.Ticks}:{p.TotalComments}:{p.ViewerRank}:{p.IsReapproval}:{p.HasStaleReview}:{p.ViewerReviewIsStale}:{p.Verdict}:{p.HasMergeConflict}:{p.PipelineFailed}";
     public string Waiting { get; } =
         Humanize.Age(now - (pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt));
     public string Age { get; } = Humanize.Age(now - pr.CreatedAt);

@@ -35,14 +35,14 @@ internal static class GitHubQueries
           }
         }
         fragment pr on PullRequest {
-          id number title url isDraft state createdAt updatedAt mergedAt bodyText additions deletions changedFiles
+          id number title url isDraft mergeable state createdAt updatedAt mergedAt bodyText additions deletions changedFiles
           author { login avatarUrl(size: 96) }
           mergedBy { login }
           assignees(first: 20) { nodes { login avatarUrl(size: 96) } }
           reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl(size: 96) } } } }
           reviews(last: 100) { nodes { author { login } state submittedAt comments { totalCount } } }
           comments(last: 100) { totalCount nodes { author { login } createdAt } }
-          commits(last: 1) { totalCount nodes { commit { committedDate } } }
+          commits(last: 1) { totalCount nodes { commit { committedDate statusCheckRollup { state } } } }
           timelineItems(last: 40, itemTypes: [ASSIGNED_EVENT, REVIEW_REQUESTED_EVENT]) {
             nodes {
               __typename
