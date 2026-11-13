@@ -60,6 +60,9 @@ public abstract class FloatingWindow : Window
     /// <summary>Entrance and looping animations are styled under the "motion" class, same as the main window.</summary>
     public void SetMotion(bool enabled) => Classes.Set("motion", enabled);
 
+    /// <summary>The user's choice: glass gloss, rim glow and sheen on the island and the widgets (class "glass").</summary>
+    public void SetGlass(bool enabled) => Classes.Set("glass", enabled);
+
     /// <summary>Whether the mouse should currently pass straight through the window. Locked windows do, by default.</summary>
     protected virtual bool IgnoresMouse => _locked && _clickThrough;
 

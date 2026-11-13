@@ -85,7 +85,7 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
                      })
                 Raise(name);
         });
@@ -265,6 +265,13 @@ public sealed class SettingsViewModel : PageViewModel
     {
         get => _settings.Current.MiniWidget;
         set => Save(s => s with { MiniWidget = value });
+    }
+
+    /// <summary>Glass gloss, glowing rim and a sweeping sheen on the island and the widgets.</summary>
+    public bool GlassEffect
+    {
+        get => _settings.Current.GlassEffect;
+        set => Save(s => s with { GlassEffect = value });
     }
 
     public double WidgetXPercent

@@ -3,6 +3,7 @@
         xmlns:vm="using:GitDash.Presentation.ViewModels"
         xmlns:w="using:GitDash.App.Windows"
         xmlns:conv="using:GitDash.App.Converters"
+        xmlns:c="using:GitDash.App.Controls"
         x:Class="GitDash.App.Windows.IslandWindow"
         x:DataType="vm:ShellViewModel"
         Width="240" Height="48"
@@ -94,6 +95,8 @@
           <PathIcon Data="{StaticResource IconClose}" Width="8" Height="8" />
         </Button>
       </Grid>
+
+      <c:GlassGlaze Grid.RowSpan="3" CornerRadius="22" />
 
       <Border x:Name="Life" Grid.Row="2" Height="3" RenderTransformOrigin="0%,50%" IsVisible="False">
         <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>

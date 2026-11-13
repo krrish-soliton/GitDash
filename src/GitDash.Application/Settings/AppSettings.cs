@@ -118,6 +118,9 @@ public sealed record AppSettings
     public double WidgetOpacity { get; init; } = 0.65;
     public double IslandOpacity { get; init; } = 0.9;
 
+    /// <summary>Glass gloss, glowing rim and sheen on the island and the widgets.</summary>
+    public bool GlassEffect { get; init; } = true;
+
     /// <summary>Overlays let mouse clicks fall through to the windows underneath them.</summary>
     public bool ClickThroughOverlays { get; init; } = true;
     /// <summary>Centre (X) and top (Y) of the island in screen pixels; null = top centre of the main screen.</summary>

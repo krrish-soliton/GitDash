@@ -520,9 +520,9 @@ public class Round10Tests
         var withPr = new GitDash.Domain.Insights.PendingBranch("a", now.AddDays(-30), true);
         var fresh = new GitDash.Domain.Insights.PendingBranch("b", now.AddDays(-3), false);
         var old = new GitDash.Domain.Insights.PendingBranch("c", now.AddDays(-15), false);
-        Assert.Equal("Green", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(withPr, now).Tone);
-        Assert.Equal("Amber", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(fresh, now).Tone);
-        Assert.Equal("Red", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(old, now).Tone);
+        Assert.Equal("Green", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(withPr, now, "o/r").Tone);
+        Assert.Equal("Amber", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(fresh, now, "o/r").Tone);
+        Assert.Equal("Red", GitDash.Presentation.ViewModels.PendingBranchViewModel.From(old, now, "o/r").Tone);
     }
 
     [Fact]
@@ -542,5 +542,36 @@ public class Round10Tests
         var settings = new GitDash.Application.Settings.AppSettings();
         Assert.True(settings.MainWindow is null);
         Assert.Equal(0, settings.SelectedRepositories.Count);
+    }
+
+    [Fact]
+    public void Viewer_comes_first_then_biggest_stack()
+    {
+        var people = new[]
+        {
+            new GitDash.Domain.Insights.PersonStats("zed", 1, 0, 0, 0, null, null),
+            new GitDash.Domain.Insights.PersonStats("amy", 2, 2, 2, 4, null, null),
+            new GitDash.Domain.Insights.PersonStats("me", 0, 0, 0, 0, null, null),
+            new GitDash.Domain.Insights.PersonStats("bob", 1, 1, 1, 2, null, null),
+        };
+        var order = GitDash.Presentation.ViewModels.PeopleViewModel
+            .OrderPeople(people, new HashSet<string> { "me" }).Select(p => p.Login).ToList();
+        Assert.Equal("me", order[0]);
+        Assert.Equal("amy", order[1]);
+        Assert.Equal("bob", order[2]);
+        Assert.Equal("zed", order[3]);
+    }
+
+    [Fact]
+    public void Branch_link_keeps_slashes_and_escapes_the_rest()
+    {
+        Assert.Equal("https://github.com/o/r/tree/feature/a%20b",
+            GitDash.Presentation.ViewModels.PendingBranchViewModel.UrlFor("o/r", "feature/a b"));
+    }
+
+    [Fact]
+    public void Glass_effect_is_on_by_default()
+    {
+        Assert.True(new GitDash.Application.Settings.AppSettings().GlassEffect);
     }
 }

@@ -118,16 +118,21 @@ public sealed record PullRequestLinkViewModel(string Title, string Subtitle, str
 public sealed record PersonTileViewModel(string Label, string Value, string Tone);
 
 /// <summary>A branch chip: green with a pull request, yellow without one, red without one for over two weeks.</summary>
-public sealed record PendingBranchViewModel(string Name, string Tone, string Tip)
+public sealed record PendingBranchViewModel(string Name, string Tone, string Tip, string Url)
 {
-    public static PendingBranchViewModel From(PendingBranch branch, DateTimeOffset now)
+    /// <summary>Link to the branch on GitHub (the branch name keeps its slashes).</summary>
+    public static string UrlFor(string repository, string branch) =>
+        $"https://github.com/{repository}/tree/{string.Join('/', branch.Split('/').Select(Uri.EscapeDataString))}";
+
+    public static PendingBranchViewModel From(PendingBranch branch, DateTimeOffset now, string repository)
     {
+        var url = UrlFor(repository, branch.Name);
         var age = branch.LastCommitAt is { } at ? $"last commit {Humanize.Age(now - at)} ago" : "last commit unknown";
         return branch.HealthAt(now) switch
         {
-            PendingBranchHealth.HasPullRequest => new(branch.Name, "Green", $"Has an open pull request · {age}"),
-            PendingBranchHealth.Stale => new(branch.Name, "Red", $"No pull request for over two weeks · {age}"),
-            _ => new(branch.Name, "Amber", $"No pull request yet · {age}"),
+            PendingBranchHealth.HasPullRequest => new(branch.Name, "Green", $"Has an open pull request · {age} · click to open", url),
+            PendingBranchHealth.Stale => new(branch.Name, "Red", $"No pull request for over two weeks · {age} · click to open", url),
+            _ => new(branch.Name, "Amber", $"No pull request yet · {age} · click to open", url),
         };
     }
 }
@@ -239,6 +244,8 @@ public sealed class PeopleViewModel : PageViewModel
         RecentPullRequests.Clear();
         ActivityEvents.Clear();
         PendingBranches.Clear();
+        _openNow = "–";
+        RebuildLiveTiles();
         HasPendingBranches = HasEvents = HasRecentPrs = false;
     }
 
@@ -284,7 +291,6 @@ public sealed class PeopleViewModel : PageViewModel
         DashboardViewModel.Replace(ActivityTiles,
         [
             new("Pull requests raised", a.Raised.ToString("N0", inv), "Violet"),
-            new("Open now", a.Open.ToString("N0", inv), "Cyan"),
             new("Merged", a.Merged.ToString("N0", inv), "Green"),
             new("Closed unmerged", a.Closed.ToString("N0", inv), "Red"),
             new("Drafts", a.Draft.ToString("N0", inv), "Muted"),
@@ -303,7 +309,7 @@ public sealed class PeopleViewModel : PageViewModel
             new("Runs this month", Runs(a.PipelineRuns.Month), "Violet"),
             new("Total runs", Runs(a.PipelineRuns.Total), "Amber"),
         ]);
-        DashboardViewModel.Replace(PendingBranches, a.PendingBranches.Select(b => PendingBranchViewModel.From(b, now)));
+        DashboardViewModel.Replace(PendingBranches, a.PendingBranches.Select(b => PendingBranchViewModel.From(b, now, a.Repository)));
         HasPendingBranches = PendingBranches.Count > 0;
         DashboardViewModel.Replace(RecentPullRequests, a.RecentPullRequests.Select(p => new PersonPullRequestViewModel(
             p.Title,
@@ -313,9 +319,27 @@ public sealed class PeopleViewModel : PageViewModel
         DashboardViewModel.Replace(ActivityEvents, a.Events.Take(30).Select(e => new PersonEventViewModel(
             Humanize.Ago(now - e.At), e.Kind.ToString(), $"#{e.Number} {e.PullRequestTitle}", e.Text, e.Url)));
         HasEvents = ActivityEvents.Count > 0;
+        _openNow = a.Open.ToString("N0", inv);
+        RebuildLiveTiles();
         HasActivity = true;
     }
 
+
+    private int _liveWaiting, _liveAssigned, _liveRaised;
+    private string _openNow = "–";
+
+    /// <summary>The four cards at the top: waiting, assigned, raised (live) and open now (from the loaded activity).</summary>
+    private void RebuildLiveTiles()
+    {
+        var inv = CultureInfo.InvariantCulture;
+        DashboardViewModel.Replace(LiveTiles,
+        [
+            new("Waiting On Them", _liveWaiting.ToString("N0", inv), "Red"),
+            new("Assigned", _liveAssigned.ToString("N0", inv), "Cyan"),
+            new("Raised", _liveRaised.ToString("N0", inv), "Violet"),
+            new("Open Now", _openNow, "Open"),
+        ]);
+    }
 
     private void FillPersonPanel(PersonViewModel person)
     {
@@ -346,24 +370,27 @@ public sealed class PeopleViewModel : PageViewModel
                 _ => $"review requested · by {p.Author}",
             })));
 
-        var assignedCount = onFloor.Count(p => p.Assignees.ContainsLogin(person.Login));
-        DashboardViewModel.Replace(LiveTiles,
-        [
-            new("Waiting On Them", WaitingItems.Count.ToString("N0", CultureInfo.InvariantCulture), "Red"),
-            new("Assigned", assignedCount.ToString("N0", CultureInfo.InvariantCulture), "Cyan"),
-            new("Raised", RaisedItems.Count.ToString("N0", CultureInfo.InvariantCulture), "Violet"),
-        ]);
+        _liveAssigned = onFloor.Count(p => p.Assignees.ContainsLogin(person.Login));
+        _liveWaiting = WaitingItems.Count;
+        _liveRaised = RaisedItems.Count;
+        RebuildLiveTiles();
         HasRaisedItems = RaisedItems.Count > 0;
         HasWaitingItems = WaitingItems.Count > 0;
         PersonSubtitle = $"{person.Repository} · {RaisedItems.Count} raised · {WaitingItems.Count} waiting on them";
     }
+
+    /// <summary>The viewer always comes first; everyone else by the size of their book stack, biggest first.</summary>
+    public static IEnumerable<PersonStats> OrderPeople(IEnumerable<PersonStats> people, ISet<string> viewers) => people
+        .OrderByDescending(p => viewers.Contains(p.Login))
+        .ThenByDescending(p => p.Assigned + p.ToReview + p.Raised)
+        .ThenBy(p => p.Login, Login.Comparer);
 
     private FloorViewModel ToViewModel(
         RepositoryFloor floor, int number, HashSet<string> viewers, IReadOnlyDictionary<string, string> avatars) => new(
         floor.Repository.FullName,
         $"Floor {number}",
         [
-            .. floor.People.Take(MaxPeoplePerFloor).Select((p, i) => new PersonViewModel(
+            .. OrderPeople(floor.People, viewers).Take(MaxPeoplePerFloor).Select((p, i) => new PersonViewModel(
                 p.Login, floor.Repository.FullName, Humanize.Initials(p.Login), Humanize.Accent(p.Login),
                 avatars.GetValueOrDefault(p.Login), p.Raised, p.Assigned, p.AssignedUnder,
                 p.OldestAssignedSince is { } since ? Humanize.Age(DateTimeOffset.UtcNow - since) : "",

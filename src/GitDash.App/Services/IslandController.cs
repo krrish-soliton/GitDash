@@ -64,6 +64,7 @@ public sealed class IslandController(
         if (_window is not null)
         {
             _window.SetMotion(!s.ReduceMotion);
+            _window.SetGlass(s.GlassEffect);
             _window.SetIdleOpacity(s.IslandOpacity);
             _window.SetClickThroughEnabled(s.ClickThroughOverlays);
 

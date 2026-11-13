@@ -292,6 +292,14 @@
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding MiniWidget}" OnContent="" OffContent="" />
           </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Glass effect" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="A glowing glass finish with a slow sheen on the dynamic island (compact and expanded) and on the widgets." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding GlassEffect}" OnContent="" OffContent="" />
+          </Grid>
           <StackPanel Spacing="2">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="Widget position: horizontal" Foreground="{DynamicResource TextBrush}" />

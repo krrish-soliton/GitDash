@@ -72,6 +72,7 @@ public sealed class WidgetController(
         {
             if (window is null) continue;
             window.SetMotion(!s.ReduceMotion);
+            window.SetGlass(s.GlassEffect);
             window.SetIdleOpacity(s.WidgetOpacity);
             window.SetClickThroughEnabled(s.ClickThroughOverlays);
 

@@ -174,9 +174,9 @@
     </Style>
     <Style Selector="Window.motion Border.bubble">
       <Style.Animations>
-        <Animation Duration="0:0:0.7" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="QuadraticEaseOut">
+        <Animation Duration="0:0:1.8" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
           <KeyFrame Cue="0%"><Setter Property="TranslateTransform.Y" Value="0" /></KeyFrame>
-          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="-5" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="TranslateTransform.Y" Value="-4" /></KeyFrame>
         </Animation>
       </Style.Animations>
     </Style>
@@ -481,33 +481,41 @@
                                     </Panel>
                                   </Panel>
 
-                                  <!-- Comic speech bubbles: W = waiting on them, A = assigned to them -->
-                                  <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center"
-                                              VerticalAlignment="Top" Margin="0,2,0,0">
-                                    <Border Classes="bubble" ToolTip.Tip="Waiting: pull requests waiting on this person (assigned or review requested)">
-                                      <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
-                                      <StackPanel>
-                                        <Border Padding="9,2" CornerRadius="13" BorderThickness="2" BorderBrush="#0B0D14"
-                                                Background="{StaticResource RedBrush}">
-                                          <TextBlock FontStyle="Italic" FontSize="13" Foreground="#0B0D14">
-                                            <Run Text="W " FontWeight="Black" /><Run Text="{Binding AssignedUnder}" FontWeight="ExtraBold" />
-                                          </TextBlock>
-                                        </Border>
-                                        <Path Data="M0,0 L12,0 L4,10 Z" Fill="{StaticResource RedBrush}" Stroke="#0B0D14" StrokeThickness="2"
-                                              Margin="9,-2,0,0" HorizontalAlignment="Left" />
-                                      </StackPanel>
-                                    </Border>
+                                  <!-- Thought bubbles: Assigned first, Waiting second -->
+                                  <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
+                                              VerticalAlignment="Top" Margin="0,0,0,0">
                                     <Border Classes="bubble" ToolTip.Tip="Assigned: pull requests where this person is the assignee">
                                       <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
                                       <StackPanel>
-                                        <Border Padding="9,2" CornerRadius="13" BorderThickness="2" BorderBrush="#0B0D14"
-                                                Background="{StaticResource Accent2Brush}">
-                                          <TextBlock FontStyle="Italic" FontSize="13" Foreground="#0B0D14">
+                                        <Border Padding="11,3" CornerRadius="16" BorderThickness="2" BorderBrush="#0B0D14"
+                                                Background="{StaticResource Accent2Brush}"
+                                                BoxShadow="0 0 8 0 #40FFFFFF, inset 0 2 4 0 #50FFFFFF">
+                                          <TextBlock FontSize="13" Foreground="#0B0D14" HorizontalAlignment="Center">
                                             <Run Text="A " FontWeight="Black" /><Run Text="{Binding Assigned}" FontWeight="ExtraBold" />
                                           </TextBlock>
                                         </Border>
-                                        <Path Data="M0,0 L12,0 L8,10 Z" Fill="{StaticResource Accent2Brush}" Stroke="#0B0D14" StrokeThickness="2"
-                                              Margin="0,-2,9,0" HorizontalAlignment="Right" />
+                                        <!-- Thought trail: two small bubbles leading down to the head -->
+                                        <Ellipse Width="8" Height="8" Margin="0,2,0,0" HorizontalAlignment="Center"
+                                                 Fill="{StaticResource Accent2Brush}" Stroke="#0B0D14" StrokeThickness="1.5" />
+                                        <Ellipse Width="5" Height="5" Margin="0,1,0,0" HorizontalAlignment="Center"
+                                                 Fill="{StaticResource Accent2Brush}" Stroke="#0B0D14" StrokeThickness="1.2" />
+                                      </StackPanel>
+                                    </Border>
+                                    <Border Classes="bubble" ToolTip.Tip="Waiting: pull requests waiting on this person (assigned or review requested)">
+                                      <Border.RenderTransform><TranslateTransform /></Border.RenderTransform>
+                                      <StackPanel>
+                                        <Border Padding="11,3" CornerRadius="16" BorderThickness="2" BorderBrush="#0B0D14"
+                                                Background="{StaticResource RedBrush}"
+                                                BoxShadow="0 0 8 0 #40FFFFFF, inset 0 2 4 0 #50FFFFFF">
+                                          <TextBlock FontSize="13" Foreground="#0B0D14" HorizontalAlignment="Center">
+                                            <Run Text="W " FontWeight="Black" /><Run Text="{Binding AssignedUnder}" FontWeight="ExtraBold" />
+                                          </TextBlock>
+                                        </Border>
+                                        <!-- Thought trail: two small bubbles leading down to the head -->
+                                        <Ellipse Width="8" Height="8" Margin="0,2,0,0" HorizontalAlignment="Center"
+                                                 Fill="{StaticResource RedBrush}" Stroke="#0B0D14" StrokeThickness="1.5" />
+                                        <Ellipse Width="5" Height="5" Margin="0,1,0,0" HorizontalAlignment="Center"
+                                                 Fill="{StaticResource RedBrush}" Stroke="#0B0D14" StrokeThickness="1.2" />
                                       </StackPanel>
                                     </Border>
                                   </StackPanel>
@@ -595,15 +603,15 @@
             <!-- Live counts: waiting on them, assigned to them, raised by them -->
             <ItemsControl ItemsSource="{Binding LiveTiles}">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+                <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PersonTileViewModel">
-                  <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10" Margin="0,0,8,0">
-                    <StackPanel Spacing="1">
-                      <TextBlock Text="{Binding Value}" FontSize="24" FontWeight="Bold"
+                  <Border Background="{DynamicResource Surface2Brush}" CornerRadius="10" Padding="10,6" Margin="0,0,6,6">
+                    <StackPanel Spacing="0">
+                      <TextBlock Text="{Binding Value}" FontSize="18" FontWeight="Bold"
                                  Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                   </Border>
                 </DataTemplate>
@@ -634,16 +642,16 @@
 
             <ItemsControl ItemsSource="{Binding ActivityTiles}" IsVisible="{Binding HasActivity}">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PersonTileViewModel">
-                  <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10" Margin="0,0,8,8"
-                          Width="152">
-                    <StackPanel Spacing="1">
-                      <TextBlock Text="{Binding Value}" FontSize="22" FontWeight="Bold"
+                  <Border Background="{DynamicResource Surface2Brush}" CornerRadius="10" Padding="10,6" Margin="0,0,6,6">
+                    <StackPanel Spacing="0">
+                      <TextBlock Text="{Binding Value}" FontSize="17" FontWeight="Bold"
                                  Foreground="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding Label}" />
                     </StackPanel>
                   </Border>
                 </DataTemplate>
@@ -665,8 +673,8 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:PendingBranchViewModel">
-                    <Border CornerRadius="8" Padding="8,3" Margin="0,0,6,6" ToolTip.Tip="{Binding Tip}"
-                            Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                    <Border CornerRadius="8" Padding="8,3" Margin="0,0,6,6" ToolTip.Tip="{Binding Tip}" Cursor="Hand"
+                            Tapped="OnBranchTapped" Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
                       <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" Foreground="#0B0D14" />
                     </Border>
                   </DataTemplate>
