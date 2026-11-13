@@ -79,7 +79,7 @@
               <Border IsHitTestVisible="False" CornerRadius="18" BoxShadow="0 18 40 0 #90000000"
                       Opacity="{DynamicResource CardShadowOpacity}" />
               <Border Classes="card" Width="400" Height="520" Cursor="Hand" Tapped="OnCardTapped"
-                      BorderThickness="2"
+                      BorderThickness="2" ClipToBounds="True"
                       Classes.stateError="{Binding StateError}" Classes.stateStale="{Binding StateStale}"
                       Classes.stateApproved="{Binding StateApproved}" Classes.stateChanges="{Binding StateChanges}"
                       Classes.stateUnreviewed="{Binding StateUnreviewed}"

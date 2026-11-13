@@ -137,7 +137,7 @@ public static class Tilt
         // The edge under the cursor dips away from the viewer (pressed in), the opposite edge rises.
         state.TargetY = (nx - 0.5) * 2 * MaxAngle;
         state.TargetX = -(ny - 0.5) * 2 * MaxAngle;
-        state.TargetGlare = MaxGlare;
+        state.TargetGlare = MaxGlare * GlareScale(state);
         Engage(state);
 
         state.Shine ??= card.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "Shine");
@@ -156,8 +156,12 @@ public static class Tilt
     {
         if (!ReferenceEquals(state.Card.RenderTransform, state.Transform)) state.Card.RenderTransform = state.Transform;
         state.Shine ??= state.Card.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Name == "Shine");
-        if (state.Shine is not null && !state.Shine.IsVisible) state.Shine.IsVisible = true;
+        if (state.Shine is not null && !state.Shine.IsVisible && GlareScale(state) > 0) state.Shine.IsVisible = true;
     }
+
+    /// <summary>Theme setting for the glare (0 in the light theme, where a white glare would only look like a smudge).</summary>
+    private static double GlareScale(State state) =>
+        state.Card.TryFindResource("CardGlareScale", state.Card.ActualThemeVariant, out var v) && v is double d ? d : 1;
 
     private static void Release(State state)
     {

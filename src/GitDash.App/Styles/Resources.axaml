@@ -6,6 +6,7 @@
       <SolidColorBrush x:Key="BgBrush" Color="#0B0D14" />
       <SolidColorBrush x:Key="SidebarBrush" Color="#0F121C" />
       <x:Double x:Key="CardShadowOpacity">1</x:Double>
+      <x:Double x:Key="CardGlareScale">1</x:Double>
       <SolidColorBrush x:Key="SurfaceBrush" Color="#141826" />
       <SolidColorBrush x:Key="Surface2Brush" Color="#1B2032" />
       <SolidColorBrush x:Key="LineBrush" Color="#262C42" />
@@ -26,7 +27,9 @@
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="BgBrush" Color="#F3F5FA" />
       <SolidColorBrush x:Key="SidebarBrush" Color="#FFFFFF" />
-      <x:Double x:Key="CardShadowOpacity">0.2</x:Double>
+      <!-- A white glare and a dark drop shadow only look odd on a light page, so the tilting card goes without them -->
+      <x:Double x:Key="CardShadowOpacity">0</x:Double>
+      <x:Double x:Key="CardGlareScale">0</x:Double>
       <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Surface2Brush" Color="#EEF1F8" />
       <SolidColorBrush x:Key="LineBrush" Color="#DDE2EE" />
