@@ -5,11 +5,13 @@ using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
+using GitDash.Application.Updates;
 using GitDash.Infrastructure.Demo;
 using GitDash.Infrastructure.GitHub;
 using GitDash.Infrastructure.Notifications;
 using GitDash.Infrastructure.Security;
 using GitDash.Infrastructure.Storage;
+using GitDash.Infrastructure.Updates;
 using GitDash.Persistence.Sqlite;
 using GitDash.Presentation.Mvvm;
 using GitDash.Presentation.ViewModels;
@@ -33,6 +35,8 @@ public sealed class AppHost : IDisposable
     private readonly WidgetController _widget;
     private readonly IslandController _island;
     private readonly TrayController _tray;
+    private readonly UpdateService? _updates;
+    private readonly CancellationTokenSource _updateLoop = new();
 
     private AppHost(bool demo, Action showMainWindow, Action quit)
     {
@@ -79,6 +83,15 @@ public sealed class AppHost : IDisposable
         var toasts = new ToastPresenter(
             launcher, showMainWindow, () => Settings.Current.ReduceMotion, tone => Settings.Current.AutoCloses(tone));
         var notifications = new NotificationRouter(Settings, toasts, new NativeNotifier());
+        // The demo has no real releases to look for. Quitting must happen on the UI thread; the updater runs elsewhere.
+        if (!demo)
+        {
+            _updates = new UpdateService(
+                Settings, accounts, new GitHubReleaseSource(_http!, "krrish-soliton", "GitDash"),
+                UpdateInstallerFactory.Create(), RunningVersion.Read(), time,
+                request => notifications.PublishAsync(request), () => Dispatcher.UIThread.Post(quit));
+        }
+
         Monitor = new PullRequestMonitor(Settings, accounts, gitHub, notifications, time, stateCache);
         _actions = new ActionsMonitor(Settings, accounts, gitHub, time);
         _history = new TimerHistory(sessionStore);
@@ -96,7 +109,7 @@ public sealed class AppHost : IDisposable
         }
 
         Shell = new ShellViewModel(Monitor, Settings, accounts, _history, notifications,
-            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions);
+            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions, _updates);
         _widget = new WidgetController(Shell, Settings, showMainWindow);
         _island = new IslandController(Shell, Settings, showMainWindow);
         toasts.OpenPullRequest = Shell.OpenPullRequest;
@@ -121,10 +134,12 @@ public sealed class AppHost : IDisposable
         _tray.Start();
         Monitor.Start();
         _actions.Start();
+        if (_updates is not null) _ = _updates.RunAsync(_updateLoop.Token);
     }
 
     public void Dispose()
     {
+        _updateLoop.Cancel();
         _tray.Dispose();
         _island.Dispose();
         _widget.Dispose();

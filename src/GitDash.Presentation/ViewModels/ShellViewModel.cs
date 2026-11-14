@@ -6,6 +6,7 @@ using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
+using GitDash.Application.Updates;
 using GitDash.Domain.Insights;
 using GitDash.Presentation.Mvvm;
 
@@ -203,7 +204,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ShellViewModel(
         PullRequestMonitor monitor, SettingsService settings, AccountService accounts, TimerHistory history,
         NotificationRouter notifications, PersonActivityService personActivity, IUrlLauncher launcher, IAlarm alarm, IUiDispatcher ui, TimeProvider time,
-        ActionsMonitor? actionsMonitor = null)
+        ActionsMonitor? actionsMonitor = null, UpdateService? updates = null)
     {
         _time = time;
         _launcher = launcher;
@@ -213,8 +214,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _reduceMotion = settings.Current.ReduceMotion;
         Humanize.Format = settings.Current.TimeFormat;
 
+        Updates = new UpdateViewModel(updates, launcher, ui);
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
-        Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm };
+        Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm, Updates = Updates };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
         Timers = new TimersViewModel(settings, history, notifications, alarm, ui, time);
         Dashboard = new DashboardViewModel(launcher, time, () => Navigate(Settings));
@@ -263,6 +265,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public SettingsViewModel Settings { get; }
     public AboutViewModel About { get; }
     public WidgetViewModel Widget { get; } = new();
+
+    /// <summary>Version number, update progress and the restart countdown.</summary>
+    public UpdateViewModel Updates { get; }
     public IReadOnlyList<PageViewModel> Pages { get; }
 
     public PageViewModel CurrentPage

@@ -250,6 +250,18 @@
               <PathIcon x:Name="PinIcon" Data="{StaticResource IconRight}" Width="14" Height="14" IsVisible="False" />
             </Panel>
           </Button>
+
+          <!-- Version number, and what the updater is doing -->
+          <StackPanel Classes="hc" Spacing="1" Margin="6,2,0,0" IsVisible="{Binding Updates.HasVersion}">
+            <TextBlock Text="{Binding Updates.VersionText}" FontSize="11.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextBrush}" ToolTip.Tip="The version of GitDash you are running" />
+            <TextBlock Classes="muted" FontSize="10.5" Text="{Binding Updates.SidebarText}"
+                       IsVisible="{Binding Updates.HasSidebarText}" />
+            <Button Classes="ghost compact" Content="Update now" Command="{Binding Updates.PrimaryActionCommand}"
+                    IsVisible="{Binding Updates.SidebarIsAction}" HorizontalAlignment="Left" Margin="0,4,0,0" />
+          </StackPanel>
+          <TextBlock Classes="muted sc" FontSize="10" Text="{Binding Updates.VersionText}" Margin="2,0,0,0"
+                     IsVisible="{Binding Updates.HasVersion}" ToolTip.Tip="{Binding Updates.SidebarText}" />
         </StackPanel>
 
         <ListBox Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">
@@ -269,6 +281,24 @@
 
     <!-- Pages -->
     <DockPanel Grid.Column="1">
+      <!-- Shown while an update downloads and during the short countdown before the restart -->
+      <Border DockPanel.Dock="Top" IsVisible="{Binding Updates.ShowBanner}" Margin="36,14,36,0" Padding="16,12"
+              CornerRadius="14" Background="{DynamicResource Surface2Brush}" BorderThickness="1"
+              BorderBrush="{StaticResource Accent2Brush}">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+          <TextBlock Text="{Binding Updates.BannerTitle}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+          <TextBlock Grid.Row="1" Text="{Binding Updates.BannerDetail}" Classes="muted" FontSize="12" Margin="0,2,0,8" />
+          <ProgressBar Grid.Row="2" Minimum="0" Maximum="100" Value="{Binding Updates.ProgressValue}"
+                       IsIndeterminate="{Binding Updates.IsIndeterminate}" Height="5" MinHeight="5" CornerRadius="3"
+                       Background="{DynamicResource TrackBrush}" Foreground="{StaticResource Accent2Brush}" />
+          <StackPanel Grid.Column="1" Grid.RowSpan="3" Orientation="Horizontal" Spacing="8" Margin="16,0,0,0"
+                      VerticalAlignment="Center" IsVisible="{Binding Updates.IsReady}">
+            <Button Classes="ghost compact" Content="Later" Command="{Binding Updates.LaterCommand}" />
+            <Button Classes="primary compact" Content="Restart now" Command="{Binding Updates.RestartNowCommand}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
       <!-- Repository filter shared by the list pages -->
       <Border DockPanel.Dock="Top" IsVisible="{Binding ShowRepositoryFilter}" Padding="36,14,36,0">
         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">

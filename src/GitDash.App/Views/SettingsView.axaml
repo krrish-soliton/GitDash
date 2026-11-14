@@ -688,6 +688,34 @@
           </ItemsControl>
         </StackPanel>
       </Border>
+      <!-- ===== Updates ===== -->
+      <Border Classes="card enter3" IsVisible="{Binding IsUpdatesSection}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Updates" />
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Installed version" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" Text="{Binding Updates.VersionText}" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="ghost" Content="Check for updates" Command="{Binding Updates.CheckCommand}" />
+          </Grid>
+          <TextBlock Text="{Binding Updates.StatusText}" Classes="muted" Classes.error="{Binding Updates.HasError}"
+                     TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="primary" Content="Update now" Command="{Binding Updates.PrimaryActionCommand}"
+                    IsVisible="{Binding Updates.SidebarIsAction}" />
+            <Button Classes="ghost" Content="Release notes on GitHub" Command="{Binding Updates.OpenReleaseCommand}" />
+          </StackPanel>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Update automatically" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Looks for a new GitHub release shortly after start and every few hours. When one is found GitDash tells you, downloads it in the background, shows a short countdown and restarts into the new version. Off: you are told, and install it when you choose." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoUpdate}" OnContent="" OffContent="" />
+          </Grid>
+        </StackPanel>
+      </Border>
       <Border Classes="card enter3" IsVisible="{Binding IsWindowSection}">
         <StackPanel Spacing="16">
           <TextBlock Classes="h2" Text="Window and tray" />

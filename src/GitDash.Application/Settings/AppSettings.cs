@@ -147,6 +147,8 @@ public sealed record AppSettings
     public bool HideToTrayOnClose { get; init; } = true;
     /// <summary>macOS: remove the Dock icon while the main window is hidden (the app then lives in the menu bar).</summary>
     public bool HideDockIconWhenHidden { get; init; }
+    /// <summary>Download and install new releases by itself (the user is told and gets a short countdown before the restart).</summary>
+    public bool AutoUpdate { get; init; } = true;
     public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();

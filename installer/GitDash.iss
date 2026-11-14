@@ -42,3 +42,5 @@ Name: "{autodesktop}\GitDash"; Filename: "{app}\GitDash.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\GitDash.exe"; Description: "Launch GitDash"; Flags: nowait postinstall skipifsilent
+; Silent installs are what the in-app updater runs: open the new version again straight away.
+Filename: "{app}\GitDash.exe"; Flags: nowait runasoriginaluser skipifnotsilent
