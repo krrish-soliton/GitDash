@@ -31,7 +31,7 @@ public sealed class IslandNote(ToastRequest request, bool autoClose)
 public partial class IslandWindow : FloatingWindow
 {
     private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
-    private const double CompactRowHeight = 34;
+    private const double CompactRowHeight = 34, ExpandSlack = 14;
     private const int MaxVisibleNotes = 4, MaxWaiting = 20;
     private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 38;
     private int _timerRows;
@@ -343,7 +343,8 @@ public partial class IslandWindow : FloatingWindow
 
     private void Expand(double width, double height)
     {
-        height += TimerExtra;
+        // A little extra at the bottom so the last row (a timer slider, a note) is never touching the edge.
+        height += TimerExtra + ExpandSlack;
         Fit(width + WindowPadX, height + WindowPadY);
         var pill = this.FindControl<Border>("Pill")!;
         pill.Width = width;
