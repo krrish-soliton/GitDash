@@ -161,7 +161,10 @@ internal static class NativeWindow
             if (!OperatingSystem.IsMacOS()) return;
             var app = MsgSendHandle(GetClass("NSApplication"), sel_registerName("sharedApplication"));
             if (app == 0) return;
-            MsgSendLong(app, sel_registerName("setActivationPolicy:"), (nint)(visible ? 0 : 1)); // regular : accessory
+            var wanted = visible ? 0 : 1; // regular : accessory
+            // Asking first keeps repeated calls harmless (no focus stealing) and tells whether the framework changed it back.
+            if (MsgSendHandle(app, sel_registerName("activationPolicy")) == wanted) return;
+            MsgSendLong(app, sel_registerName("setActivationPolicy:"), (nint)wanted);
             if (visible) MsgSendBool(app, sel_registerName("activateIgnoringOtherApps:"), true);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)

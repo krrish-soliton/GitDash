@@ -49,7 +49,7 @@ public sealed class IslandNote(ToastRequest request, bool autoClose) : Observabl
 public partial class IslandWindow : FloatingWindow
 {
     private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
-    private const double CompactRowHeight = 34, ExpandSlack = 14;
+    private const double CompactRowHeight = 34, ExpandSlack = 14, MinOpenWidth = 300;
     private const int MaxVisibleNotes = 4, MaxWaiting = 20;
     private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 38;
     private int _timerRows;
@@ -215,6 +215,20 @@ public partial class IslandWindow : FloatingWindow
     /// Resizes around the island's centre but never past the edges of the screen it is on: when the wide form would
     /// stick out, the window slides back in, and the centre is remembered so the compact form returns to the same spot.
     /// </summary>
+    /// <summary>
+    /// Near a screen edge the island opens only as wide as fits around its centre (never less than <see cref="MinOpenWidth"/>),
+    /// so it stays where it is instead of sliding sideways to make room.
+    /// </summary>
+    private double FitWidth(double wanted)
+    {
+        var centre = CurrentCenterX();
+        var screen = Screens.ScreenFromPoint(new PixelPoint(centre, Position.Y)) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+        if (screen is null) return wanted;
+        var area = screen.WorkingArea;
+        var room = 2.0 * Math.Min(centre - area.X, area.Right - centre) / Scale;
+        return Math.Min(wanted, Math.Max(MinOpenWidth, room - WindowPadX));
+    }
+
     private void Fit(double width, double height)
     {
         var centre = CurrentCenterX();
@@ -395,6 +409,7 @@ public partial class IslandWindow : FloatingWindow
 
     private void Expand(double width, double height)
     {
+        width = FitWidth(width);
         // A little extra at the bottom so the last row (a timer slider, a note) is never touching the edge.
         height += TimerExtra + ExpandSlack;
         Fit(width + WindowPadX, height + WindowPadY);
