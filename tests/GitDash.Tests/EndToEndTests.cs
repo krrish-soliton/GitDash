@@ -57,7 +57,14 @@ internal sealed class JsonStateCache : IStateCache
     }
 }
 
-internal sealed class NoAlarm : IAlarm { public void Play() { } }
+internal sealed class NoAlarm : IAlarm { public void Play() { } public void Preview(string soundId, string? customPath) { } }
+
+internal sealed class CountingAlarm : IAlarm
+{
+    public int Plays { get; private set; }
+    public void Play() => Plays++;
+    public void Preview(string soundId, string? customPath) { }
+}
 
 public class EndToEndTests
 {
@@ -360,7 +367,7 @@ public class EndToEndTests
     {
         var f = await CreateAsync();
         var clock = new ManualTime();
-        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new InlineDispatcher(), clock);
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), clock);
 
         timers.TaskName = "Write report";
         timers.ToggleTaskCommand.Execute(null);
@@ -372,6 +379,167 @@ public class EndToEndTests
         Assert.Equal("Write report", session.Label);
         Assert.Equal(TimeSpan.FromMinutes(90), session.Duration);
         Assert.Equal("00:00", timers.TaskElapsed);
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Several_task_timers_run_at_once_and_stop_buttons_pause_them()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+
+        timers.NewTimerName = "Write docs";
+        timers.AddTaskTimerCommand.Execute(null);
+        timers.NewTimerName = "Fix bug";
+        timers.AddTaskTimerCommand.Execute(null);
+
+        Assert.Equal(2, timers.MoreTimers.Count);
+        Assert.True(timers.MoreTimers.All(t => t.IsRunning));
+        Assert.Equal(2, timers.RunningTimers.Count);
+
+        timers.MoreTimers[0].Line.StopCommand.Execute(null); // the stop button on the island / widget
+        Assert.False(timers.MoreTimers[0].IsRunning);
+        Assert.True(timers.MoreTimers[1].IsRunning);
+        Assert.Single(timers.RunningTimers);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Countdown_rings_saves_a_session_and_stops_at_zero()
+    {
+        var f = await CreateAsync();
+        var clock = new ManualTime();
+        var alarm = new CountingAlarm();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, alarm, new InlineDispatcher(), clock);
+
+        timers.CountdownMinutes = 1;
+        timers.AddCountdownCommand.Execute(null);
+        var countdown = Assert.Single(timers.MoreTimers);
+        Assert.Equal("01:00", countdown.Clock);
+
+        clock.Advance(TimeSpan.FromSeconds(30));
+        timers.Reformat(); // redraws and re-reads every timer
+        Assert.Equal("00:30", countdown.Clock);
+        Assert.Equal(0, alarm.Plays);
+
+        clock.Advance(TimeSpan.FromSeconds(40));
+        timers.Reformat();
+        Assert.True(countdown.IsFinished);
+        Assert.False(countdown.IsRunning);
+        Assert.Equal(1, alarm.Plays);
+        Assert.Empty(timers.RunningTimers);
+
+        for (var i = 0; i < 50 && f.History.Sessions.Count == 0; i++) await Task.Delay(20);
+        var session = Assert.Single(f.History.Sessions);
+        Assert.Equal(GitDash.Domain.Timers.TimerKind.Countdown, session.Kind);
+        Assert.Equal(TimeSpan.FromMinutes(1), session.Duration);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    private static GitDash.Domain.PullRequests.PullRequest DeskPr(bool approved) => TestData.Pr("p1", with: p => p with
+    {
+        Assignees = [TestData.Me],
+        Reviews = approved ? [new GitDash.Domain.PullRequests.Review(
+            TestData.Me, GitDash.Domain.PullRequests.ReviewState.Approved, TestData.Now, 0)] : [],
+    });
+
+    [Fact]
+    public async Task Review_timer_stops_by_itself_once_you_approve()
+    {
+        var f = await CreateAsync();
+        var clock = new ManualTime();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), clock);
+        timers.StartReviewFor(DeskPr(approved: false));
+        Assert.True(timers.IsReviewRunning);
+        clock.Advance(TimeSpan.FromMinutes(12));
+
+        timers.Apply(GitDash.Application.Monitoring.MonitorState.Empty with { Open = [DeskPr(approved: true)] });
+
+        Assert.False(timers.IsReviewRunning);
+        for (var i = 0; i < 50 && f.History.Sessions.Count == 0; i++) await Task.Delay(20);
+        Assert.Equal(GitDash.Domain.Timers.TimerKind.PullRequestReview, Assert.Single(f.History.Sessions).Kind);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Starting_a_review_timer_on_an_approved_pull_request_asks_first_and_then_keeps_running()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+        var state = GitDash.Application.Monitoring.MonitorState.Empty with { Open = [DeskPr(approved: true)] };
+        timers.Apply(state);
+        timers.SelectedReviewTarget = timers.ReviewTargets.Single();
+
+        timers.ToggleReviewCommand.Execute(null);
+        Assert.True(timers.IsConfirmingApproved);
+        Assert.False(timers.IsReviewRunning);
+
+        timers.CancelApprovedStartCommand.Execute(null);
+        Assert.False(timers.IsConfirmingApproved);
+        Assert.False(timers.IsReviewRunning);
+
+        timers.ToggleReviewCommand.Execute(null);
+        timers.ConfirmApprovedStartCommand.Execute(null);
+        Assert.True(timers.IsReviewRunning);
+
+        timers.Apply(state); // still approved: confirmed on purpose, so it must not stop
+        Assert.True(timers.IsReviewRunning);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task A_second_pull_request_gets_its_own_review_timer_while_the_first_is_running()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+        timers.StartReviewFor(DeskPr(approved: false));
+        var other = TestData.Pr("p2", with: p => p with { Assignees = [TestData.Me] });
+        timers.StartReviewFor(other);
+
+        Assert.True(timers.IsReviewRunning);
+        var extra = Assert.Single(timers.MoreTimers);
+        Assert.True(extra.IsReview);
+        Assert.True(extra.IsRunning);
+        Assert.Equal(2, timers.RunningTimers.Count);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Alarms_are_added_toggled_and_removed_in_the_settings()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+
+        timers.NewAlarmTime = new TimeSpan(7, 30, 0);
+        timers.NewAlarmLabel = "Stand-up";
+        timers.NewAlarmDaily = true;
+        timers.AddAlarmCommand.Execute(null);
+        for (var i = 0; i < 50 && timers.Alarms.Count == 0; i++) await Task.Delay(20);
+
+        var alarm = Assert.Single(timers.Alarms);
+        Assert.Equal("Stand-up", alarm.Label);
+        Assert.Equal("Every day", alarm.Repeat);
+        Assert.True(Assert.Single(f.Settings.Current.Alarms).Daily);
+
+        alarm.IsEnabled = false;
+        for (var i = 0; i < 50 && f.Settings.Current.Alarms[0].Enabled; i++) await Task.Delay(20);
+        Assert.False(f.Settings.Current.Alarms[0].Enabled);
+
+        timers.Alarms[0].RemoveCommand.Execute(null);
+        for (var i = 0; i < 50 && f.Settings.Current.Alarms.Count > 0; i++) await Task.Delay(20);
+        Assert.Empty(f.Settings.Current.Alarms);
+
         timers.Dispose();
         await f.Monitor.DisposeAsync();
     }

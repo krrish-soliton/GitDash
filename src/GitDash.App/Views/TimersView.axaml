@@ -141,6 +141,98 @@
         </Panel>
       </Grid>
 
+      <!-- Asked before a review timer starts on a pull request that is already approved -->
+      <Border Classes="card" IsVisible="{Binding IsConfirmingApproved}" BorderBrush="{StaticResource AmberBrush}" BorderThickness="1">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4" VerticalAlignment="Center">
+            <TextBlock Classes="h2" Text="Already approved" />
+            <TextBlock Classes="muted" Text="{Binding ConfirmMessage}" TextWrapping="Wrap" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="16,0,0,0">
+            <Button Classes="ghost" Content="Cancel" Command="{Binding CancelApprovedStartCommand}" />
+            <Button Classes="primary" Content="Start anyway" Command="{Binding ConfirmApprovedStartCommand}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Any number of timers of the same kind -->
+      <Border Classes="card enter3">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h2" Text="More timers" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Run as many task timers and countdowns as you like at once. Review timers for other pull requests show up here too." />
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="10">
+            <TextBox Text="{Binding NewTimerName}" Watermark="Name (optional)" MaxLength="120" />
+            <Button Grid.Column="1" Classes="ghost" Content="Add task timer" Command="{Binding AddTaskTimerCommand}" />
+            <NumericUpDown Grid.Column="2" Width="120" Value="{Binding CountdownMinutes}" Minimum="1" Maximum="1440"
+                           Increment="5" FormatString="0" />
+            <TextBlock Grid.Column="3" Classes="muted" Text="min" VerticalAlignment="Center" />
+            <Button Grid.Column="4" Classes="primary" Content="Start countdown" Command="{Binding AddCountdownCommand}" />
+          </Grid>
+          <TextBlock Classes="muted" Text="No extra timers yet." IsVisible="{Binding !HasMoreTimers}" />
+          <ItemsControl ItemsSource="{Binding MoreTimers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:TimerItemViewModel">
+                <StackPanel Spacing="6" Margin="0,0,0,12">
+                  <Grid ColumnDefinitions="96,*,Auto,Auto">
+                    <Border Classes="chip" HorizontalAlignment="Left">
+                      <TextBlock Text="{Binding KindLabel}"
+                                 Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="{DynamicResource TextBrush}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="2" Text="{Binding Clock}" FontSize="20" FontWeight="Bold" Margin="16,0"
+                               Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                      <Button Classes="primary compact" Content="Start" Command="{Binding ToggleCommand}"
+                              IsVisible="{Binding !IsRunning}" />
+                      <Button Classes="primary compact" Content="Pause" Command="{Binding ToggleCommand}"
+                              IsVisible="{Binding IsRunning}" />
+                      <Button Classes="ghost compact" Content="Finish &amp; save" Command="{Binding FinishCommand}" />
+                      <Button Classes="ghost compact" Content="Remove" Command="{Binding RemoveCommand}" />
+                    </StackPanel>
+                  </Grid>
+                  <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" Height="4" MinHeight="4" CornerRadius="2"
+                               Background="{DynamicResource TrackBrush}"
+                               Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- Alarms -->
+      <Border Classes="card enter3">
+        <StackPanel Spacing="14">
+          <TextBlock Classes="h2" Text="Alarms" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Rings at a time of day with the sound chosen in Settings. An alarm that passed while the app was closed stays silent." />
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+            <TimePicker SelectedTime="{Binding NewAlarmTime}" MinuteIncrement="1" />
+            <TextBox Grid.Column="1" Text="{Binding NewAlarmLabel}" Watermark="Label (optional)" MaxLength="80" />
+            <CheckBox Grid.Column="2" Content="Every day" IsChecked="{Binding NewAlarmDaily}" VerticalAlignment="Center" />
+            <Button Grid.Column="3" Classes="primary" Content="Add alarm" Command="{Binding AddAlarmCommand}" />
+          </Grid>
+          <TextBlock Classes="muted" Text="No alarms set." IsVisible="{Binding !HasAlarms}" />
+          <ItemsControl ItemsSource="{Binding Alarms}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AlarmItemViewModel">
+                <Grid ColumnDefinitions="110,*,100,Auto,Auto" Margin="0,0,0,8">
+                  <TextBlock Text="{Binding Time}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextBrush}"
+                             VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" Foreground="{DynamicResource TextBrush}"
+                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Grid.Column="2" Text="{Binding Repeat}" Classes="muted" VerticalAlignment="Center" />
+                  <ToggleSwitch Grid.Column="3" IsChecked="{Binding IsEnabled}" OnContent="" OffContent="" Margin="0,0,10,0" />
+                  <Button Grid.Column="4" Classes="ghost compact" Content="Remove" Command="{Binding RemoveCommand}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
       <!-- History -->
       <Border Classes="card enter3">
         <StackPanel Spacing="14">

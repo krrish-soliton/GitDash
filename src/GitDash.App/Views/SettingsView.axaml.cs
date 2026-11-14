@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using GitDash.Presentation.ViewModels;
 
 namespace GitDash.App.Views;
@@ -15,6 +16,22 @@ public partial class SettingsView : UserControl
         {
             page.RemoveAccountCommand.Execute(account);
         }
+    }
+
+    /// <summary>Lets the user pick their own notification tone.</summary>
+    private async void OnLoadToneClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel page || TopLevel.GetTopLevel(this) is not { } top) return;
+        var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose a notification tone",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Audio files") { Patterns = ["*.wav", "*.mp3", "*.aiff", "*.aif", "*.m4a"] },
+            ],
+        });
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path) page.SetCustomSound(path);
     }
 
     private void OnOpenNewTokenClick(object? sender, RoutedEventArgs e)

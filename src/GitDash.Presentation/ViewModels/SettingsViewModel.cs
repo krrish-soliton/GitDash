@@ -48,6 +48,9 @@ public sealed class SettingsViewModel : PageViewModel
     /// <summary>AI usage tracker shown in the settings page.</summary>
     public AiToolsViewModel? AiTools { get; init; }
 
+    /// <summary>Plays the sound previews on this page.</summary>
+    public IAlarm? Alarm { get; init; }
+
     private List<RepositoryChoiceViewModel> _allRepositories = [];
     private AccountItemViewModel? _selectedAccount;
     private CancellationTokenSource? _deviceFlow;
@@ -79,6 +82,13 @@ public sealed class SettingsViewModel : PageViewModel
         ReloadRepositoriesCommand = new AsyncRelayCommand(LoadRepositoriesAsync, ex => RepositoryMessage = ex.Message);
         TestNotificationCommand = new RelayCommand(() => _ = _notifications.PublishAsync(new ToastRequest(
             "Test notification", "This is how GitDash will let you know.", ToastTone.Review)));
+        PreviewSoundCommand = new RelayCommand(() => Alarm?.Preview(
+            SoundCatalog.Normalise(_settings.Current.SoundId), _settings.Current.CustomSoundPath));
+        ClearCustomSoundCommand = new RelayCommand(() => Save(s => s with
+        {
+            CustomSoundPath = null,
+            SoundId = s.SoundId == SoundCatalog.CustomId ? SoundCatalog.DefaultId : s.SoundId,
+        }));
 
         _settings.Changed += _ => _ui.Post(() =>
         {
@@ -89,6 +99,8 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays),
                          nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
+                         nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
+                         nameof(CustomSoundName), nameof(HasCustomSound),
                      })
                 Raise(name);
         });
@@ -191,6 +203,58 @@ public sealed class SettingsViewModel : PageViewModel
     }
 
     public ICommand TestNotificationCommand { get; }
+
+    // ----- Sounds -----
+    public bool SoundEnabled
+    {
+        get => _settings.Current.SoundEnabled;
+        set => Save(s => s with { SoundEnabled = value });
+    }
+
+    public bool SoundOnNotifications
+    {
+        get => _settings.Current.SoundOnNotifications;
+        set => Save(s => s with { SoundOnNotifications = value });
+    }
+
+    /// <summary>The built-in sounds, plus the user's own tone once one is loaded.</summary>
+    public IReadOnlyList<SoundOption> SoundOptions =>
+    [
+        .. SoundCatalog.BuiltIn,
+        .. HasCustomSound ? [new SoundOption(SoundCatalog.CustomId, $"Custom: {CustomSoundName}")] : Array.Empty<SoundOption>(),
+    ];
+
+    public SoundOption? SelectedSound
+    {
+        get
+        {
+            var id = SoundCatalog.Normalise(_settings.Current.SoundId);
+            if (id == SoundCatalog.CustomId && !HasCustomSound) id = SoundCatalog.DefaultId;
+            return SoundOptions.FirstOrDefault(o => o.Id == id);
+        }
+        set
+        {
+            if (value is null || value.Id == SoundCatalog.Normalise(_settings.Current.SoundId)) return;
+            Save(s => s with { SoundId = value.Id });
+            Alarm?.Preview(value.Id, _settings.Current.CustomSoundPath); // hear it as it is picked
+        }
+    }
+
+    public bool HasCustomSound => !string.IsNullOrWhiteSpace(_settings.Current.CustomSoundPath);
+
+    public string CustomSoundName => HasCustomSound
+        ? Path.GetFileName(_settings.Current.CustomSoundPath!)
+        : "No custom tone loaded";
+
+    /// <summary>Uses the user's own sound file for notifications, timers and alarms.</summary>
+    public void SetCustomSound(string path)
+    {
+        Save(s => s with { CustomSoundPath = path, SoundId = SoundCatalog.CustomId });
+        Alarm?.Preview(SoundCatalog.CustomId, path);
+    }
+
+    public ICommand PreviewSoundCommand { get; }
+    public ICommand ClearCustomSoundCommand { get; }
 
     // ----- General -----
     public decimal? LiveCheckSeconds

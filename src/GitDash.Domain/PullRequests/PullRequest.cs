@@ -119,6 +119,10 @@ public sealed record PullRequest
     /// <summary>The viewer reviewed, and the code changed after that: a fresh look is due.</summary>
     public bool ViewerReviewIsStale => LatestDecisions.Any(r => Login.Same(r.Author, ViewerLogin) && IsStale(r));
 
+    /// <summary>The viewer's latest decision is an approval of the code as it is now (no newer commit since).</summary>
+    public bool ViewerHasApproved => LatestDecisions.Any(r =>
+        Login.Same(r.Author, ViewerLogin) && r.State == ReviewState.Approved && !IsStale(r));
+
     /// <summary>The viewer already reviewed once and has been asked to look again.</summary>
     public bool IsReapproval => NeedsViewerApproval && ViewerHasReviewed;
 

@@ -94,7 +94,7 @@ public sealed class AppHost : IDisposable
         }
 
         Shell = new ShellViewModel(Monitor, Settings, accounts, _history, notifications,
-            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(), ui, time);
+            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time);
         _widget = new WidgetController(Shell, Settings, showMainWindow);
         _island = new IslandController(Shell, Settings, launcher, showMainWindow);
         toasts.Island = _island.TryShow;

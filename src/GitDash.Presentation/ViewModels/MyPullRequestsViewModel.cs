@@ -252,10 +252,43 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         OpenInBrowserCommand = new RelayCommand<PullRequestCardViewModel>(c => launcher.Open(c.Url));
         StartReviewCommand = new RelayCommand<PullRequestCardViewModel>(c =>
         {
+            if (c.PullRequest.ViewerHasApproved)
+            {
+                // Timing a review you have already approved is unusual: ask first.
+                _pendingReview = c;
+                ConfirmReviewMessage = $"You already approved #{c.PullRequest.Number} {c.PullRequest.Title}. Start a review timer anyway? It will not stop by itself.";
+                IsConfirmingReview = true;
+                return;
+            }
+
             CloseDetails();
             startReviewTimer(c.PullRequest);
         });
+        ConfirmReviewCommand = new RelayCommand(() =>
+        {
+            var card = _pendingReview;
+            _pendingReview = null;
+            IsConfirmingReview = false;
+            if (card is null) return;
+            CloseDetails();
+            startReviewTimer(card.PullRequest);
+        });
+        CancelReviewCommand = new RelayCommand(() =>
+        {
+            _pendingReview = null;
+            IsConfirmingReview = false;
+        });
     }
+
+    private PullRequestCardViewModel? _pendingReview;
+    private bool _isConfirmingReview;
+    private string _confirmReviewMessage = string.Empty;
+
+    /// <summary>Asks before a review timer is started on a pull request the viewer already approved.</summary>
+    public bool IsConfirmingReview { get => _isConfirmingReview; private set => Set(ref _isConfirmingReview, value); }
+    public string ConfirmReviewMessage { get => _confirmReviewMessage; private set => Set(ref _confirmReviewMessage, value); }
+    public ICommand ConfirmReviewCommand { get; }
+    public ICommand CancelReviewCommand { get; }
 
     // ----- Filters and cards -----
     public IReadOnlyList<FilterOptionViewModel> Filters { get; }

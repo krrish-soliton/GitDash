@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using GitDash.Presentation.Mvvm;
 
 namespace GitDash.Presentation.ViewModels;
@@ -6,10 +7,13 @@ namespace GitDash.Presentation.ViewModels;
 /// One running timer as shown on the widget, the island and the dashboard: what it is, its clock and a slider.
 /// The slider is the Pomodoro phase progress; for open-ended timers (task, review) it sweeps once per minute.
 /// </summary>
-public sealed class RunningTimerViewModel(string accent) : ObservableObject
+public sealed class RunningTimerViewModel(string accent, Action? stop = null) : ObservableObject
 {
     private string _label = string.Empty, _clock = "00:00";
     private double _progress;
+
+    /// <summary>The stop button on the island and the widget: pauses this timer (nothing is lost; resume on the Timers page).</summary>
+    public ICommand StopCommand { get; } = new RelayCommand(() => stop?.Invoke());
 
     /// <summary>Colour of the timer's slider, as #RRGGBB.</summary>
     public string Accent { get; } = accent;

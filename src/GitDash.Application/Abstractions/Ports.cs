@@ -71,10 +71,14 @@ public interface IAvatarSource
     Task<byte[]?> GetAsync(string url, CancellationToken ct = default);
 }
 
-/// <summary>A short, unobtrusive sound for "time is up" moments.</summary>
+/// <summary>A short, unobtrusive sound for "time is up" moments and notifications.</summary>
 public interface IAlarm
 {
+    /// <summary>Plays the sound chosen in the settings (nothing when sounds are switched off).</summary>
     void Play();
+
+    /// <summary>Plays one sound so the user can hear it before choosing it; ignores the on/off switch.</summary>
+    void Preview(string soundId, string? customPath);
 }
 
 /// <summary>One repository as last seen: enough to show the dashboard instantly and to resume change detection.</summary>

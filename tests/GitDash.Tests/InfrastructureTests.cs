@@ -264,3 +264,29 @@ public class GitHubCliTokenSourceTests
         Assert.True(GitHubUrlLauncher.IsAllowed(GitDash.Presentation.ViewModels.SettingsViewModel.NewTokenUrl));
     }
 }
+
+public class SoundTests
+{
+    [Fact]
+    public void Every_built_in_sound_renders_a_valid_wav()
+    {
+        foreach (var option in SoundCatalog.BuiltIn)
+        {
+            var wav = GitDash.Infrastructure.Notifications.ToneSynth.Render(option.Id);
+            Assert.True(wav.Length > 2000, option.Id);
+            Assert.Equal("RIFF", System.Text.Encoding.ASCII.GetString(wav, 0, 4));
+            Assert.Equal("WAVE", System.Text.Encoding.ASCII.GetString(wav, 8, 4));
+            Assert.Equal(wav.Length - 8, BitConverter.ToInt32(wav, 4));
+            Assert.Contains(wav, b => b != 0); // not silence
+        }
+    }
+
+    [Fact]
+    public void Unknown_sound_ids_fall_back_to_the_default()
+    {
+        Assert.Equal(SoundCatalog.DefaultId, SoundCatalog.Normalise("nope"));
+        Assert.Equal(SoundCatalog.DefaultId, SoundCatalog.Normalise(null));
+        Assert.Equal(SoundCatalog.CustomId, SoundCatalog.Normalise("custom"));
+        Assert.Equal("bell", SoundCatalog.Normalise("bell"));
+    }
+}

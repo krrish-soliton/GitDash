@@ -138,6 +138,21 @@ public sealed record AppSettings
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();
 
+    /// <summary>Wall-clock alarms set on the Timers page.</summary>
+    public IReadOnlyList<AlarmEntry> Alarms { get; init; } = [];
+
+    /// <summary>Master switch for every sound (timers, alarms and notifications).</summary>
+    public bool SoundEnabled { get; init; } = true;
+
+    /// <summary>One of <see cref="SoundCatalog.BuiltIn"/>, or <see cref="SoundCatalog.CustomId"/> to use <see cref="CustomSoundPath"/>.</summary>
+    public string SoundId { get; init; } = SoundCatalog.DefaultId;
+
+    /// <summary>The user's own tone (wav, mp3, aiff, m4a). Never copied; if the file disappears the built-in sound is used.</summary>
+    public string? CustomSoundPath { get; init; }
+
+    /// <summary>Also play the sound for ordinary notifications, not only for timers and alarms.</summary>
+    public bool SoundOnNotifications { get; init; } = true;
+
     public TimeSpan LiveCheckInterval =>
         TimeSpan.FromSeconds(Math.Clamp(LiveCheckSeconds, MinLiveCheckSeconds, MaxLiveCheckSeconds));
 }

@@ -238,6 +238,71 @@ public class TimerTests
 }
 
 
+public class AlarmTests
+{
+    private static readonly AlarmEntry Daily = new(Guid.NewGuid(), "Stand-up", new TimeOnly(9, 30), Daily: true);
+    private static readonly DateTime Day = new(2026, 11, 13, 0, 0, 0);
+
+    [Fact]
+    public void Rings_from_its_time_for_a_few_minutes_only()
+    {
+        Assert.False(Daily.IsDue(Day.AddHours(9).AddMinutes(29)));
+        Assert.True(Daily.IsDue(Day.AddHours(9).AddMinutes(30)));
+        Assert.True(Daily.IsDue(Day.AddHours(9).AddMinutes(34)));
+        Assert.False(Daily.IsDue(Day.AddHours(9).AddMinutes(36))); // the app was closed at 9:30: stay silent
+    }
+
+    [Fact]
+    public void Daily_alarm_waits_for_tomorrow_and_one_off_alarm_switches_off()
+    {
+        var ringing = Day.AddHours(9).AddMinutes(30);
+        var after = Daily.Rang(ringing);
+        Assert.False(after.IsDue(ringing.AddMinutes(1)));
+        Assert.True(after.IsDue(ringing.AddDays(1)));
+
+        var once = Daily with { Daily = false };
+        var done = once.Rang(ringing);
+        Assert.False(done.Enabled);
+        Assert.False(done.IsDue(ringing.AddDays(1)));
+    }
+
+    [Fact]
+    public void Disabled_alarm_stays_silent()
+    {
+        Assert.False((Daily with { Enabled = false }).IsDue(Day.AddHours(9).AddMinutes(31)));
+    }
+}
+
+public class ViewerApprovalTests
+{
+    private static PullRequest With(params Review[] reviews) => TestData.Pr("a", with: p => p with
+    {
+        Reviews = reviews,
+        LastCommitAt = TestData.Now.AddHours(-1),
+    });
+
+    [Fact]
+    public void Approval_after_the_last_commit_counts()
+    {
+        Assert.True(With(new Review(TestData.Me, ReviewState.Approved, TestData.Now, 0)).ViewerHasApproved);
+    }
+
+    [Fact]
+    public void Approval_before_the_last_commit_is_stale_and_does_not_count()
+    {
+        Assert.False(With(new Review(TestData.Me, ReviewState.Approved, TestData.Now.AddHours(-3), 0)).ViewerHasApproved);
+    }
+
+    [Fact]
+    public void Someone_elses_approval_or_a_later_change_request_does_not_count()
+    {
+        Assert.False(With(new Review("maya", ReviewState.Approved, TestData.Now, 0)).ViewerHasApproved);
+        Assert.False(With(
+            new Review(TestData.Me, ReviewState.Approved, TestData.Now.AddMinutes(-10), 0),
+            new Review(TestData.Me, ReviewState.ChangesRequested, TestData.Now, 0)).ViewerHasApproved);
+    }
+}
+
 public class AiAuthorTests
 {
     [Fact]

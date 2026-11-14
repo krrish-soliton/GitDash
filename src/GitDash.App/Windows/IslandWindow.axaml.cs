@@ -81,7 +81,8 @@ public partial class IslandWindow : FloatingWindow
     }
 
     /// <summary>Mouse passes through unless click-through is off, it is being moved, or it shows a notification that must be closed by hand.</summary>
-    protected override bool IgnoresMouse => IsLocked && ClickThroughEnabled && !(_current is not null && _sticky);
+    protected override bool IgnoresMouse =>
+        IsLocked && ClickThroughEnabled && !OverHitButton && !(_current is not null && _sticky);
 
     /// <summary>Horizontal centre and top edge in screen pixels: what is remembered as the island's place.</summary>
     public (int CenterX, int Top) Anchor => (CurrentCenterX(), Position.Y);

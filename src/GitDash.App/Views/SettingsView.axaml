@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitDash.Presentation.ViewModels"
+             xmlns:set="using:GitDash.Application.Settings"
              xmlns:conv="using:GitDash.App.Converters"
              xmlns:c="using:GitDash.App.Controls"
              x:Class="GitDash.App.Views.SettingsView"
@@ -415,6 +416,55 @@
           </Grid>
           <Button Classes="ghost" Content="Send a test notification" Command="{Binding TestNotificationCommand}" />
         </StackPanel>
+        </Expander>
+      </Border>
+
+      <!-- ===== Sounds ===== -->
+      <Border Classes="card enter3">
+        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+          <Expander.Header><TextBlock Classes="h2" Text="Sounds" VerticalAlignment="Center" /></Expander.Header>
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Text="Play sounds" Foreground="{DynamicResource TextBrush}" />
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                           Text="Timers and alarms always ring when this is on. Off silences everything." />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding SoundEnabled}" OnContent="" OffContent="" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock Text="Also play a sound for notifications" Foreground="{DynamicResource TextBrush}" />
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                           Text="Assigned, review, comment, merged and removed notifications." />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding SoundOnNotifications}" OnContent="" OffContent="" />
+            </Grid>
+            <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,4" />
+            <TextBlock Text="Sound" Foreground="{DynamicResource TextBrush}" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <!-- The drop-down is the pop-up list of sounds; picking one plays it -->
+              <ComboBox ItemsSource="{Binding SoundOptions}" SelectedItem="{Binding SelectedSound}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="set:SoundOption">
+                    <TextBlock Text="{Binding Name}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Button Grid.Column="1" Classes="ghost" Content="Play" Command="{Binding PreviewSoundCommand}" />
+            </Grid>
+            <TextBlock Text="Your own tone" Foreground="{DynamicResource TextBrush}" Margin="0,6,0,0" />
+            <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                       Text="Load a short wav, mp3, aiff or m4a file. It is used in place of the built-in sound; the file stays where it is." />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+              <TextBlock Text="{Binding CustomSoundName}" Classes="muted" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" />
+              <Button Grid.Column="1" Classes="ghost" Content="Load tone…" Click="OnLoadToneClick" />
+              <Button Grid.Column="2" Classes="ghost" Content="Remove" Command="{Binding ClearCustomSoundCommand}"
+                      IsVisible="{Binding HasCustomSound}" />
+            </Grid>
+          </StackPanel>
         </Expander>
       </Border>
 

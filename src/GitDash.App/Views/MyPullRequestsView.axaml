@@ -478,5 +478,18 @@
         </TabControl>
       </DockPanel>
     </Border>
+    <!-- Confirmation before timing a review of a pull request that was already approved -->
+    <Border IsVisible="{Binding IsConfirmingReview}" Background="{DynamicResource ScrimBrush}">
+      <Border Classes="card" MaxWidth="460" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="26">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Already approved" />
+          <TextBlock Classes="muted" Text="{Binding ConfirmReviewMessage}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Classes="ghost" Content="Cancel" Command="{Binding CancelReviewCommand}" />
+            <Button Classes="primary" Content="Start timer" Command="{Binding ConfirmReviewCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
   </Grid>
 </UserControl>

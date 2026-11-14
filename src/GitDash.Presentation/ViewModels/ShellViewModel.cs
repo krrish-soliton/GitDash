@@ -107,9 +107,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Humanize.Format = settings.Current.TimeFormat;
 
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
-        Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools };
+        Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
-        Timers = new TimersViewModel(settings, history, notifications, ui, time);
+        Timers = new TimersViewModel(settings, history, notifications, alarm, ui, time);
         Dashboard = new DashboardViewModel(launcher, time, () => Navigate(Settings));
         Dashboard.AttachTimers(Timers);
         People = new PeopleViewModel(launcher, time, personActivity);
@@ -130,7 +130,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         NavigateCommand = new RelayCommand<PageViewModel>(Navigate);
         RefreshCommand = new RelayCommand(monitor.RequestRefresh);
 
-        notifications.Published += request => ui.Post(() => Widget.NotificationArrived(request.Title));
+        notifications.Published += request => ui.Post(() =>
+        {
+            Widget.NotificationArrived(request.Title);
+            // Timers and alarms ring on their own; everything else follows the "sound with notifications" setting.
+            if (request.Tone != ToastTone.Timer && settings.Current.SoundOnNotifications) alarm.Play();
+        });
         _monitor.StateChanged += OnStateChanged;
         _settings.Changed += OnSettingsChanged;
     }

@@ -3,6 +3,7 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitDash.App.Services;
 
 namespace GitDash.App.Windows;
@@ -14,7 +15,7 @@ namespace GitDash.App.Windows;
 /// </summary>
 public abstract class FloatingWindow : Window
 {
-    private static readonly TimeSpan HoverPoll = TimeSpan.FromMilliseconds(120);
+    private static readonly TimeSpan HoverPoll = TimeSpan.FromMilliseconds(60);
     private DispatcherTimer? _hoverTimer;
     private bool _locked = true;
 
@@ -64,7 +65,7 @@ public abstract class FloatingWindow : Window
     public void SetGlass(bool enabled) => Classes.Set("glass", enabled);
 
     /// <summary>Whether the mouse should currently pass straight through the window. Locked windows do, by default.</summary>
-    protected virtual bool IgnoresMouse => _locked && _clickThrough;
+    protected virtual bool IgnoresMouse => _locked && _clickThrough && !_overButton;
 
     /// <summary>Called when the cursor enters or leaves a locked window (always called with true when unlocked).</summary>
     protected virtual void OnHoverChanged(bool hovering) { }
@@ -185,9 +186,43 @@ public abstract class FloatingWindow : Window
         }
     }
 
+    private bool _overButton;
+
+    /// <summary>The cursor is over a "hit" button right now, so the mouse must not pass through.</summary>
+    protected bool OverHitButton => _overButton;
+
+    /// <summary>
+    /// Buttons marked with the style class "hit" (the stop buttons, close) stay clickable while the window is
+    /// click-through: a click-through window gets no pointer events, so the polled cursor position decides when to
+    /// let the mouse in, and only while it is exactly over such a button.
+    /// </summary>
+    private bool CursorIsOverHitButton(PixelPoint cursor)
+    {
+        var scale = RenderScaling <= 0 ? 1 : RenderScaling;
+        foreach (var button in this.GetVisualDescendants().OfType<Button>())
+        {
+            if (!button.Classes.Contains("hit") || !button.IsVisible || button.Bounds.Width <= 0) continue;
+            if (button.TranslatePoint(default, this) is not { } origin) continue;
+            var topLeft = new PixelPoint(
+                Position.X + (int)Math.Round(origin.X * scale), Position.Y + (int)Math.Round(origin.Y * scale));
+            var size = new PixelSize((int)Math.Round(button.Bounds.Width * scale), (int)Math.Round(button.Bounds.Height * scale));
+            if (new PixelRect(topLeft, size).Contains(cursor)) return true;
+        }
+
+        return false;
+    }
+
     private void PollHover()
     {
         if (!IsVisible || NativeWindow.CursorPosition(RenderScaling) is not { } cursor) return;
-        SetHover(HoverRect.Contains(cursor));
+        var inside = HoverRect.Contains(cursor);
+        var overButton = inside && CursorIsOverHitButton(cursor);
+        if (overButton != _overButton)
+        {
+            _overButton = overButton;
+            RefreshClickThrough();
+        }
+
+        SetHover(inside);
     }
 }

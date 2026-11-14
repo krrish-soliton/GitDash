@@ -58,8 +58,13 @@
               <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
                 <Ellipse Classes="live" Width="8" Height="8" VerticalAlignment="Center"
                          Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
-                <TextBlock Text="{Binding Label}" Classes="label" FontSize="10" MaxWidth="190"
-                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Label}" Classes="label" FontSize="10" MaxWidth="160"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <!-- Stays clickable even when the widget lets the mouse pass through (class "hit") -->
+                <Button Classes="round hit" Width="18" Height="18" MinHeight="18" Padding="0"
+                        Command="{Binding StopCommand}" ToolTip.Tip="Stop (pause) this timer">
+                  <PathIcon Data="M0,0 H8 V8 H0 Z" Width="7" Height="7" />
+                </Button>
               </StackPanel>
               <TextBlock Text="{Binding Clock}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
                          Foreground="{DynamicResource TextBrush}" />
