@@ -53,15 +53,72 @@
 
           <Border Height="1" Background="{DynamicResource LineBrush}" />
 
-          <TextBlock Text="Add an account" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
-          <Grid ColumnDefinitions="*,24,*">
-            <!-- Classic access token (recommended) -->
-            <StackPanel Grid.Column="0" Spacing="10">
+          <!-- Main way: the GitHub CLI login -->
+          <Border Background="{DynamicResource Surface2Brush}" CornerRadius="14" Padding="16">
+            <StackPanel Spacing="10">
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="Access token (classic)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                <TextBlock Text="Sign in with GitHub CLI" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
                            VerticalAlignment="Center" />
                 <Border Classes="badge ok"><TextBlock Text="Recommended" /></Border>
                 <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
+                    ToolTip.Tip="How to sign in with GitHub CLI">
+              <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Width="440" Spacing="10">
+                    <TextBlock Text="How to sign in with GitHub CLI" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
+                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="GitDash can reuse the login of the GitHub CLI (gh) that is already on your computer. No token to copy and no OAuth App." />
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="1." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Install GitHub CLI from cli.github.com (Windows: winget install GitHub.cli, macOS: brew install gh)." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="2." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="In a terminal, run: gh auth login. Choose GitHub.com and sign in with the browser." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="3." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Using an organization with SAML single sign-on? Run: gh auth refresh -s read:org, then authorize the organization when GitHub asks." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="4." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="Click &quot;Sign in with GitHub CLI&quot; here. GitDash copies the token into its own secure store." />
+                    </Grid>
+                    <Grid ColumnDefinitions="24,*">
+                      <TextBlock Text="5." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
+                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                 Text="If you log in again later, click the button again to refresh the copy." />
+                    </Grid>
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+              </StackPanel>
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Reuses the login of the GitHub CLI (gh) on this computer: no token to copy and no app for your organization to approve. Run gh auth login once in a terminal, then click the button. GitDash reads the token with gh auth token." />
+              <Button Classes="primary" Content="Sign in with GitHub CLI" Command="{Binding UseGitHubCliCommand}"
+                      HorizontalAlignment="Left" />
+            </StackPanel>
+          </Border>
+
+          <!-- Advanced: token and OAuth App -->
+          <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+            <Expander.Header>
+              <TextBlock Text="Advanced sign-in options" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                         VerticalAlignment="Center" />
+            </Expander.Header>
+            <StackPanel Spacing="18">
+
+              <!-- Personal access token -->
+              <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="Personal access token" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                             VerticalAlignment="Center" />
+                  <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
                     ToolTip.Tip="How to create a classic access token">
               <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
               <Button.Flyout>
@@ -97,7 +154,7 @@
                     <Grid ColumnDefinitions="24,*">
                       <TextBlock Text="6." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
                       <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                 Text="Paste the token into the box on the left and click Add account." />
+                                 Text="Paste the token into the box below and click Add account." />
                     </Grid>
                     <Button Classes="primary" Content="Open GitHub: New classic token" Click="OnOpenNewTokenClick"
                             HorizontalAlignment="Left" Margin="0,4,0,0" />
@@ -105,76 +162,21 @@
                 </Flyout>
               </Button.Flyout>
             </Button>
+                </StackPanel>
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                           Text="Create a classic token with the repo and read:org scopes. A fine-grained token with read-only Pull requests and Metadata also works. No app approval from your organization is needed." />
+                <TextBox Text="{Binding TokenInput}" PasswordChar="●" Watermark="Paste token" MaxLength="255" />
+                <Button Classes="primary" Content="Add account" Command="{Binding AddTokenCommand}" HorizontalAlignment="Left" />
               </StackPanel>
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="No app approval from your organization needed. Create a classic token with the repo and read:org scopes. A fine-grained token with read-only Pull requests and Metadata also works." />
-              <TextBox Text="{Binding TokenInput}" PasswordChar="●" Watermark="Paste token" MaxLength="255" />
-              <Button Classes="primary" Content="Add account" Command="{Binding AddTokenCommand}" />
-            </StackPanel>
 
-            <!-- GitHub CLI -->
-            <StackPanel Grid.Column="2" Spacing="10">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Text="GitHub CLI login" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
-                           VerticalAlignment="Center" />
-                <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
-                    ToolTip.Tip="How to sign in with GitHub CLI">
-              <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
-              <Button.Flyout>
-                <Flyout Placement="BottomEdgeAlignedLeft">
-                  <StackPanel Width="440" Spacing="10">
-                    <TextBlock Text="How to sign in with GitHub CLI" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
-                    <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="GitDash can reuse the login of the GitHub CLI (gh) that is already on your computer. No token to copy and no OAuth App." />
-                    <Grid ColumnDefinitions="24,*">
-                      <TextBlock Text="1." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
-                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                 Text="Install GitHub CLI from cli.github.com (Windows: winget install GitHub.cli, macOS: brew install gh)." />
-                    </Grid>
-                    <Grid ColumnDefinitions="24,*">
-                      <TextBlock Text="2." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
-                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                 Text="In a terminal, run: gh auth login. Choose GitHub.com and sign in with the browser." />
-                    </Grid>
-                    <Grid ColumnDefinitions="24,*">
-                      <TextBlock Text="3." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
-                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                 Text="Using an organization with SAML single sign-on? Run: gh auth refresh -s read:org, then authorize the organization when GitHub asks." />
-                    </Grid>
-                    <Grid ColumnDefinitions="24,*">
-                      <TextBlock Text="4." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
-                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                 Text="Click &quot;Use GitHub CLI login&quot; here. GitDash copies the token into its own secure store." />
-                    </Grid>
-                    <Grid ColumnDefinitions="24,*">
-                      <TextBlock Text="5." FontWeight="Bold" Foreground="{StaticResource Accent2Brush}" />
-                      <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                 Text="If you log in again later, click the button again to refresh the copy." />
-                    </Grid>
-                  </StackPanel>
-                </Flyout>
-              </Button.Flyout>
-            </Button>
-              </StackPanel>
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="Already use the GitHub CLI? Reuse its login: run gh auth login once in a terminal, then click the button. GitDash reads the token with gh auth token." />
-              <Button Classes="primary" Content="Use GitHub CLI login" Command="{Binding UseGitHubCliCommand}"
-                      HorizontalAlignment="Left" />
-            </StackPanel>
-          </Grid>
+              <Border Height="1" Background="{DynamicResource LineBrush}" />
 
-          <!-- Advanced: browser sign-in needs an OAuth App, which an organization may have to approve -->
-          <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-            <Expander.Header>
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBlock Text="Advanced: sign in with your browser (needs an OAuth App)" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
-              </StackPanel>
-            </Expander.Header>
-            <StackPanel Spacing="10">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="muted" FontSize="12" VerticalAlignment="Center"
-                           Text="Organizations that restrict OAuth apps need an owner to approve it. Prefer a token or GitHub CLI there." />
-                <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
+              <!-- OAuth App (browser sign-in) -->
+              <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="OAuth App (sign in with your browser)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                             VerticalAlignment="Center" />
+                  <Button Classes="round" Width="26" Height="26" VerticalAlignment="Center"
                     ToolTip.Tip="How to create a GitHub OAuth App (needed for browser sign-in)">
               <PathIcon Data="{StaticResource IconInfo}" Width="14" Height="14" />
               <Button.Flyout>
@@ -225,7 +227,9 @@
                 </Flyout>
               </Button.Flyout>
             </Button>
-              </StackPanel>
+                </StackPanel>
+                <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                           Text="Organizations that restrict OAuth apps need an owner to approve it; prefer the GitHub CLI or a token there." />
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                          Text="Uses GitHub's device flow. Needs the client ID of a GitHub OAuth App with device flow enabled — no client secret is involved." />
               <TextBox Text="{Binding ClientId}" Watermark="OAuth App client ID (e.g. Ov23li…)" MaxLength="64"
@@ -247,6 +251,7 @@
                   </StackPanel>
                 </StackPanel>
               </Border>
+              </StackPanel>
             </StackPanel>
           </Expander>
 
@@ -315,8 +320,9 @@
 
       <!-- ===== Notifications ===== -->
       <Border Classes="card enter3">
-        <StackPanel Spacing="12">
-          <TextBlock Classes="h2" Text="Notifications" />
+        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+          <Expander.Header><TextBlock Classes="h2" Text="Notifications" VerticalAlignment="Center" /></Expander.Header>
+          <StackPanel Spacing="12">
           <TextBlock Classes="muted" FontSize="12" Text="Notify me whenever…" />
 
           <Grid ColumnDefinitions="*,Auto">
@@ -409,22 +415,14 @@
           </Grid>
           <Button Classes="ghost" Content="Send a test notification" Command="{Binding TestNotificationCommand}" />
         </StackPanel>
+        </Expander>
       </Border>
 
       <!-- ===== General ===== -->
       <Border Classes="card enter3">
-        <StackPanel Spacing="12">
-          <TextBlock Classes="h2" Text="General" />
-
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Live check (seconds)" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="How often each repository is asked for changes (5 – 300). An unchanged repository costs no API quota; data is only downloaded when something really changed." />
-            </StackPanel>
-            <NumericUpDown Grid.Column="1" Value="{Binding LiveCheckSeconds}" Minimum="5" Maximum="300"
-                           Increment="5" FormatString="0" Width="150" />
-          </Grid>
+        <Expander IsExpanded="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+          <Expander.Header><TextBlock Classes="h2" Text="Appearance" VerticalAlignment="Center" /></Expander.Header>
+          <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Text="Theme" Foreground="{DynamicResource TextBrush}" />
@@ -436,6 +434,38 @@
               <RadioButton GroupName="theme" Content="System" IsChecked="{Binding FollowsSystemTheme}" />
             </StackPanel>
           </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Glass effect" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="A glowing glass finish with a slow sheen on the dynamic island (compact and expanded) and on the widgets." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding GlassEffect}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Date and time" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="GitHub reports times in UTC. They are converted to your local time and shown in your system's regional format, or in a format you pick." />
+            </StackPanel>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding TimeFormatOptions}" SelectedIndex="{Binding TimeFormatIndex}"
+                      Width="210" VerticalAlignment="Center" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Reduce motion" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" Text="Turns off looping and entrance animations." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ReduceMotion}" OnContent="" OffContent="" />
+          </Grid>
+        
+          </StackPanel>
+        </Expander>
+      </Border>
+      <Border Classes="card enter3">
+        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+          <Expander.Header><TextBlock Classes="h2" Text="Widgets and island" VerticalAlignment="Center" /></Expander.Header>
+          <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
               <TextBlock Text="Floating PR widget" Foreground="{DynamicResource TextBrush}" />
@@ -454,11 +484,59 @@
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
-              <TextBlock Text="Glass effect" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="Floating timer widget" Foreground="{DynamicResource TextBrush}" />
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="A glowing glass finish with a slow sheen on the dynamic island (compact and expanded) and on the widgets." />
+                         Text="A small clock for your running Pomodoro, PR-review or task timer." />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding GlassEffect}" OnContent="" OffContent="" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowTimerWidget}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Show several timers at once" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="When Pomodoro, task and review timers run together, list each one on the timer widget and the island. Off shows only the most relevant one." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowMultipleTimers}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Dynamic island" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="A pill at the top of the screen showing your counts and timer. It grows to show notifications and, on hover, your oldest waiting PR." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowDynamicIsland}" OnContent="" OffContent="" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Click through the widgets and island" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Mouse clicks pass through them to the window underneath; they still react to hovering. A notification that does not close by itself stays clickable so you can dismiss it." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ClickThroughOverlays}" OnContent="" OffContent="" />
+          </Grid>
+          <StackPanel Spacing="2">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Widget opacity" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Grid.Column="1" Classes="muted"><Run Text="{Binding WidgetOpacityPercent}" /><Run Text="%" /></TextBlock>
+            </Grid>
+            <Slider Minimum="20" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding WidgetOpacityPercent}" />
+            <TextBlock Classes="muted" FontSize="12" Text="How see-through the widgets are until you hover over them." />
+          </StackPanel>
+          <StackPanel Spacing="2">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Dynamic island opacity" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Grid.Column="1" Classes="muted"><Run Text="{Binding IslandOpacityPercent}" /><Run Text="%" /></TextBlock>
+            </Grid>
+            <Slider Minimum="20" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding IslandOpacityPercent}" />
+            <TextBlock Classes="muted" FontSize="12" Text="How see-through the island is until you hover over it." />
+          </StackPanel>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Move the floating widgets and the island" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="Switch on to unlock them: they turn solid and can be dragged. Switch off to lock them in place and make them click-through again." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WidgetUnlocked}" OnContent="Unlocked" OffContent="Locked" />
           </Grid>
           <StackPanel Spacing="2">
             <Grid ColumnDefinitions="*,Auto">
@@ -488,61 +566,21 @@
             <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                        Text="Where the small circle sits within the full widget's area. On hover the widget grows from the circle to its full size." />
           </StackPanel>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Floating timer widget" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="A small clock for your running Pomodoro, PR-review or task timer." />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowTimerWidget}" OnContent="" OffContent="" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Show several timers at once" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="When Pomodoro, task and review timers run together, list each one on the timer widget and the island. Off shows only the most relevant one." />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowMultipleTimers}" OnContent="" OffContent="" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Click through the widgets and island" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="Mouse clicks pass through them to the window underneath; they still react to hovering. A notification that does not close by itself stays clickable so you can dismiss it." />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ClickThroughOverlays}" OnContent="" OffContent="" />
-          </Grid>
-          <StackPanel Spacing="2">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="Widget opacity" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Grid.Column="1" Classes="muted"><Run Text="{Binding WidgetOpacityPercent}" /><Run Text="%" /></TextBlock>
-            </Grid>
-            <Slider Minimum="20" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding WidgetOpacityPercent}" />
-            <TextBlock Classes="muted" FontSize="12" Text="How see-through the widgets are until you hover over them." />
           </StackPanel>
-          <StackPanel Spacing="2">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="Dynamic island opacity" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Grid.Column="1" Classes="muted"><Run Text="{Binding IslandOpacityPercent}" /><Run Text="%" /></TextBlock>
-            </Grid>
-            <Slider Minimum="20" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding IslandOpacityPercent}" />
-            <TextBlock Classes="muted" FontSize="12" Text="How see-through the island is until you hover over it." />
-          </StackPanel>
+        </Expander>
+      </Border>
+      <Border Classes="card enter3">
+        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+          <Expander.Header><TextBlock Classes="h2" Text="Window and tray" VerticalAlignment="Center" /></Expander.Header>
+          <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
-              <TextBlock Text="Dynamic island" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="Live check (seconds)" Foreground="{DynamicResource TextBrush}" />
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="A pill at the top of the screen showing your counts and timer. It grows to show notifications and, on hover, your oldest waiting PR." />
+                         Text="How often each repository is asked for changes (5 – 300). An unchanged repository costs no API quota; data is only downloaded when something really changed." />
             </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowDynamicIsland}" OnContent="" OffContent="" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Move the floating widgets and the island" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="Switch on to unlock them: they turn solid and can be dragged. Switch off to lock them in place and make them click-through again." />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding WidgetUnlocked}" OnContent="Unlocked" OffContent="Locked" />
+            <NumericUpDown Grid.Column="1" Value="{Binding LiveCheckSeconds}" Minimum="5" Maximum="300"
+                           Increment="5" FormatString="0" Width="150" />
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
@@ -570,23 +608,8 @@
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideToTrayOnClose}" IsEnabled="{Binding ShowTrayIcon}"
                           OnContent="" OffContent="" />
           </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Date and time" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="GitHub reports times in UTC. They are converted to your local time and shown in your system's regional format, or in a format you pick." />
-            </StackPanel>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding TimeFormatOptions}" SelectedIndex="{Binding TimeFormatIndex}"
-                      Width="210" VerticalAlignment="Center" />
-          </Grid>
-          <Grid ColumnDefinitions="*,Auto">
-            <StackPanel>
-              <TextBlock Text="Reduce motion" Foreground="{DynamicResource TextBrush}" />
-              <TextBlock Classes="muted" FontSize="12" Text="Turns off looping and entrance animations." />
-            </StackPanel>
-            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ReduceMotion}" OnContent="" OffContent="" />
-          </Grid>
-        </StackPanel>
+          </StackPanel>
+        </Expander>
       </Border>
 
       <!-- ===== AI tools ===== -->
@@ -594,8 +617,9 @@
        <ContentControl.ContentTemplate>
         <DataTemplate x:DataType="vm:AiToolsViewModel">
       <Border Classes="card enter3">
-        <StackPanel Spacing="14">
-          <TextBlock Classes="h2" Text="AI tool limits" />
+        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
+          <Expander.Header><TextBlock Classes="h2" Text="AI tool limits" VerticalAlignment="Center" /></Expander.Header>
+          <StackPanel Spacing="12">
           <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                      Text="Track Claude, ChatGPT or any other AI tool. No vendor offers a way to read subscription usage, so press “Limit reached” when you hit the cap: GitDash counts down to the reset and rings an alarm with a notification when the tool is usable again." />
 
@@ -658,6 +682,7 @@
           <TextBlock Classes="muted" FontSize="11.5"
                      Text="The window is how long a limit lasts after you hit it: 300 min ≈ Claude's 5-hour window, 1440 min = daily, 43200 min = monthly." />
         </StackPanel>
+        </Expander>
       </Border>
         </DataTemplate>
        </ContentControl.ContentTemplate>
