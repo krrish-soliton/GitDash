@@ -19,8 +19,15 @@ public sealed class GitHubReleaseSource(HttpClient http, string owner, string re
         if (!string.IsNullOrWhiteSpace(token)) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
-        // 404: no release yet, or a private repository this token cannot see. Either way there is nothing to install.
-        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) return null;
+        // Without a sign-in GitHub allows only 60 requests an hour per network address, which a shared office
+        // network can use up. That must be reported, not mistaken for "no newer version".
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests && string.IsNullOrWhiteSpace(token))
+            throw new ReleaseAccessException(
+                "GitHub is limiting requests that are not signed in (often a shared network). Sign in in Settings, or try again later.");
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
+            throw new ReleaseAccessException("GitHub refused the update check for your sign-in. Sign in again, or try again later.");
+        // 404: no release has been published yet.
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
         response.EnsureSuccessStatusCode();
 
         using var json = await JsonDocument.ParseAsync(
