@@ -20,7 +20,7 @@
     </Style>
   </UserControl.Styles>
   <ScrollViewer>
-    <StackPanel Margin="36,30,36,36" Spacing="24">
+    <StackPanel Margin="36,30,36,36" Spacing="24" MaxWidth="1400" HorizontalAlignment="Stretch">
 
       <StackPanel Classes="enter" Spacing="4">
         <TextBlock Classes="h1" Text="Dashboard" />

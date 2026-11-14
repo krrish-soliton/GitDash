@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:GitDash.App.Controls"
         x:Class="GitDash.App.Windows.ToastWindow"
         Width="390" Height="104"
         SystemDecorations="None" CanResize="False" ShowInTaskbar="False" Topmost="True" ShowActivated="False"
@@ -73,9 +74,17 @@
           PointerPressed="OnCardPressed">
     <Grid RowDefinitions="*,Auto">
       <Grid ColumnDefinitions="Auto,*,Auto" Margin="14,12,10,10">
-        <Border x:Name="IconBadge" Width="40" Height="40" CornerRadius="12" VerticalAlignment="Center">
-          <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="#0B0D14" />
-        </Border>
+        <Panel Width="50" Height="46" VerticalAlignment="Center">
+          <Border x:Name="IconBadge" Width="40" Height="40" CornerRadius="12" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="#0B0D14" />
+          </Border>
+          <!-- The person involved, on the corner of the icon (hidden when there is none) -->
+          <Border x:Name="AvatarBadge" IsVisible="False" Width="24" Height="24" CornerRadius="12" ClipToBounds="True"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
+                  BorderBrush="{DynamicResource PopupBrush}" Background="{DynamicResource Surface2Brush}">
+            <c:AvatarImage x:Name="AvatarPic" Stretch="UniformToFill" />
+          </Border>
+        </Panel>
         <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center" Spacing="3">
           <TextBlock x:Name="TitleText" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
                      TextTrimming="CharacterEllipsis" />

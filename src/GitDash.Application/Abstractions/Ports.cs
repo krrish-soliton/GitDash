@@ -18,6 +18,13 @@ public interface ISettingsStore
     Task SaveAsync(AppSettings settings, CancellationToken ct = default);
 }
 
+/// <summary>Keeps the notification history across restarts.</summary>
+public interface INotificationStore
+{
+    Task<IReadOnlyList<GitDash.Application.Notifications.NotificationEntry>> LoadAsync(CancellationToken ct = default);
+    Task SaveAsync(IReadOnlyList<GitDash.Application.Notifications.NotificationEntry> entries, CancellationToken ct = default);
+}
+
 public interface ITimerSessionStore
 {
     Task<IReadOnlyList<TimerSession>> LoadAsync(CancellationToken ct = default);
@@ -35,7 +42,8 @@ public enum ToastTone
 }
 
 /// <summary>Something to tell the user, independent of how it will be displayed.</summary>
-public sealed record ToastRequest(string Title, string Message, ToastTone Tone, string? Url = null);
+/// <param name="Actor">GitHub login of the person the notification is about (commenter, author, merger), if any.</param>
+public sealed record ToastRequest(string Title, string Message, ToastTone Tone, string? Url = null, string? Actor = null);
 
 /// <summary>The app's own animated toast windows.</summary>
 public interface IToastPresenter

@@ -106,9 +106,18 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="w:IslandNote">
             <Grid Height="52" RowDefinitions="*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,4">
-              <Border Width="30" Height="30" CornerRadius="10" Background="{Binding Accent}" VerticalAlignment="Center">
-                <PathIcon Data="{StaticResource IconPullRequest}" Width="14" Height="14" Foreground="#0B0D14" />
-              </Border>
+              <Panel Width="38" Height="34" VerticalAlignment="Center">
+                <Border Width="30" Height="30" CornerRadius="10" Background="{Binding Accent}" HorizontalAlignment="Left"
+                        VerticalAlignment="Top">
+                  <PathIcon Data="{StaticResource IconPullRequest}" Width="14" Height="14" Foreground="#0B0D14" />
+                </Border>
+                <!-- The person involved, on the corner of the icon -->
+                <Border IsVisible="{Binding HasAvatar}" Width="19" Height="19" CornerRadius="10" ClipToBounds="True"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="1.5" BorderBrush="#F00B0D14"
+                        Background="#2A3050">
+                  <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                </Border>
+              </Panel>
               <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center" Spacing="1">
                 <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold" Foreground="White"
                            TextTrimming="CharacterEllipsis" />

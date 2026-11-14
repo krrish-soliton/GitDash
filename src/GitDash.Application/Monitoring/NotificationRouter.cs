@@ -19,7 +19,17 @@ public sealed class NotificationRouter(SettingsService settings, IToastPresenter
                 NotificationKind.UnassignedFromMe => ToastTone.Removed,
                 _ => ToastTone.Merged,
             },
-            notification.PullRequest.Url), ct);
+            notification.PullRequest.Url,
+            ActorOf(notification)), ct);
+
+    /// <summary>The person a notification is about, so their picture can be shown with it.</summary>
+    private static string? ActorOf(PullRequestNotification n) => n.Kind switch
+    {
+        NotificationKind.NewComment => n.PullRequest.LastCommentAuthor,
+        NotificationKind.Merged => n.PullRequest.MergedBy ?? n.PullRequest.Author,
+        NotificationKind.UnassignedFromMe => n.PullRequest.Assignees.FirstOrDefault(),
+        _ => n.PullRequest.Author,
+    };
 
     /// <summary>Raised for every notification, whichever way it ends up being displayed (used for the widget badge).</summary>
     public event Action<ToastRequest>? Published;

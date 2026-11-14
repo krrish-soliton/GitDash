@@ -3,6 +3,7 @@ using GitDash.App.Controls;
 using GitDash.Application.Abstractions;
 using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
+using GitDash.Application.Notifications;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
 using GitDash.Application.Updates;
@@ -46,6 +47,7 @@ public sealed class AppHost : IDisposable
 
         ISettingsStore settingsStore;
         ITimerSessionStore sessionStore;
+        INotificationStore notificationStore;
         ISecretStore secrets;
         IGitHubGateway gitHub;
         IDeviceFlowAuthenticator deviceFlow;
@@ -55,6 +57,7 @@ public sealed class AppHost : IDisposable
         {
             settingsStore = new InMemorySettingsStore();
             sessionStore = new InMemoryTimerSessionStore();
+            notificationStore = new InMemoryNotificationStore();
             secrets = new InMemorySecretStore();
             gitHub = new DemoGitHubGateway(time);
             deviceFlow = new DemoDeviceFlowAuthenticator();
@@ -67,6 +70,7 @@ public sealed class AppHost : IDisposable
             // Settings stay in a human-editable JSON file; everything the app learns lives in SQLite.
             var database = new SqliteDatabase(paths.DatabaseFile);
             sessionStore = new SqliteTimerSessionStore(database, new JsonTimerSessionStore(paths));
+            notificationStore = new JsonNotificationStore(paths);
             stateCache = new SqliteStateCache(database);
             secrets = SecretStoreFactory.Create(paths);
             gitHub = new GitHubGateway(_http);
@@ -83,6 +87,10 @@ public sealed class AppHost : IDisposable
         var toasts = new ToastPresenter(
             launcher, showMainWindow, () => Settings.Current.ReduceMotion, tone => Settings.Current.AutoCloses(tone));
         var notifications = new NotificationRouter(Settings, toasts, new NativeNotifier());
+        // Every notification, however it is shown, also goes into the bell's history (last 50).
+        var notificationHistory = new NotificationHistory(notificationStore, time);
+        notificationHistory.LoadAsync().GetAwaiter().GetResult();
+        notifications.Published += notificationHistory.Record;
         // The demo has no real releases to look for. Quitting must happen on the UI thread; the updater runs elsewhere.
         if (!demo)
         {
@@ -109,7 +117,7 @@ public sealed class AppHost : IDisposable
         }
 
         Shell = new ShellViewModel(Monitor, Settings, accounts, _history, notifications,
-            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions, _updates);
+            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions, _updates, notificationHistory);
         _widget = new WidgetController(Shell, Settings, showMainWindow);
         _island = new IslandController(Shell, Settings, showMainWindow);
         toasts.OpenPullRequest = Shell.OpenPullRequest;

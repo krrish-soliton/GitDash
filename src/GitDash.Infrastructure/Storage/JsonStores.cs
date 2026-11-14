@@ -80,6 +80,28 @@ public sealed class JsonSettingsStore(AppPaths paths) : ISettingsStore
         value.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.');
 }
 
+public sealed class JsonNotificationStore(AppPaths paths) : INotificationStore
+{
+    public async Task<IReadOnlyList<GitDash.Application.Notifications.NotificationEntry>> LoadAsync(CancellationToken ct = default)
+    {
+        if (!File.Exists(paths.NotificationsFile)) return [];
+        try
+        {
+            await using var stream = File.OpenRead(paths.NotificationsFile);
+            return await JsonSerializer.DeserializeAsync<List<GitDash.Application.Notifications.NotificationEntry>>(stream, Json.Options, ct)
+                .ConfigureAwait(false) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    public Task SaveAsync(IReadOnlyList<GitDash.Application.Notifications.NotificationEntry> entries, CancellationToken ct = default) =>
+        AppPaths.WriteAtomicAsync(
+            paths.NotificationsFile, JsonSerializer.SerializeToUtf8Bytes(entries, Json.Options), ct);
+}
+
 public sealed class JsonTimerSessionStore(AppPaths paths) : ITimerSessionStore
 {
     public async Task<IReadOnlyList<TimerSession>> LoadAsync(CancellationToken ct = default)
