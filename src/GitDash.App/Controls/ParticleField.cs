@@ -74,12 +74,6 @@ public sealed class ParticleField : Control
         base.OnDetachedFromVisualTree(e);
     }
 
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        if (change.Property == IsEffectivelyVisibleProperty) UpdateTimer();
-    }
-
     private void OnWindowClassesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         _motion = _window?.Classes.Contains("motion") ?? false;
@@ -89,7 +83,7 @@ public sealed class ParticleField : Control
 
     private void UpdateTimer()
     {
-        if (_motion && IsEffectivelyVisible && _window is not null)
+        if (_motion && _window is not null)
         {
             if (_timer is not null) return;
             _lastTick = Environment.TickCount64;
@@ -111,6 +105,12 @@ public sealed class ParticleField : Control
     private void Step()
     {
         var now = Environment.TickCount64;
+        if (!IsEffectivelyVisible)
+        {
+            _lastTick = now; // hidden tab: idle without animating or redrawing
+            return;
+        }
+
         var dt = Math.Min(0.25, (now - _lastTick) / 1000d);
         _lastTick = now;
         _time += dt;
