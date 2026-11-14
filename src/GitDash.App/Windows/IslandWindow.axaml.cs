@@ -33,7 +33,7 @@ public partial class IslandWindow : FloatingWindow
     private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
     private const double CompactRowHeight = 34;
     private const int MaxVisibleNotes = 4, MaxWaiting = 20;
-    private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 34;
+    private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 38;
     private int _timerRows;
     private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan Shrink = TimeSpan.FromMilliseconds(340);
