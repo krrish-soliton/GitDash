@@ -25,6 +25,9 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
     private bool _isOpen, _hasRuns, _hasError;
     private int _activeCount;
     private string _header = "Actions", _error = string.Empty;
+    private HashSet<string> _scope = new(StringComparer.OrdinalIgnoreCase);
+    private string? _current;
+    private bool _onlyCurrent;
 
     public ActionsViewModel(ActionsMonitor monitor, IUrlLauncher launcher, IUiDispatcher ui, TimeProvider time)
     {
@@ -40,6 +43,46 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
     }
 
     public ObservableCollection<RunItemViewModel> Runs { get; } = [];
+
+    /// <summary>
+    /// Which pull requests the panel is about: the ones on the cards (keys from <see cref="ActionsState.KeyOf"/>) and the one
+    /// in front. Runs that belong to no card are not listed.
+    /// </summary>
+    public void SetScope(IEnumerable<string> cardKeys, string? currentKey)
+    {
+        var keys = new HashSet<string>(cardKeys, StringComparer.OrdinalIgnoreCase);
+        if (keys.SetEquals(_scope) && string.Equals(_current, currentKey, StringComparison.OrdinalIgnoreCase)) return;
+        _scope = keys;
+        _current = currentKey;
+        Apply(_monitor.State);
+    }
+
+    /// <summary>Show only the runs of the card that is in front.</summary>
+    public bool OnlyCurrentCard
+    {
+        get => _onlyCurrent;
+        set
+        {
+            if (!Set(ref _onlyCurrent, value)) return;
+            Raise(nameof(ScopeHint));
+            Apply(_monitor.State);
+        }
+    }
+
+    public string ScopeHint => _onlyCurrent ? "Runs of the pull request in front" : "Runs of the pull requests on the cards";
+
+    private bool InScope(WorkflowRun run)
+    {
+        if (_onlyCurrent) return _current is not null && run.PullRequests.Any(n => string.Equals(ActionsState.KeyOf(run.Repository, n), _current, StringComparison.OrdinalIgnoreCase));
+        return run.PullRequests.Any(n => _scope.Contains(ActionsState.KeyOf(run.Repository, n)));
+    }
+
+    /// <summary>The runs of one pull request, for its tab in the details popup.</summary>
+    public IReadOnlyList<RunItemViewModel> RunsFor(GitDash.Domain.PullRequests.RepositoryRef repository, int number)
+    {
+        var now = _time.GetUtcNow();
+        return [.. _monitor.State.RunsFor(repository, number).Select(r => Map(r, now))];
+    }
 
     /// <summary>Latest state, for the run counts and tags on the pull request cards.</summary>
     public ActionsState State => _monitor.State;
@@ -72,7 +115,8 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
     private void Apply(ActionsState state)
     {
         var now = _time.GetUtcNow();
-        var fresh = state.Runs.Select(r => Map(r, now)).ToList();
+        var inScope = state.Runs.Where(InScope).ToList();
+        var fresh = inScope.Select(r => Map(r, now)).ToList();
         if (Runs.Select(r => r.Id).SequenceEqual(fresh.Select(r => r.Id)))
         {
             // Same runs: swap only the rows whose numbers moved, so the list does not flash on every poll.
@@ -88,7 +132,7 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
         }
 
         HasRuns = Runs.Count > 0;
-        ActiveCount = state.Runs.Count(r => r.IsActive);
+        ActiveCount = inScope.Count(r => r.IsActive);
         Header = ActiveCount > 0 ? $"Actions · {ActiveCount} running" : "Actions";
         HasError = !string.IsNullOrEmpty(state.Error);
         Error = state.Error ?? string.Empty;

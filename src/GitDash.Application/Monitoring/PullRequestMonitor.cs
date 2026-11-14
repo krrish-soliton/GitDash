@@ -401,9 +401,28 @@ public sealed class PullRequestMonitor : IAsyncDisposable
     {
         if (pr.IsAuthoredByViewer) throw new InvalidOperationException("You are the author of this pull request.");
         if (!pr.IsAssignedToViewer) throw new InvalidOperationException("This pull request is not assigned to you.");
+        await SwapAsync(pr, pr.ViewerLogin, pr.Author, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Adds the pull request's author to the assignees (the viewer stays assigned).</summary>
+    public async Task AssignAuthorAsync(PullRequest pr, CancellationToken ct = default)
+    {
+        if (pr.IsAuthoredByViewer) throw new InvalidOperationException("You are the author of this pull request.");
+        await SwapAsync(pr, string.Empty, pr.Author, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Takes the viewer off the assignees without assigning anyone else.</summary>
+    public async Task RemoveViewerAssigneeAsync(PullRequest pr, CancellationToken ct = default)
+    {
+        if (!pr.IsAssignedToViewer) throw new InvalidOperationException("This pull request is not assigned to you.");
+        await SwapAsync(pr, pr.ViewerLogin, string.Empty, ct).ConfigureAwait(false);
+    }
+
+    private async Task SwapAsync(PullRequest pr, string remove, string add, CancellationToken ct)
+    {
         var token = await GetTokenAsync(pr.AccountId, ct).ConfigureAwait(false)
             ?? throw new GitHubAuthorizationException("Not signed in.");
-        await _gitHub.SwapAssigneeAsync(token, pr.Repository, pr.Number, pr.ViewerLogin, pr.Author, ct).ConfigureAwait(false);
+        await _gitHub.SwapAssigneeAsync(token, pr.Repository, pr.Number, remove, add, ct).ConfigureAwait(false);
         RequestRefresh();
     }
 

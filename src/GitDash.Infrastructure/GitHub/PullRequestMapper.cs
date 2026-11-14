@@ -255,6 +255,7 @@ public static class PullRequestMapper
         {
             var count = group.Prop("reactors").Int("totalCount");
             if (count <= 0) continue;
+            var users = group.Nodes("reactors").Select(n => n.Str("login")).Where(l => l.Length > 0).ToList();
             list.Add(new CommentReaction(group.Str("content") switch
             {
                 "THUMBS_UP" => "👍",
@@ -266,7 +267,7 @@ public static class PullRequestMapper
                 "ROCKET" => "🚀",
                 "EYES" => "👀",
                 _ => "•",
-            }, count));
+            }, count, users.Count == 0 ? null : users));
         }
 
         return list;

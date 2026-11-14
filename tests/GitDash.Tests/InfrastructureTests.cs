@@ -301,7 +301,7 @@ public class CommentReactionTests
               "reviewThreads":{"nodes":[{"id":"T1","isResolved":false,"comments":{"nodes":[{"id":"c1"},{"id":"c2"}]}}]},
               "timelineItems":{"nodes":[
                 {"__typename":"IssueComment","createdAt":"2026-11-10T09:00:00Z","author":{"login":"leo"},"body":"great","bodyText":"great",
-                 "reactionGroups":[{"content":"ROCKET","reactors":{"totalCount":2}},{"content":"EYES","reactors":{"totalCount":0}}]},
+                 "reactionGroups":[{"content":"ROCKET","reactors":{"totalCount":2,"nodes":[{"login":"maya"},{"login":"krish"}]}},{"content":"EYES","reactors":{"totalCount":0}}]},
                 {"__typename":"PullRequestReview","submittedAt":"2026-11-11T08:00:00Z","author":{"login":"krish"},"state":"COMMENTED","bodyText":"","body":"","comments":{"totalCount":2,"nodes":[
                   {"id":"c1","createdAt":"2026-11-11T07:50:00Z","path":"src/A.cs","body":"Rename","author":{"login":"krish"},
                    "reactionGroups":[{"content":"THUMBS_UP","reactors":{"totalCount":3}},{"content":"HEART","reactors":{"totalCount":0}}]},
@@ -311,7 +311,11 @@ public class CommentReactionTests
         var comments = PullRequestMapper.MapDetails(doc.RootElement).Comments;
 
         var conversation = comments.Single(c => c.Source == CommentSource.Conversation);
-        Assert.Equal(new CommentReaction("🚀", 2), Assert.Single(conversation.ReactionList));
+        var rocket = Assert.Single(conversation.ReactionList);
+        Assert.Equal("🚀", rocket.Emoji);
+        Assert.Equal(2, rocket.Count);
+        Assert.Equal("maya", rocket.Users![0]);
+        Assert.Equal("krish", rocket.Users[1]);
         Assert.Null(conversation.ThreadId);
 
         var inline = comments.Where(c => c.Source == CommentSource.Inline).OrderBy(c => c.At).ToList();

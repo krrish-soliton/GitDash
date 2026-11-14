@@ -17,6 +17,24 @@ public enum PullRequestFilter
     PipelineFailed,
 }
 
+/// <summary>One author in the multi-select author filter.</summary>
+public sealed class AuthorOptionViewModel(string login, string? avatarUrl, Action<AuthorOptionViewModel> changed) : ObservableObject
+{
+    private bool _isSelected;
+    private int _count;
+    public string Login { get; } = login;
+    public string FirstName { get; } = Humanize.FirstName(login);
+    public string Initials { get; } = Humanize.Initials(login);
+    public string Accent { get; } = Humanize.Accent(login);
+    public string? AvatarUrl { get; } = avatarUrl;
+    public int Count { get => _count; set => Set(ref _count, value); }
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { if (Set(ref _isSelected, value)) changed(this); }
+    }
+}
+
 /// <summary>One filter chip above the cover flow, with a live count.</summary>
 public sealed class FilterOptionViewModel(PullRequestFilter filter, string label) : ObservableObject
 {
@@ -69,9 +87,23 @@ public static class TimelineTags
 public sealed record TimelineDayViewModel(string Header, IReadOnlyList<TimelineItemViewModel> Items);
 
 /// <summary>One emoji reaction chip under a comment, for example "👍 3".</summary>
-public sealed record ReactionChipViewModel(string Emoji, int Count)
+public sealed record ReactionChipViewModel(string Emoji, int Count, IReadOnlyList<string>? Users = null)
 {
-    public string Label => $"{Emoji} {Count}";
+    /// <summary>The emoji with the first names of who reacted ("👍 Anna, Ben +3"), or just the count when GitHub gave no names.</summary>
+    public string Label
+    {
+        get
+        {
+            if (Users is not { Count: > 0 }) return $"{Emoji} {Count}";
+            var names = Users.Select(Humanize.FirstName).Distinct().ToList();
+            var shown = string.Join(", ", names.Take(3));
+            var more = Count - Math.Min(3, names.Count);
+            return more > 0 ? $"{Emoji} {shown} +{more}" : $"{Emoji} {shown}";
+        }
+    }
+
+    /// <summary>Full logins of everyone who reacted, for the tooltip.</summary>
+    public string Tip => Users is { Count: > 0 } ? string.Join(", ", Users) + (Count > Users.Count ? $" and {Count - Users.Count} more" : "") : $"{Count} reaction(s)";
 }
 
 public sealed record CommentViewModel(
@@ -229,7 +261,12 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
                               !PullRequest.IsDraft && !PullRequest.ViewerHasApproved;
     public bool CanHandOver => PullRequest.State == GitDash.Domain.PullRequests.PullRequestState.Open && PullRequest.IsAssignedToViewer &&
                                !PullRequest.IsAuthoredByViewer;
-    public bool HasActions => CanApprove || CanHandOver;
+    /// <summary>Put the author on the assignees (when they are not on them already).</summary>
+    public bool CanAssignAuthor => PullRequest.State == GitDash.Domain.PullRequests.PullRequestState.Open &&
+                                   !PullRequest.IsAuthoredByViewer && !PullRequest.Assignees.ContainsLogin(PullRequest.Author);
+    /// <summary>Take myself off the assignees.</summary>
+    public bool CanRemoveMe => PullRequest.State == GitDash.Domain.PullRequests.PullRequestState.Open && PullRequest.IsAssignedToViewer;
+    public bool HasActions => CanApprove || CanAssignAuthor || CanRemoveMe;
     public bool ViewerApproved => PullRequest.ViewerHasApproved;
 
     /// <summary>"approve", "handover" or null: the action waiting for a second click.</summary>
@@ -241,6 +278,8 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
             if (!Set(ref _pending, value)) return;
             Raise(nameof(ApproveLabel));
             Raise(nameof(HandOverLabel));
+            Raise(nameof(AssignAuthorLabel));
+            Raise(nameof(RemoveMeLabel));
             Raise(nameof(IsConfirming));
         }
     }
@@ -253,8 +292,18 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
             if (!Set(ref _isBusy, value)) return;
             Raise(nameof(ApproveLabel));
             Raise(nameof(HandOverLabel));
+            Raise(nameof(AssignAuthorLabel));
+            Raise(nameof(RemoveMeLabel));
         }
     }
+
+    public string AssignAuthorLabel => _isBusy ? "Working…" : _pending == "assign" ? "Confirm assign author" : "Assign author";
+    public string RemoveMeLabel => _isBusy ? "Working…" : _pending == "removeme" ? "Confirm remove me" : "Remove me as assignee";
+    public string AssignAuthorTip => $"Add {PullRequest.Author} to the assignees";
+
+    // ----- Review timer button: a play icon and the time tracked on this pull request -----
+    private string _reviewClock = "00:00";
+    public string ReviewClock { get => _reviewClock; set => Set(ref _reviewClock, value); }
 
     public string ApproveLabel => _isBusy ? "Working…" : _pending == "approve" ? "Confirm approve" : "Approve";
     public string HandOverLabel => _isBusy ? "Working…" : _pending == "handover" ? "Confirm hand over" : "Hand to author";
@@ -288,6 +337,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     private MonitorState _state = MonitorState.Empty;
     private FilterOptionViewModel _selectedFilter;
     private int _selectedIndex;
+    private readonly HashSet<string> _selectedAuthors = new(StringComparer.OrdinalIgnoreCase);
+    private bool _syncingAuthors;
     private bool _isEmpty = true;
     private string _position = string.Empty, _signature = "-", _emptyText = string.Empty;
 
@@ -309,7 +360,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public MyPullRequestsViewModel(
         PullRequestMonitor monitor, IUrlLauncher launcher, IUiDispatcher ui, TimeProvider time,
         Action<PullRequest> startReviewTimer, ActionsViewModel? actions = null)
-        : base("My PRs", "IconCards")
+        : base("Pull requests", "IconCards")
     {
         _monitor = monitor;
         _ui = ui;
@@ -322,6 +373,10 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         HandOverCommand = new RelayCommand<PullRequestCardViewModel>(c =>
             Confirmed(c, "handover", () => _monitor.HandOverToAuthorAsync(c.PullRequest),
                 $"{c.Number} handed to {c.Author}: you were removed as assignee"));
+        AssignAuthorCommand = new RelayCommand<PullRequestCardViewModel>(c =>
+            Confirmed(c, "assign", () => _monitor.AssignAuthorAsync(c.PullRequest), $"{c.Author} is now assigned to {c.Number}"));
+        RemoveMeCommand = new RelayCommand<PullRequestCardViewModel>(c =>
+            Confirmed(c, "removeme", () => _monitor.RemoveViewerAssigneeAsync(c.PullRequest), $"You were removed as assignee of {c.Number}"));
         CancelPendingCommand = new RelayCommand<PullRequestCardViewModel>(c => c.Pending = null);
         DismissActionMessageCommand = new RelayCommand(() => ActionMessage = string.Empty);
 
@@ -386,6 +441,15 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public bool HasActions => Actions is not null;
     public ICommand ApproveCommand { get; }
     public ICommand HandOverCommand { get; }
+    public ICommand AssignAuthorCommand { get; }
+    public ICommand RemoveMeCommand { get; }
+
+    /// <summary>Refreshes the clock on every card's review-timer button (called on each timer tick).</summary>
+    public void UpdateReviewClocks(Func<string, string?> clockFor)
+    {
+        foreach (var card in Cards) card.ReviewClock = clockFor(card.PullRequest.Id) ?? "00:00";
+        if (DetailCard is { } open) open.ReviewClock = clockFor(open.PullRequest.Id) ?? "00:00";
+    }
     public ICommand CancelPendingCommand { get; }
     public ICommand DismissActionMessageCommand { get; }
 
@@ -440,8 +504,24 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         }
     }
 
+    // ----- Actions tab of the details popup: the workflow runs of this pull request -----
+    public ObservableCollection<RunItemViewModel> DetailRuns { get; } = [];
+    public bool HasDetailRuns => DetailRuns.Count > 0;
+    public string ActionsHeader => DetailRuns.Count == 0 ? "Actions" : $"Actions ({DetailRuns.Count})";
+
+    private void RefreshDetailRuns()
+    {
+        var runs = DetailCard is { } card && Actions is not null
+            ? Actions.RunsFor(card.PullRequest.Repository, card.PullRequest.Number)
+            : [];
+        DashboardViewModel.Replace(DetailRuns, runs);
+        Raise(nameof(HasDetailRuns));
+        Raise(nameof(ActionsHeader));
+    }
+
     private void OnActionsUpdated(GitDash.Application.Monitoring.ActionsState state)
     {
+        RefreshDetailRuns();
         foreach (var card in Cards) card.ApplyActions(state);
     }
 
@@ -470,6 +550,69 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     public ObservableCollection<PullRequestCardViewModel> Cards { get; } = [];
 
+    // ----- Author filter (multi-select) -----
+    public ObservableCollection<AuthorOptionViewModel> AuthorOptions { get; } = [];
+    public bool HasAuthorFilter => _selectedAuthors.Count > 0;
+    public string AuthorSummary => _selectedAuthors.Count switch
+    {
+        0 => "All authors",
+        1 => Humanize.FirstName(_selectedAuthors.First()),
+        _ => $"{Humanize.FirstName(_selectedAuthors.First())} +{_selectedAuthors.Count - 1}",
+    };
+    public ICommand ClearAuthorsCommand => _clearAuthors ??= new RelayCommand(() =>
+    {
+        _selectedAuthors.Clear();
+        _syncingAuthors = true;
+        foreach (var option in AuthorOptions) option.IsSelected = false;
+        _syncingAuthors = false;
+        OnAuthorsChanged();
+    });
+    private ICommand? _clearAuthors;
+
+    private void OnAuthorOptionChanged(AuthorOptionViewModel option)
+    {
+        if (_syncingAuthors) return;
+        if (option.IsSelected) _selectedAuthors.Add(option.Login);
+        else _selectedAuthors.Remove(option.Login);
+        OnAuthorsChanged();
+    }
+
+    private void OnAuthorsChanged()
+    {
+        Raise(nameof(HasAuthorFilter));
+        Raise(nameof(AuthorSummary));
+        Rebuild(force: true, startAtFirst: true);
+    }
+
+    private void SyncAuthorOptions(IReadOnlyList<PullRequest> pool)
+    {
+        // Authors of the pull requests in the current view (before the author filter), most pull requests first.
+        var groups = pool.GroupBy(p => p.Author, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase).ToList();
+        var logins = groups.Select(g => g.Key).ToList();
+        _syncingAuthors = true;
+        try
+        {
+            if (!AuthorOptions.Select(o => o.Login).SequenceEqual(logins, StringComparer.OrdinalIgnoreCase))
+            {
+                AuthorOptions.Clear();
+                foreach (var g in groups)
+                {
+                    AuthorOptions.Add(new AuthorOptionViewModel(g.Key, _state.Avatars.GetValueOrDefault(g.Key), OnAuthorOptionChanged)
+                    {
+                        IsSelected = _selectedAuthors.Contains(g.Key),
+                    });
+                }
+            }
+
+            foreach (var option in AuthorOptions) option.Count = groups.First(g => g.Key.Equals(option.Login, StringComparison.OrdinalIgnoreCase)).Count();
+        }
+        finally
+        {
+            _syncingAuthors = false;
+        }
+    }
+
     public int SelectedIndex
     {
         get => _selectedIndex;
@@ -480,8 +623,19 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             {
                 UpdatePosition();
                 MarkFront();
+                UpdateActionScope();
             }
         }
+    }
+
+    /// <summary>The Actions panel lists only runs of the pull requests on the cards (and optionally only the front one).</summary>
+    private void UpdateActionScope()
+    {
+        if (Actions is null) return;
+        var keys = Cards.Select(c => ActionsState.KeyOf(c.PullRequest.Repository, c.PullRequest.Number)).ToList();
+        var current = Cards.ElementAtOrDefault(_selectedIndex) is { } front
+            ? ActionsState.KeyOf(front.PullRequest.Repository, front.PullRequest.Number) : null;
+        Actions.SetScope(keys, current);
     }
 
     private void MarkFront()
@@ -581,14 +735,15 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         foreach (var option in Filters) option.Count = all.Count(option.Matches);
 
         var filter = _selectedFilter;
-        var matching = all.Where(filter.Matches);
+        SyncAuthorOptions([.. all.Where(filter.Matches)]);
+        var matching = all.Where(filter.Matches).Where(p => _selectedAuthors.Count == 0 || _selectedAuthors.Contains(p.Author));
         // Assigned to me first, then review requested from me, then everything else.
         var ordered = filter.Filter is PullRequestFilter.AssignedToMe or PullRequestFilter.ReviewRequested
             ? matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt).ToList()
             : matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.UpdatedAt).ToList();
 
         // Rebuild only when something visible changed; otherwise the cover flow would restart its animation.
-        var signature = filter.Filter + "|" + string.Join('|', ordered.Select(PullRequestCardViewModel.KeyOf));
+        var signature = filter.Filter + "|" + string.Join(',', _selectedAuthors.Order()) + "|" + string.Join('|', ordered.Select(PullRequestCardViewModel.KeyOf));
         if (!force && signature == _signature) return;
         _signature = signature;
 
@@ -613,6 +768,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             _ => "No open pull requests in the monitored repositories.",
         };
         UpdatePosition();
+        UpdateActionScope();
     }
 
     /// <summary>
@@ -682,6 +838,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         _details = null;
         Description = string.Empty;
         DetailTab = 0;
+        RefreshDetailRuns();
         RebuildDetailViews();
         IsDetailOpen = true;
         _ = LoadDetailsAsync(card, quiet: false);
@@ -800,7 +957,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
                     _ => "Conversation",
                 },
                 c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread,
-                [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count))], isReply));
+                [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count, r.Users))], isReply));
         }
 
         HasComments = Comments.Count > 0;

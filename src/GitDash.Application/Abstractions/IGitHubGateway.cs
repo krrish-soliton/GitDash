@@ -67,6 +67,7 @@ public interface IGitHubGateway
     Task ApproveAsync(string token, RepositoryRef repository, int number, CancellationToken ct);
 
     /// <summary>Assigns <paramref name="add"/> first and only then removes <paramref name="remove"/>, so the pull request is never left without an assignee.</summary>
+    /// <summary>Removes one assignee and/or adds one; an empty name skips that half.</summary>
     Task SwapAssigneeAsync(string token, RepositoryRef repository, int number, string remove, string add, CancellationToken ct);
 
     /// <summary>

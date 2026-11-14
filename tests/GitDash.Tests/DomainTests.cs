@@ -593,6 +593,18 @@ public class Round10Tests
     }
 
     [Fact]
+    public void First_names_come_from_logins()
+    {
+        Assert.Equal("Gowtham", GitDash.Presentation.Mvvm.Humanize.FirstName("gowtham-krishnan"));
+        Assert.Equal("Jane", GitDash.Presentation.Mvvm.Humanize.FirstName("JaneDoe"));
+        Assert.Equal("John", GitDash.Presentation.Mvvm.Humanize.FirstName("john_smith42"));
+        Assert.Equal("Octocat", GitDash.Presentation.Mvvm.Humanize.FirstName("octocat"));
+        Assert.Equal("Anna", GitDash.Presentation.Mvvm.Humanize.FirstName("anna.k"));
+        var chip = new GitDash.Presentation.ViewModels.ReactionChipViewModel("👍", 5, ["anna-k", "ben_lee", "cy"]);
+        Assert.Equal("👍 Anna, Ben, Cy +2", chip.Label);
+    }
+
+    [Fact]
     public void Desk_books_carry_pull_request_numbers()
     {
         var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 0, 2, [11], null, [21, 22]);

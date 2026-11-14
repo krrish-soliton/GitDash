@@ -121,6 +121,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             Timers.StartReviewFor(pr);
             launcher.Open(pr.Url);
         }, Actions);
+        Timers.Ticked += () => MyPullRequests.UpdateReviewClocks(Timers.ReviewClockFor);
 
         _selectedRepositories = new HashSet<string>(settings.Current.SelectedRepositories, StringComparer.OrdinalIgnoreCase);
         RefreshRepositoryOptions(MonitorState.Empty);

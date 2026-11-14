@@ -84,6 +84,22 @@ public partial class MyPullRequestsView : UserControl
         if (CardOf(sender) is { } card) Page?.ApproveCommand.Execute(card);
     }
 
+    /// <summary>Flyout content is not always given its button's data; make sure it acts on the same pull request.</summary>
+    private void OnActionsFlyoutOpening(object? sender, EventArgs e)
+    {
+        if (sender is Flyout { Content: Control content, Target: { } target }) content.DataContext = target.DataContext;
+    }
+
+    private void OnAssignAuthorClick(object? sender, RoutedEventArgs e)
+    {
+        if (CardOf(sender) is { } card) Page?.AssignAuthorCommand.Execute(card);
+    }
+
+    private void OnRemoveMeClick(object? sender, RoutedEventArgs e)
+    {
+        if (CardOf(sender) is { } card) Page?.RemoveMeCommand.Execute(card);
+    }
+
     private void OnHandOverClick(object? sender, RoutedEventArgs e)
     {
         if (CardOf(sender) is { } card) Page?.HandOverCommand.Execute(card);

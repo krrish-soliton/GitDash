@@ -13,7 +13,7 @@ public enum CommentSource
 }
 
 /// <summary>How many people reacted to a comment with one emoji.</summary>
-public sealed record CommentReaction(string Emoji, int Count);
+public sealed record CommentReaction(string Emoji, int Count, IReadOnlyList<string>? Users = null);
 
 public sealed record PullRequestComment(
     DateTimeOffset At,

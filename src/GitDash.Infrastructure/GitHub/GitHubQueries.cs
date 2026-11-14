@@ -108,10 +108,10 @@ internal static class GitHubQueries
                 nodes {
                   __typename
                   ... on PullRequestCommit { commit { committedDate messageHeadline author { name user { login } } } }
-                  ... on IssueComment { createdAt author { login } bodyText body reactionGroups { content reactors { totalCount } } }
+                  ... on IssueComment { createdAt author { login } bodyText body reactionGroups { content reactors(first: 12) { totalCount nodes { ... on User { login } ... on Bot { login } ... on Mannequin { login } } } } }
                   ... on PullRequestReview {
                     submittedAt author { login } state bodyText body
-                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } reactionGroups { content reactors { totalCount } } } }
+                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } reactionGroups { content reactors(first: 12) { totalCount nodes { ... on User { login } ... on Bot { login } ... on Mannequin { login } } } } } }
                   }
                   ... on AssignedEvent { createdAt actor { login } assignee { ... on User { login } } }
                   ... on UnassignedEvent { createdAt actor { login } assignee { ... on User { login } } }

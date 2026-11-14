@@ -615,6 +615,7 @@ public class EndToEndTests
         await f.Monitor.SyncAsync();
         await actions.RefreshAsync();
         my.Apply(f.Monitor.State);
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.All); // the panel lists runs of the pull requests on the cards
 
         Assert.True(vm.HasRuns);
         Assert.Contains(vm.Runs, r => r.IsActive && r.Progress > 0 && r.Progress < 1);
@@ -623,14 +624,26 @@ public class EndToEndTests
         Assert.Equal(3, vm.ActiveCount); // one running demo run in each of the three repositories
         Assert.Equal("Actions · 3 running", vm.Header);
 
-        // The demo runs belong to pull requests #90, #91 and #92 of every repository.
-        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.All);
+        // The demo runs belong to the first three pull requests of every repository.
         var card = my.Cards.First(c => c.PullRequest.Number == 90 + 2 * 31);
         Assert.NotEqual("—", card.PipelineRunsText);
         Assert.True(card.RunsActive);
 
         vm.ToggleCommand.Execute(null);
         Assert.True(vm.IsOpen);
+
+        // "Only this card" narrows the panel to the pull request in front; its own tab lists the same runs.
+        var all = vm.Runs.Count;
+        my.SelectedIndex = my.Cards.IndexOf(card);
+        vm.OnlyCurrentCard = true;
+        Assert.True(vm.Runs.Count > 0 && vm.Runs.Count < all);
+        Assert.Equal(vm.Runs.Count, vm.RunsFor(card.PullRequest.Repository, card.PullRequest.Number).Count);
+        vm.OnlyCurrentCard = false;
+        Assert.Equal(all, vm.Runs.Count);
+        // A filter that leaves out the cards of those runs hides them.
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.Own);
+        Assert.True(vm.Runs.Count < all);
+
         vm.Dispose();
         await actions.DisposeAsync();
         await f.Monitor.DisposeAsync();
@@ -664,6 +677,22 @@ public class EndToEndTests
         my.HandOverCommand.Execute(card);
         for (var i = 0; i < 100 && !my.ActionMessage.Contains("handed"); i++) await Task.Delay(20);
         Assert.Contains("handed to " + card.Author, my.ActionMessage);
+
+        // Assign author and remove me are separate actions, each with its own confirm click.
+        var other = my.Cards.First(c => c.CanRemoveMe);
+        my.RemoveMeCommand.Execute(other);
+        Assert.Equal("Confirm remove me", other.RemoveMeLabel);
+        my.RemoveMeCommand.Execute(other);
+        for (var i = 0; i < 100 && !my.ActionMessage.Contains("removed as assignee"); i++) await Task.Delay(20);
+        Assert.Contains("removed as assignee", my.ActionMessage);
+        var assignable = my.Cards.FirstOrDefault(c => c.CanAssignAuthor);
+        if (assignable is not null)
+        {
+            my.AssignAuthorCommand.Execute(assignable);
+            my.AssignAuthorCommand.Execute(assignable);
+            for (var i = 0; i < 100 && !my.ActionMessage.Contains("is now assigned"); i++) await Task.Delay(20);
+            Assert.Contains("is now assigned", my.ActionMessage);
+        }
 
         await f.Monitor.DisposeAsync();
     }

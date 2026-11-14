@@ -287,8 +287,9 @@ public sealed partial class GitHubGateway(HttpClient http) : IGitHubGateway
             $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
             $"{Uri.EscapeDataString(repository.Name)}/issues/{number}/assignees");
 
-        using (var addRequest = Authorized(HttpMethod.Post, uri, token))
+        if (add.Length > 0)
         {
+            using var addRequest = Authorized(HttpMethod.Post, uri, token);
             addRequest.Content = JsonContent.Create(new { assignees = new[] { add } });
             using var response = await http.SendAsync(addRequest, ct).ConfigureAwait(false);
             await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
@@ -299,10 +300,13 @@ public sealed partial class GitHubGateway(HttpClient http) : IGitHubGateway
                 .ConfigureAwait(false);
             if (!doc.RootElement.Items("assignees").Any(a => a.Str("login").Equals(add, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new GitHubApiException($"{add} cannot be assigned in this repository, so you were not removed.");
+                throw new GitHubApiException(remove.Length > 0
+                    ? $"{add} cannot be assigned in this repository, so you were not removed."
+                    : $"{add} cannot be assigned in this repository.");
             }
         }
 
+        if (remove.Length == 0) return;
         using var removeRequest = Authorized(HttpMethod.Delete, uri, token);
         removeRequest.Content = JsonContent.Create(new { assignees = new[] { remove } });
         using var removed = await http.SendAsync(removeRequest, ct).ConfigureAwait(false);

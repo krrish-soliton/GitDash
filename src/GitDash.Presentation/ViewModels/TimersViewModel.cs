@@ -212,6 +212,17 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         Raise(nameof(SelectedReviewTarget));
     }
 
+    /// <summary>Raised after every refresh of the running timers (once a second while any runs).</summary>
+    public event Action? Ticked;
+
+    /// <summary>The clock of the review timer on this pull request (running or paused), or null when it has none.</summary>
+    public string? ReviewClockFor(string pullRequestId)
+    {
+        if (_selectedReviewTarget?.Id == pullRequestId && (_review.IsRunning || _review.Elapsed(_time.GetUtcNow()) > TimeSpan.Zero))
+            return ReviewElapsed;
+        return MoreTimers.FirstOrDefault(t => t.PullRequestId == pullRequestId)?.Clock;
+    }
+
     /// <summary>Called from the My PRs page: pick the pull request and start timing straight away.</summary>
     public void StartReviewFor(PullRequest pr)
     {
@@ -616,6 +627,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         running.AddRange(MoreTimers.Where(t => t.IsRunning).Select(t => t.Line));
         Sync(RunningTimers, running);
         Sync(VisibleTimers, _settings.Current.ShowMultipleTimers ? running : [.. running.Take(1)]);
+        Ticked?.Invoke();
     }
 
     private static void Sync(ObservableCollection<RunningTimerViewModel> target, IReadOnlyList<RunningTimerViewModel> wanted)
