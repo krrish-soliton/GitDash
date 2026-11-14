@@ -784,4 +784,18 @@ public class EndToEndTests
         Assert.Equal(9, f.Settings.Current.StatusRotateSeconds);
         await f.Monitor.DisposeAsync();
     }
+
+    [Fact]
+    public async Task Recent_sessions_list_shows_up_to_one_hundred()
+    {
+        var f = await CreateAsync();
+        for (var i = 0; i < 130; i++)
+            await f.History.AddAsync(new GitDash.Domain.Timers.TimerSession(
+                Guid.NewGuid(), GitDash.Domain.Timers.TimerKind.Task, $"Task {i}", DateTimeOffset.UtcNow.AddMinutes(-i), TimeSpan.FromMinutes(5)));
+
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+        Assert.Equal(100, timers.History.Count);
+        Assert.Equal("Task 129", timers.History[0].Label); // newest first
+        await f.Monitor.DisposeAsync();
+    }
 }

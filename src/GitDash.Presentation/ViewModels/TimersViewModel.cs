@@ -186,6 +186,9 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
     public ICommand CancelApprovedStartCommand { get; }
 
     // ----- History -----
+    /// <summary>Most recent finished sessions listed on the page.</summary>
+    public const int MaxShownSessions = 100;
+
     public ObservableCollection<SessionViewModel> History { get; } = [];
     public string TodayTotal { get => _todayTotal; private set => Set(ref _todayTotal, value); }
     public bool HasHistory { get => _hasHistory; private set => Set(ref _hasHistory, value); }
@@ -651,7 +654,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
     {
         var now = _time.GetUtcNow();
         var today = Humanize.DayOf(now);
-        DashboardViewModel.Replace(History, _history.Sessions.Take(25).Select(s => new SessionViewModel(
+        DashboardViewModel.Replace(History, _history.Sessions.Take(MaxShownSessions).Select(s => new SessionViewModel(
             s.Kind switch
             {
                 TimerKind.Task => "Task",
