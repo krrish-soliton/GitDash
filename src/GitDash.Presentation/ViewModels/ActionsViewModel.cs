@@ -143,7 +143,7 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
         run.Id,
         run.Name,
         $"{run.Repository.Name} · {run.Branch}",
-        run.Actor,
+        GitDash.Domain.PullRequests.Login.FirstName(run.Actor),
         run.PullRequests.Count == 0 ? string.Empty : string.Join(" ", run.PullRequests.Select(n => $"#{n}")),
         run.Status switch
         {

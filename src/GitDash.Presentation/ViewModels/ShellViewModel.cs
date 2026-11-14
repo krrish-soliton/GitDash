@@ -89,6 +89,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly IUiDispatcher _ui;
     private readonly TimeProvider _time;
     private PageViewModel _currentPage;
+    private readonly IUrlLauncher _launcher;
     private MonitorState _state = MonitorState.Empty;
     private int _updateQueued;
     private int _renderedRevision = -1;
@@ -101,6 +102,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         ActionsMonitor? actionsMonitor = null)
     {
         _time = time;
+        _launcher = launcher;
         _monitor = monitor;
         _settings = settings;
         _ui = ui;
@@ -126,6 +128,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _selectedRepositories = new HashSet<string>(settings.Current.SelectedRepositories, StringComparer.OrdinalIgnoreCase);
         RefreshRepositoryOptions(MonitorState.Empty);
         About = new AboutViewModel(launcher);
+        Home.PullRequestOpener = OpenPullRequest;
+        Dashboard.PullRequestOpener = OpenPullRequest;
+        People.PullRequestOpener = OpenPullRequest;
         Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings, About];
         _currentPage = Home;
         Home.IsSelected = true;
@@ -310,6 +315,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>Called once a second by the floating widget while it is on screen.</summary>
     public void TickWidget() => Widget.Tick(_time.GetUtcNow());
 
+    /// <summary>
+    /// Shows a pull request in the detailed review screen of the Pull requests page. Only when it is not part of the
+    /// loaded list (for example another team's repository) does it fall back to the browser.
+    /// </summary>
+    public void OpenPullRequest(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return;
+        Navigate(MyPullRequests);
+        if (!MyPullRequests.ShowPullRequest(url)) _launcher.Open(url);
+    }
+
     public void Navigate(PageViewModel page)
     {
         if (ReferenceEquals(page, CurrentPage)) return;
@@ -337,6 +353,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         // Several updates can arrive in a burst; only the newest one needs to reach the UI.
         _state = state;
+        AvatarDirectory.Update(state.Avatars);
         if (Interlocked.Exchange(ref _updateQueued, 1) == 1) return;
         _ui.Post(() =>
         {

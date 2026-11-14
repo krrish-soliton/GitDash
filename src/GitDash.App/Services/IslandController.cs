@@ -11,7 +11,7 @@ namespace GitDash.App.Services;
 /// (stacked, newest on top) instead of the corner toasts.
 /// </summary>
 public sealed class IslandController(
-    ShellViewModel shell, SettingsService settings, IUrlLauncher launcher, Action showMainWindow) : IDisposable
+    ShellViewModel shell, SettingsService settings, Action showMainWindow) : IDisposable
 {
     private IslandWindow? _window;
 
@@ -82,8 +82,8 @@ public sealed class IslandController(
 
     private void OnActivated(ToastRequest? request)
     {
-        if (request?.Url is { } url) launcher.Open(url);
-        else showMainWindow();
+        showMainWindow();
+        if (request?.Url is { } url) shell.OpenPullRequest(url);
     }
 
     public void Dispose()

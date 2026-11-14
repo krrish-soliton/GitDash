@@ -229,18 +229,9 @@
                                Height="52" />
 
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Panel Width="32" Height="32">
-                        <Ellipse Fill="{Binding AuthorAccent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
-                        <TextBlock Text="{Binding AuthorInitials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <Border CornerRadius="16" ClipToBounds="True">
-                          <c:AvatarImage Url="{Binding AuthorAvatarUrl}" Stretch="UniformToFill" />
-                        </Border>
-                      </Panel>
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Author}" FontSize="13" Foreground="{DynamicResource TextBrush}" />
-                        <TextBlock Text="{Binding Role}" FontSize="11.5" Foreground="{StaticResource AmberBrush}" />
-                      </StackPanel>
+                      <c:UserChip Login="{Binding Author}" AvatarUrl="{Binding AuthorAvatarUrl}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Role}" FontSize="11.5" Foreground="{StaticResource AmberBrush}"
+                                 VerticalAlignment="Center" />
                     </StackPanel>
                     <!-- The person this pull request is waiting for -->
                     <TextBlock Text="{Binding WaitingForText}" IsVisible="{Binding HasWaitingFor}" FontSize="12.5"
@@ -340,12 +331,7 @@
             <TextBlock Text="{Binding DetailCard.Title}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap"
                        MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}" />
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Classes="chip">
-                <TextBlock>
-                  <Run Text="by" />
-                  <Run Text="{Binding DetailCard.Author}" FontWeight="SemiBold" />
-                </TextBlock>
-              </Border>
+              <c:UserChip Login="{Binding DetailCard.Author}" AvatarUrl="{Binding DetailCard.AuthorAvatarUrl}" />
               <Border Classes="chip">
                 <TextBlock Text="{Binding DetailCard.Role}" />
               </Border>
@@ -446,8 +432,7 @@
                                           Padding="14,9" Margin="6,0,0,10">
                                     <StackPanel Spacing="3">
                                       <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Actor}" FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <c:UserChip Login="{Binding Actor}" />
                                         <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
                                                 IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
                                           <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
@@ -526,13 +511,15 @@
                             <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
                             <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border CornerRadius="17" ClipToBounds="True">
+                              <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                            </Border>
                           </Panel>
                           <Border Grid.Column="1" Classes="bubble" Classes.mine="{Binding IsMine}" MaxWidth="620"
                                   CornerRadius="14" Padding="14,10">
                             <StackPanel Spacing="6">
                               <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                                <TextBlock Text="{Binding Author}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                                <c:UserChip Login="{Binding Author}" VerticalAlignment="Center" />
                                 <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="5"
                                         Padding="6,1" Margin="8,0,0,0" IsVisible="{Binding IsMine}"
                                         VerticalAlignment="Center">
@@ -594,22 +581,49 @@
                 <Border Grid.Column="0" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                   <StackPanel Spacing="3">
                     <TextBlock Classes="label" Text="Approved By" Foreground="{StaticResource GreenBrush}" />
-                    <TextBlock Text="{Binding ApprovedBy}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" />
+                    <ItemsControl ItemsSource="{Binding ApprovedBy}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <c:UserChip Login="{Binding}" Margin="0,0,6,4" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="—" Classes="muted" IsVisible="{Binding NobodyApproved}" />
                   </StackPanel>
                 </Border>
                 <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                   <StackPanel Spacing="3">
                     <TextBlock Classes="label" Text="Changes Requested By" Foreground="{StaticResource RedBrush}" />
-                    <TextBlock Text="{Binding ChangesRequestedBy}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" />
+                    <ItemsControl ItemsSource="{Binding ChangesRequestedBy}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <c:UserChip Login="{Binding}" Margin="0,0,6,4" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="—" Classes="muted" IsVisible="{Binding NobodyRequestedChanges}" />
                   </StackPanel>
                 </Border>
                 <Border Grid.Column="4" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                   <StackPanel Spacing="3">
                     <TextBlock Classes="label" Text="Still Waiting On" Foreground="{StaticResource AmberBrush}" />
-                    <TextBlock Text="{Binding WaitingOn}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" />
+                    <ItemsControl ItemsSource="{Binding WaitingOn}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <c:UserChip Login="{Binding}" Margin="0,0,6,4" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="—" Classes="muted" IsVisible="{Binding NobodyWaitedOn}" />
                   </StackPanel>
                 </Border>
               </Grid>
@@ -630,8 +644,7 @@
                                 <TextBlock Text="{Binding Verdict}" FontSize="11" FontWeight="Bold" LetterSpacing="0.8"
                                            VerticalAlignment="Center"
                                            Foreground="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Actor}" FontSize="13" FontWeight="SemiBold"
-                                           Margin="10,0,0,0" Foreground="{DynamicResource TextBrush}" />
+                                <c:UserChip Grid.Column="1" Login="{Binding Actor}" Margin="10,0,0,0" />
                                 <TextBlock Grid.Column="3" Text="{Binding When}" Classes="muted" FontSize="11"
                                            VerticalAlignment="Center" />
                               </Grid>

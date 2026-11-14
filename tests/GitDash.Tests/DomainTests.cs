@@ -146,7 +146,7 @@ public class ChangeDetectorTests
         var result = PullRequestChangeDetector.Detect(before, after, All, Now);
         Assert.Single(result);
         Assert.Equal(NotificationKind.Merged, result[0].Kind);
-        Assert.Contains("leo", result[0].Title);
+        Assert.Contains("Leo", result[0].Title);
     }
 
     [Fact]

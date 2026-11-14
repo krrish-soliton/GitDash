@@ -64,6 +64,11 @@ public sealed class DashboardViewModel : PageViewModel
     {
         _time = time;
         OpenUrlCommand = new RelayCommand<string>(url => launcher.Open(url));
+        OpenPullRequestCommand = new RelayCommand<string>(url =>
+        {
+            if (string.IsNullOrEmpty(url)) return;
+            if (PullRequestOpener is { } open) open(url); else launcher.Open(url);
+        });
         OpenSettingsCommand = new RelayCommand(openSettings);
         SelectBookCommand = new RelayCommand<DeskBookViewModel>(book => Select(book?.Id));
         CloseBookCommand = new RelayCommand(() => Select(null));
@@ -132,6 +137,10 @@ public sealed class DashboardViewModel : PageViewModel
     public ObservableCollection<ActivityItemViewModel> Activity { get; } = [];
 
     public ICommand OpenUrlCommand { get; }
+
+    /// <summary>Opens a pull request in the in-app detail screen (set by the shell); the browser is only a fallback.</summary>
+    public ICommand OpenPullRequestCommand { get; }
+    public Action<string>? PullRequestOpener { get; set; }
     public ICommand OpenSettingsCommand { get; }
 
     public override void Apply(MonitorState state)

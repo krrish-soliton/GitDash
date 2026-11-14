@@ -9,6 +9,9 @@ namespace GitDash.App.Services;
 public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow, Func<bool> reduceMotion, Func<ToastTone, bool> autoClose)
     : IToastPresenter
 {
+    /// <summary>Where a click on a pull-request notification goes (the in-app detail screen); the browser until set.</summary>
+    public Action<string>? OpenPullRequest { get; set; }
+
     private const int MaxVisible = 4;
     private const int MaxQueued = 20;
     private readonly List<ToastWindow> _open = [];
@@ -59,7 +62,11 @@ public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow,
         if (window.ClosedLocally) Closed?.Invoke(window.Request);
         if (activated)
         {
-            if (window.Request.Url is { } url) launcher.Open(url);
+            if (window.Request.Url is { } url)
+            {
+                showMainWindow();
+                (OpenPullRequest ?? launcher.Open)(url);
+            }
             else showMainWindow();
         }
 

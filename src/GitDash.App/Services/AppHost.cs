@@ -98,7 +98,8 @@ public sealed class AppHost : IDisposable
         Shell = new ShellViewModel(Monitor, Settings, accounts, _history, notifications,
             new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions);
         _widget = new WidgetController(Shell, Settings, showMainWindow);
-        _island = new IslandController(Shell, Settings, launcher, showMainWindow);
+        _island = new IslandController(Shell, Settings, showMainWindow);
+        toasts.OpenPullRequest = Shell.OpenPullRequest;
         toasts.Island = _island.TryShow;
         // Closing a notification on one surface closes the same notification on the other.
         toasts.Closed += _island.CloseFor;

@@ -39,7 +39,7 @@ public partial class DashboardView : UserControl
     private void OnActivityTapped(object? sender, TappedEventArgs e)
     {
         if (sender is Control { DataContext: ActivityItemViewModel item } && _page is not null)
-            _page.OpenUrlCommand.Execute(item.Url);
+            _page.OpenPullRequestCommand.Execute(item.Url);
     }
 
     /// <summary>A click on a book (on the shelf or in the list) opens its details and highlights it.</summary>
@@ -57,6 +57,6 @@ public partial class DashboardView : UserControl
 
     private void OnOpenBookClick(object? sender, RoutedEventArgs e)
     {
-        if (_page?.SelectedBook is { } book) _page.OpenUrlCommand.Execute(book.Url);
+        if (_page?.SelectedBook is { } book) _page.OpenPullRequestCommand.Execute(book.Url);
     }
 }

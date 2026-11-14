@@ -111,6 +111,7 @@ public sealed record CommentViewModel(
     bool IsMine, bool MentionsMe, bool IsAi = false, bool IsResolved = false, bool IsUnresolved = false,
     IReadOnlyList<ReactionChipViewModel>? Reactions = null, bool IsReply = false)
 {
+    public string? AvatarUrl => AvatarDirectory.UrlFor(Author);
     public IReadOnlyList<ReactionChipViewModel> ReactionChips => Reactions ?? [];
     public bool HasReactions => ReactionChips.Count > 0;
     /// <summary>The first message of a conversation shows where it was said; replies only follow it.</summary>
@@ -221,7 +222,7 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
     public bool HasWaitingFor => PullRequest.WaitingFor.Count > 0;
     public string WaitingForText => PullRequest.WaitingFor.Count == 0
         ? string.Empty
-        : $"Waiting for {string.Join(", ", PullRequest.WaitingFor.Select(w => Login.Same(w, PullRequest.ViewerLogin) ? "you" : w))}" +
+        : $"Waiting for {string.Join(", ", PullRequest.WaitingFor.Select(w => Login.Same(w, PullRequest.ViewerLogin) ? "you" : Login.FirstName(w)))}" +
           (PullRequest.WaitingForReason.Length > 0 ? $" · {PullRequest.WaitingForReason}" : string.Empty);
 
     // ----- Pipeline runs (from GitHub Actions) -----
@@ -351,7 +352,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     private int _detailTab;
     private string _detailError = string.Empty, _description = string.Empty;
     private string _timelineHeader = "Timeline", _commentsHeader = "Comments", _reviewsHeader = "Approvals";
-    private string _approvedBy = "—", _changesRequestedBy = "—", _waitingOn = "—";
+    private IReadOnlyList<string> _approvedBy = [], _changesRequestedBy = [], _waitingOn = [];
     private bool _showCommits = true, _showComments = true, _showReviews = true, _showEvents = true;
     private IReadOnlyList<GitDash.Presentation.Markdown.MarkdownBlock> _descriptionBlocks = [];
     private bool _commentsByMe = true, _commentsByOthers = true, _commentsMentioningMe = true, _commentsFromAi = true;
@@ -707,9 +708,13 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     public ObservableCollection<ReviewEventViewModel> ReviewEvents { get; } = [];
     public bool HasReviews { get => _hasReviews; private set => Set(ref _hasReviews, value); }
-    public string ApprovedBy { get => _approvedBy; private set => Set(ref _approvedBy, value); }
-    public string ChangesRequestedBy { get => _changesRequestedBy; private set => Set(ref _changesRequestedBy, value); }
-    public string WaitingOn { get => _waitingOn; private set => Set(ref _waitingOn, value); }
+    /// <summary>Logins (rendered as first-name chips); empty means nobody.</summary>
+    public IReadOnlyList<string> ApprovedBy { get => _approvedBy; private set { if (Set(ref _approvedBy, value)) Raise(nameof(NobodyApproved)); } }
+    public IReadOnlyList<string> ChangesRequestedBy { get => _changesRequestedBy; private set { if (Set(ref _changesRequestedBy, value)) Raise(nameof(NobodyRequestedChanges)); } }
+    public IReadOnlyList<string> WaitingOn { get => _waitingOn; private set { if (Set(ref _waitingOn, value)) Raise(nameof(NobodyWaitedOn)); } }
+    public bool NobodyApproved => _approvedBy.Count == 0;
+    public bool NobodyRequestedChanges => _changesRequestedBy.Count == 0;
+    public bool NobodyWaitedOn => _waitingOn.Count == 0;
 
     public override void Apply(MonitorState state)
     {
@@ -830,6 +835,28 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         }
 
         OpenDetails(card);
+    }
+
+    /// <summary>
+    /// Opens the detail screen for the pull request with this URL, clearing filters that would hide it.
+    /// Returns false when the pull request is not in the loaded list.
+    /// </summary>
+    public bool ShowPullRequest(string url)
+    {
+        PullRequestCardViewModel? Find() => Cards.FirstOrDefault(c => string.Equals(c.Url, url, StringComparison.OrdinalIgnoreCase));
+
+        var card = Find();
+        if (card is null)
+        {
+            if (_selectedAuthors.Count > 0) ClearAuthorsCommand.Execute(null);
+            SelectedFilter = Filters.First(f => f.Filter == PullRequestFilter.All);
+            card = Find();
+        }
+
+        if (card is null) return false;
+        SelectedIndex = Cards.IndexOf(card);
+        OpenDetails(card);
+        return true;
     }
 
     private void OpenDetails(PullRequestCardViewModel card)
@@ -995,14 +1022,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             .GroupBy(r => r.Author, Login.Comparer)
             .Select(g => g.MaxBy(r => r.SubmittedAt)!)
             .ToList();
-        ApprovedBy = Names(latest.Where(r => r.State == ReviewState.Approved).Select(r => r.Author));
-        ChangesRequestedBy = Names(latest.Where(r => r.State == ReviewState.ChangesRequested).Select(r => r.Author));
-        WaitingOn = Names(pr?.RequestedReviewers ?? []);
-
-        static string Names(IEnumerable<string> logins)
-        {
-            var text = string.Join(", ", logins);
-            return text.Length == 0 ? "—" : text;
-        }
+        ApprovedBy = latest.Where(r => r.State == ReviewState.Approved).Select(r => r.Author).ToList();
+        ChangesRequestedBy = latest.Where(r => r.State == ReviewState.ChangesRequested).Select(r => r.Author).ToList();
+        WaitingOn = (pr?.RequestedReviewers ?? []).ToList();
     }
 }

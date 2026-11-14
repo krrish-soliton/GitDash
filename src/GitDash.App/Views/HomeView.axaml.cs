@@ -11,6 +11,6 @@ public partial class HomeView : UserControl
     private void OnAssignedTapped(object? sender, TappedEventArgs e)
     {
         if (sender is Control { DataContext: AssignedPullRequestViewModel pr } && DataContext is HomeViewModel page)
-            page.OpenUrlCommand.Execute(pr.Url);
+            page.OpenPullRequestCommand.Execute(pr.Url);
     }
 }

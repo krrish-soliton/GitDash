@@ -154,7 +154,7 @@
                                           <TextBlock Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                                                      FontWeight="SemiBold" FontSize="13" />
                                           <TextBlock Text="{Binding Where}" Classes="muted" FontSize="11.5" />
-                                          <TextBlock FontSize="11.5"><Run Text="by " /><Run Text="{Binding Author}" FontWeight="SemiBold" /></TextBlock>
+                                          <c:UserChip Login="{Binding Author}" />
                                           <TextBlock FontSize="11.5">
                                             <Run Text="{Binding Size}" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding Lines}" /><Run Text="  ·  " /><Run Text="{Binding FilesText}" />
                                           </TextBlock>
@@ -203,8 +203,9 @@
                                 <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextBrush}" />
                                 <TextBlock Classes="muted" FontSize="11.5">
-                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  by " /><Run Text="{Binding Author}" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
+                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
                                 </TextBlock>
+                                <c:UserChip Login="{Binding Author}" />
                                 <c:PullRequestTagStrip DataContext="{Binding Tags}" />
                               </StackPanel>
                               <StackPanel Grid.Column="2" Spacing="3" Margin="12,0,0,0" VerticalAlignment="Center">
@@ -263,7 +264,7 @@
                 </StackPanel>
                 <Button Grid.Column="2" Content="✕" Classes="ghost" VerticalAlignment="Top" Click="OnCloseBookClick" />
               </Grid>
-              <TextBlock><Run Text="by " /><Run Text="{Binding Author}" FontWeight="SemiBold" /></TextBlock>
+              <c:UserChip Login="{Binding Author}" />
               <TextBlock Text="{Binding Waiting}" Foreground="{StaticResource AmberBrush}" FontWeight="SemiBold"
                          IsVisible="{Binding HasWaiting}" />
               <TextBlock FontSize="13">
@@ -274,7 +275,7 @@
               <c:PullRequestTagStrip DataContext="{Binding Tags}" />
               <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
                 <Button Content="Close" Click="OnCloseBookClick" />
-                <Button Classes="primary" Content="Open on GitHub" Click="OnOpenBookClick" />
+                <Button Classes="primary" Content="Open details" Click="OnOpenBookClick" />
               </StackPanel>
             </StackPanel>
           </Border>

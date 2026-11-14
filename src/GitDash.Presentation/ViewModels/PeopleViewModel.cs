@@ -114,6 +114,9 @@ public sealed record PersonViewModel(
     public string OldestReviewLine => HasOldestReview ? $"Oldest Review {OldestReview}" : string.Empty;
     public string Hint => string.Join(" · ", new[] { StatusLine, OldestAssignedLine, OldestReviewLine }.Where(x => x.Length > 0));
     public string DisplayName => IsViewer ? $"{Login} (you)" : Login;
+
+    /// <summary>The name tag on the floor: first name only; the full login is the tooltip.</summary>
+    public string ShortName => IsViewer ? $"{Humanize.FirstName(Login)} (you)" : Humanize.FirstName(Login);
 }
 
 /// <summary>One repository, drawn as one floor of the building.</summary>
@@ -194,6 +197,11 @@ public sealed class PeopleViewModel : PageViewModel
         SelectPersonCommand = new RelayCommand<PersonViewModel>(Select);
         ClosePersonCommand = new RelayCommand(() => IsPersonOpen = false);
         OpenUrlCommand = new RelayCommand<string>(url => launcher.Open(url));
+        OpenPullRequestCommand = new RelayCommand<string>(url =>
+        {
+            if (string.IsNullOrEmpty(url)) return;
+            if (PullRequestOpener is { } open) open(url); else launcher.Open(url);
+        });
         PrFilters = [new("All", "All", true), new("Open", "Open"), new("Draft", "Draft"), new("Merged", "Merged"), new("Closed", "Closed")];
         EventFilters = [new("All", "All", true), new("Opened", "Opened"), new("Merged", "Merged"), new("Closed", "Closed"), new("Comments", "Comment"), new("Reviews", "Review")];
         SetPrFilterCommand = new RelayCommand<FilterChipViewModel>(chip => { Activate(PrFilters, chip); ApplyFilters(); });
@@ -313,6 +321,10 @@ public sealed class PeopleViewModel : PageViewModel
     public ICommand SelectPersonCommand { get; }
     public ICommand ClosePersonCommand { get; }
     public ICommand OpenUrlCommand { get; }
+
+    /// <summary>Opens a pull request in the in-app detail screen (set by the shell); the browser is only a fallback.</summary>
+    public ICommand OpenPullRequestCommand { get; }
+    public Action<string>? PullRequestOpener { get; set; }
 
     public override void Apply(MonitorState state)
     {

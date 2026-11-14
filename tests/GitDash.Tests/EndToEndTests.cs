@@ -703,4 +703,26 @@ public class EndToEndTests
         public override DateTimeOffset GetUtcNow() => _now;
         public void Advance(TimeSpan by) => _now += by;
     }
+
+    [Fact]
+    public async Task A_pull_request_url_opens_the_detail_screen_and_unknown_ones_fall_back()
+    {
+        var f = await CreateAsync();
+        var time = TimeProvider.System;
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), time, _ => { });
+        await f.Monitor.SyncAsync();
+        my.Apply(f.Monitor.State);
+
+        var target = my.Cards.Last().PullRequest;
+        Assert.True(my.ShowPullRequest(target.Url));
+        Assert.True(my.IsDetailOpen);
+        Assert.Equal(target.Url, my.DetailCard!.Url);
+        Assert.False(my.ShowPullRequest("https://github.com/nobody/nothing/pull/1"));
+
+        AvatarDirectory.Update(new Dictionary<string, string> { ["Anna-Becker"] = "https://avatars.githubusercontent.com/u/1" });
+        Assert.Equal("https://avatars.githubusercontent.com/u/1", AvatarDirectory.UrlFor("anna-becker"));
+        Assert.Null(AvatarDirectory.UrlFor("someone-else"));
+
+        await f.Monitor.DisposeAsync();
+    }
 }
