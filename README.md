@@ -172,3 +172,12 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **Settings** is a category rail (Accounts, Repositories, Notifications, Sounds, Appearance, Widgets and island, Window and tray, AI tool limits) showing one section at a time instead of stacked collapsible cards.
 - **Timers** cards are compact; Pomodoro durations moved into a flyout.
 - **Island and widget counters:** pick any of Assigned, Approval, Raised, Approved, Comments (unresolved only), Ready to merge, Error (plus All open) and their order under *Settings > Widgets and island*. With more than two on the island, it shows a pair at a time and slides to the next pair every N seconds; hovering shows all of them. Unresolved comments need the new `reviewThreads { isResolved }` field in the list query (untested against live GitHub).
+
+## Automatic updates
+
+- **Version in the sidebar:** the running version (`v1.1.0`, taken from the release tag) sits at the bottom of the sidebar with a one-line update status.
+- **How it works:** shortly after start and every six hours GitDash asks the GitHub Releases API for the newest published release (`krrish-soliton/GitDash`; your signed-in token is used when there is one, so a private repository works). If it is newer, GitDash shows a notification and a banner, downloads the installer in the background, verifies the SHA-256 checksum GitHub publishes for the file, counts down 10 seconds ("Restart now" / "Later" are on the banner) and restarts into the new version.
+- **Windows:** runs the Inno Setup installer silently over the existing installation (`/SILENT`), which closes GitDash, replaces the files and starts it again. Portable zip copies are only told about the new version.
+- **macOS:** after the app quits, a small helper script mounts the disk image for your CPU (arm64 / x64), replaces `GitDash.app` in place (the old copy is restored if the swap fails) and opens it. If GitDash lives in a folder it cannot write to, you are told and drag the new version in yourself.
+- **Settings > Updates:** "Check for updates" and an "Update automatically" switch. With it off you are still told about a new version and press *Update now* when you want it.
+- Release assets are expected as `GitDash-Setup-<version>.exe` and `GitDash-<version>-osx-arm64.dmg` / `-osx-x64.dmg` (what the Release workflow already produces). Untested against a real release: publish two tags to try it.

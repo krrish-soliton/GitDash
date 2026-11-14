@@ -133,6 +133,7 @@ public sealed class SettingsViewModel : PageViewModel
         new("appearance", "Appearance", "Theme, time and motion"),
         new("surfaces", "Widgets and island", "Floating surfaces and their content"),
         new("window", "Window and tray", "Startup, tray and refresh"),
+        new("updates", "Updates", "Version and automatic updates"),
         new("ai", "AI tool limits", "Usage caps and resets"),
     ];
 
@@ -157,7 +158,7 @@ public sealed class SettingsViewModel : PageViewModel
             if (value is null || !Set(ref _selectedSection!, value)) return;
             Raise(nameof(IsAccountsSection)); Raise(nameof(IsRepositoriesSection)); Raise(nameof(IsNotificationsSection));
             Raise(nameof(IsSoundsSection)); Raise(nameof(IsAppearanceSection)); Raise(nameof(IsSurfacesSection));
-            Raise(nameof(IsWindowSection)); Raise(nameof(IsAiSection));
+            Raise(nameof(IsWindowSection)); Raise(nameof(IsAiSection)); Raise(nameof(IsUpdatesSection));
         }
     }
 
@@ -169,6 +170,7 @@ public sealed class SettingsViewModel : PageViewModel
     public bool IsSurfacesSection => SelectedSection.Key == "surfaces";
     public bool IsWindowSection => SelectedSection.Key == "window";
     public bool IsAiSection => SelectedSection.Key == "ai";
+    public bool IsUpdatesSection => SelectedSection.Key == "updates";
 
     /// <summary>Token and OAuth sign-in options are tucked away until asked for.</summary>
     public bool ShowAdvancedSignIn
@@ -184,6 +186,15 @@ public sealed class SettingsViewModel : PageViewModel
 
     /// <summary>AI usage tracker shown in the settings page.</summary>
     public AiToolsViewModel? AiTools { get; init; }
+
+    /// <summary>The auto-updater's state, shown in the Updates section.</summary>
+    public UpdateViewModel? Updates { get; init; }
+
+    public bool AutoUpdate
+    {
+        get => _settings.Current.AutoUpdate;
+        set => Save(s => s with { AutoUpdate = value });
+    }
 
     /// <summary>Plays the sound previews on this page.</summary>
     public IAlarm? Alarm { get; init; }
@@ -237,7 +248,7 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(ReduceMotion),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(AutoUpdate), nameof(ReduceMotion),
                          nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
                          nameof(CustomSoundName), nameof(HasCustomSound),
                      })
