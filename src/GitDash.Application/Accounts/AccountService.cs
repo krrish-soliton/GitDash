@@ -9,7 +9,8 @@ public sealed class AccountService(
     ISecretStore secrets,
     IGitHubGateway gitHub,
     IDeviceFlowAuthenticator deviceFlow,
-    IGitHubCliTokenSource? gitHubCli = null)
+    IGitHubCliTokenSource? gitHubCli = null,
+    IGitHubCliSetup? gitHubCliSetup = null)
 {
     private static string SecretKey(Guid accountId) => $"account:{accountId:N}";
 
@@ -45,6 +46,27 @@ public sealed class AccountService(
         if (gitHubCli is null) throw new InvalidOperationException("GitHub CLI sign-in is not available.");
         var token = await gitHubCli.GetTokenAsync(ct).ConfigureAwait(false);
         return await AddWithTokenAsync(token, AuthMethod.GitHubCli, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The one-click path: when the GitHub CLI is installed but not logged in, runs its browser login first (the code to
+    /// type is passed to <paramref name="onCode"/>), then copies the token like <see cref="AddFromGitHubCliAsync"/>.
+    /// </summary>
+    public async Task<AccountSettings> SignInThroughGitHubCliAsync(Action<DeviceCodePrompt> onCode, CancellationToken ct = default)
+    {
+        if (gitHubCliSetup is not null)
+        {
+            switch (await gitHubCliSetup.GetStateAsync(ct).ConfigureAwait(false))
+            {
+                case GitHubCliState.NotInstalled:
+                    throw new GitHubCliNotInstalledException();
+                case GitHubCliState.NotSignedIn:
+                    await gitHubCliSetup.LoginAsync(onCode, ct).ConfigureAwait(false);
+                    break;
+            }
+        }
+
+        return await AddFromGitHubCliAsync(ct).ConfigureAwait(false);
     }
 
     public Task<DeviceCodePrompt> BeginDeviceFlowAsync(CancellationToken ct = default)

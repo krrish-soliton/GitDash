@@ -189,3 +189,9 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **Home buttons:** Refresh and Open on GitHub are icon buttons on one row.
 - **Notification centre:** the bell in the title bar shows the number of unread notifications. It opens the last 50 notifications with their time; click one to mark it read and open the pull request, use the tick to mark one read, "Mark all read" or "Clear". The list is kept in `notifications.json` in the app data folder, so it survives restarts.
 - **Pictures on notifications:** toasts, the island and the list show the profile picture of the person involved (author, commenter, merger) on the corner of the notification icon, when there is one.
+
+## GitHub CLI setup
+
+- **Windows installer:** an optional step, "Install GitHub CLI" (shown only when `gh` is not already on the computer), downloads GitHub's own `gh` installer (`gh_<version>_windows_amd64.msi`, version and SHA-256 pinned at the top of `installer/GitDash.iss`), checks the checksum and installs it after GitDash. Windows asks for permission because `gh` installs for all users. If the download or install fails, GitDash is still installed. Silent installs (the auto-updater) never download anything. To move to a newer `gh`, change `GhVersion` and `GhSha256` in the script.
+- **Sign in with GitHub CLI (Settings > Accounts):** one click. If `gh` is installed but not logged in, GitDash runs `gh auth login --web`, shows the one-time code, GitHub CLI opens the browser, and GitDash copies the token into its own store when you finish. If `gh` is missing the message says so and offers "Get GitHub CLI" (on a Mac: `brew install gh`).
+- Untested against a real `gh` login from inside the app (the output of `gh` is read to find the code): please try it once on a computer where `gh auth status` fails.

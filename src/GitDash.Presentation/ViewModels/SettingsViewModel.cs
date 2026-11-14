@@ -226,6 +226,7 @@ public sealed class SettingsViewModel : PageViewModel
         UseGitHubCliCommand = new AsyncRelayCommand(UseGitHubCliAsync, ShowAuthError);
         OpenNewTokenCommand = new RelayCommand(() => _launcher.Open(NewTokenUrl));
         CancelSignInCommand = new RelayCommand(() => _deviceFlow?.Cancel());
+        GetGitHubCliCommand = new RelayCommand(() => _launcher.Open("https://github.com/cli/cli#installation"));
         OpenVerificationCommand = new RelayCommand(() => _launcher.Open(VerificationUri));
         OpenOAuthAppsCommand = new RelayCommand(() => _launcher.Open(NewOAuthAppUrl));
         RemoveAccountCommand = new RelayCommand<AccountItemViewModel>(a => _ = RemoveAsync(a));
@@ -282,6 +283,11 @@ public sealed class SettingsViewModel : PageViewModel
     public ICommand AddTokenCommand { get; }
     public ICommand SignInCommand { get; }
     public ICommand CancelSignInCommand { get; }
+
+    /// <summary>GitHub CLI was not found: shows the "Get GitHub CLI" button.</summary>
+    public bool IsGitHubCliMissing { get => _isGitHubCliMissing; private set => Set(ref _isGitHubCliMissing, value); }
+    public ICommand GetGitHubCliCommand { get; }
+    private bool _isGitHubCliMissing;
     public ICommand OpenVerificationCommand { get; }
 
     /// <summary>Signs in with the token of the user's GitHub CLI login.</summary>
@@ -635,11 +641,41 @@ public sealed class SettingsViewModel : PageViewModel
         ShowAuth($"Signed in as {account.Login}.");
     }
 
+    /// <summary>
+    /// One click: if GitHub CLI is installed but not logged in, starts its browser login (the code to type is shown here),
+    /// then copies the token. Without GitHub CLI the message says how to get it.
+    /// </summary>
     private async Task UseGitHubCliAsync()
     {
-        ShowAuth("Asking GitHub CLI for your token…");
-        var account = await Task.Run(() => _accounts.AddFromGitHubCliAsync());
-        ShowAuth($"Signed in as {account.Login} through GitHub CLI.");
+        using var cts = _deviceFlow = new CancellationTokenSource();
+        IsGitHubCliMissing = false;
+        try
+        {
+            ShowAuth("Checking GitHub CLI…");
+            var account = await Task.Run(() => _accounts.SignInThroughGitHubCliAsync(prompt => _ui.Post(() =>
+            {
+                UserCode = prompt.UserCode;
+                VerificationUri = prompt.VerificationUri;
+                IsDeviceFlowPending = true;
+                ShowAuth("GitHub CLI opened your browser. Enter the code there to finish signing in.");
+            }), cts.Token));
+            ShowAuth($"Signed in as {account.Login} through GitHub CLI.");
+        }
+        catch (GitHubCliNotInstalledException ex)
+        {
+            IsGitHubCliMissing = true;
+            ShowAuth(ex.Message);
+        }
+        catch (OperationCanceledException)
+        {
+            ShowAuth("Sign-in cancelled.");
+        }
+        finally
+        {
+            IsDeviceFlowPending = false;
+            UserCode = string.Empty;
+            _deviceFlow = null;
+        }
     }
 
     private async Task SignInWithBrowserAsync()
