@@ -31,6 +31,7 @@ public sealed class IslandNote(ToastRequest request, bool autoClose)
 public partial class IslandWindow : FloatingWindow
 {
     private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
+    private const double CompactRowHeight = 34;
     private const int MaxVisibleNotes = 4, MaxWaiting = 20;
     private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 30;
     private int _timerRows;
@@ -112,7 +113,8 @@ public partial class IslandWindow : FloatingWindow
 
     public bool IsShowingNotification => _notes.Count > 0;
 
-    private double NotesHeight => _notes.Count * NoteHeight + 8;
+    // The counter row stays visible above the notes, so it needs its own height (34) on top of the notes.
+    private double NotesHeight => CompactRowHeight + _notes.Count * NoteHeight + 8;
 
     /// <summary>Raised when the notification ends here (closed, clicked or timed out).</summary>
     public event Action<ToastRequest>? Dismissed;
