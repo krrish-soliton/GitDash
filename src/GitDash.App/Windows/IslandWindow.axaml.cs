@@ -189,13 +189,19 @@ public partial class IslandWindow : FloatingWindow
 
     private double Scale => RenderScaling <= 0 ? 1 : RenderScaling;
 
+    private bool MovedFromWhereWePlacedIt() =>
+        Math.Abs(Position.X - _lastPos.X) > 3 || Math.Abs(Position.Y - _lastPos.Y) > 3;
+
     /// <summary>
     /// The island's own centre. It differs from the window's centre while the window is shifted to stay on screen, and
     /// is re-read whenever something else (a drag, <see cref="PlaceAt"/>) has moved the window since we last placed it.
     /// </summary>
     private int CurrentCenterX()
     {
-        if (!_hasCenter || Position != _lastPos)
+        // Only the user dragging it (unlocked) or the very first look may change the centre. Reading it back from the window
+        // every time drifted the island left on macOS: the system rounds the position, so it never matched exactly, and a
+        // window pushed in from the screen edge then passed for the island's own centre.
+        if (!_hasCenter || (!IsLocked && MovedFromWhereWePlacedIt()))
         {
             _centerX = Position.X + (int)Math.Round(Width * Scale / 2);
             _hasCenter = true;

@@ -248,7 +248,7 @@ public sealed class SettingsViewModel : PageViewModel
                      {
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
-                         nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden),
+                         nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden), nameof(OverlaysOverFullScreen),
                          nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(AutoUpdate), nameof(ReduceMotion),
                          nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
                          nameof(CustomSoundName), nameof(HasCustomSound),
@@ -475,6 +475,13 @@ public sealed class SettingsViewModel : PageViewModel
     {
         get => _settings.Current.HideDockIconWhenHidden;
         set => Save(s => s with { HideDockIconWhenHidden = value });
+    }
+
+    /// <summary>macOS: show the island and widgets over full-screen apps (GitDash then has no Dock icon while one is on).</summary>
+    public bool OverlaysOverFullScreen
+    {
+        get => _settings.Current.OverlaysOverFullScreen;
+        set => Save(s => s with { OverlaysOverFullScreen = value });
     }
 
     /// <summary>Mouse clicks go through the widgets and the island to whatever is underneath.</summary>

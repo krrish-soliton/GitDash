@@ -53,7 +53,15 @@ public partial class App : AvaloniaApplication
                 Dispatcher.UIThread.Post(window.Hide);
             };
             // macOS: with the option on, the Dock icon goes away while the window is hidden and returns when it is shown.
-            void UpdateDock() => NativeWindow.SetDockIconVisible(window.IsVisible || !host.Settings.Current.HideDockIconWhenHidden);
+            // The Dock icon is also dropped while an overlay is on and "over full-screen apps" is chosen: macOS only lets
+            // apps without a Dock icon put windows on top of full-screen apps.
+            void UpdateDock()
+            {
+                var s = host.Settings.Current;
+                var overlayOn = s.ShowDynamicIsland || s.ShowFloatingWidget || s.ShowTimerWidget;
+                var overFullScreen = s is { OverlaysOverFullScreen: true, ShowTrayIcon: true } && overlayOn;
+                NativeWindow.SetDockIconVisible(!overFullScreen && (window.IsVisible || !s.HideDockIconWhenHidden));
+            }
             window.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) UpdateDock(); };
             host.Settings.Changed += _ => Dispatcher.UIThread.Post(UpdateDock);
             desktop.Exit += (_, _) => host.Dispose();
