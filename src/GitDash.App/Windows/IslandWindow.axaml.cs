@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitDash.App.Converters;
+using GitDash.App.Services;
 using GitDash.Application.Abstractions;
 using GitDash.Presentation.Mvvm;
 using GitDash.Presentation.ViewModels;
