@@ -40,6 +40,10 @@ public sealed class IslandNote(ToastRequest request, bool autoClose) : Observabl
     public string Title => request.Title;
     public string Message => request.Message;
     public IBrush Accent { get; } = ToneBrushConverter.Brush(request.Tone.ToString());
+
+    /// <summary>Picture of the person the notification is about, shown on the corner of the icon.</summary>
+    public string? AvatarUrl => AvatarDirectory.UrlFor(request.Actor);
+    public bool HasAvatar => AvatarUrl is not null;
 }
 
 public partial class IslandWindow : FloatingWindow
@@ -151,6 +155,33 @@ public partial class IslandWindow : FloatingWindow
 
     /// <summary>Horizontal centre and top edge in screen pixels: what is remembered as the island's place.</summary>
     public (int CenterX, int Top) Anchor => (CurrentCenterX(), Position.Y);
+
+    private PixelRect PrimaryArea() =>
+        (Screens.Primary ?? Screens.All.FirstOrDefault())?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+
+    /// <summary>The island's place as 0–100 % of the main screen (centre across, top down), whatever the resolution.</summary>
+    public (double X, double Y) AnchorPercent()
+    {
+        var (cx, top) = Anchor;
+        var area = PrimaryArea();
+        static double Pct(int value, int origin, int room) =>
+            room <= 0 ? 0 : Math.Round(Math.Clamp((value - origin) * 100.0 / room, 0, 100), 2);
+        return (Pct(cx, area.X, area.Width), Pct(top, area.Y, area.Height));
+    }
+
+    /// <summary>Puts the island at a saved percentage of the main screen (null = top centre).</summary>
+    public void PlaceAtPercent(double? xPercent, double? yPercent)
+    {
+        if (xPercent is not { } x || yPercent is not { } y)
+        {
+            PlaceAt(null, null);
+            return;
+        }
+
+        var area = PrimaryArea();
+        PlaceAt(area.X + (int)Math.Round(Math.Clamp(x, 0, 100) / 100 * area.Width),
+                area.Y + (int)Math.Round(Math.Clamp(y, 0, 100) / 100 * area.Height));
+    }
 
     private int _centerX;
     private PixelPoint _lastPos;

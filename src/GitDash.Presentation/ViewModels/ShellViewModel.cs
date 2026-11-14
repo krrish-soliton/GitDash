@@ -6,6 +6,7 @@ using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
+using GitDash.Application.Notifications;
 using GitDash.Application.Updates;
 using GitDash.Domain.Insights;
 using GitDash.Presentation.Mvvm;
@@ -204,7 +205,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ShellViewModel(
         PullRequestMonitor monitor, SettingsService settings, AccountService accounts, TimerHistory history,
         NotificationRouter notifications, PersonActivityService personActivity, IUrlLauncher launcher, IAlarm alarm, IUiDispatcher ui, TimeProvider time,
-        ActionsMonitor? actionsMonitor = null, UpdateService? updates = null)
+        ActionsMonitor? actionsMonitor = null, UpdateService? updates = null, NotificationHistory? notificationHistory = null)
     {
         _time = time;
         _launcher = launcher;
@@ -215,6 +216,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Humanize.Format = settings.Current.TimeFormat;
 
         Updates = new UpdateViewModel(updates, launcher, ui);
+        NotificationCenter = new NotificationCenterViewModel(notificationHistory, ui, time, OpenPullRequest);
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
         Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm, Updates = Updates };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
@@ -268,6 +270,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>Version number, update progress and the restart countdown.</summary>
     public UpdateViewModel Updates { get; }
+
+    /// <summary>The bell in the title bar and the list it opens.</summary>
+    public NotificationCenterViewModel NotificationCenter { get; }
     public IReadOnlyList<PageViewModel> Pages { get; }
 
     public PageViewModel CurrentPage

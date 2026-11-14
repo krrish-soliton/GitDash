@@ -44,6 +44,11 @@ public partial class ToastWindow : Window
         var accent = ToneBrushConverter.Brush(request.Tone.ToString());
         IconBadge.Background = accent;
         Life.Background = accent;
+        if (GitDash.Presentation.Mvvm.AvatarDirectory.UrlFor(request.Actor) is { } avatar)
+        {
+            AvatarPic.Url = avatar;
+            AvatarBadge.IsVisible = true;
+        }
 
         if (animate)
         {

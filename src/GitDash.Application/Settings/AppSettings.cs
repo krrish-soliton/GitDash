@@ -109,8 +109,12 @@ public sealed record AppSettings
     /// </summary>
     public double MiniXPercent { get; init; } = 100;
     public double MiniYPercent { get; init; } = 50;
+    /// <summary>Older versions saved pixels; kept only to carry an existing position over (see the percent values below).</summary>
     public int? TimerWidgetX { get; init; }
     public int? TimerWidgetY { get; init; }
+    /// <summary>Where the timer widget sits as 0–100 % of the free room on the main screen, so it lands in the same part of any screen size.</summary>
+    public double? TimerWidgetXPercent { get; init; }
+    public double? TimerWidgetYPercent { get; init; }
     public bool ShowTimerWidget { get; init; }
     /// <summary>Show every running timer on the widget and the island (off: only the most relevant one).</summary>
     public bool ShowMultipleTimers { get; init; } = true;
@@ -139,6 +143,9 @@ public sealed record AppSettings
     /// <summary>Centre (X) and top (Y) of the island in screen pixels; null = top centre of the main screen.</summary>
     public int? IslandX { get; init; }
     public int? IslandY { get; init; }
+    /// <summary>Centre (X) and top (Y) of the island as 0–100 % of the main screen's width and height; null = top centre.</summary>
+    public double? IslandXPercent { get; init; }
+    public double? IslandYPercent { get; init; }
     public IReadOnlyList<AiToolSettings> AiTools { get; init; } = [];
     public bool ShowTrayIcon { get; init; } = true;
     /// <summary>Minimising the window sends it to the tray instead of the taskbar (needs the tray icon).</summary>

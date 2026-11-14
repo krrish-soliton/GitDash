@@ -39,3 +39,17 @@ public sealed class DemoDeviceFlowAuthenticator : IDeviceFlowAuthenticator
     public Task<string> WaitForTokenAsync(string clientId, DeviceCodePrompt prompt, CancellationToken ct) =>
         throw new InvalidOperationException("Browser sign-in is not available in demo mode.");
 }
+
+public sealed class InMemoryNotificationStore : INotificationStore
+{
+    private IReadOnlyList<GitDash.Application.Notifications.NotificationEntry> _entries = [];
+
+    public Task<IReadOnlyList<GitDash.Application.Notifications.NotificationEntry>> LoadAsync(CancellationToken ct = default) =>
+        Task.FromResult(_entries);
+
+    public Task SaveAsync(IReadOnlyList<GitDash.Application.Notifications.NotificationEntry> entries, CancellationToken ct = default)
+    {
+        _entries = entries;
+        return Task.CompletedTask;
+    }
+}

@@ -17,6 +17,7 @@ public sealed class AppPaths
 
     public string Root { get; }
     public string SettingsFile => Path.Combine(Root, "settings.json");
+    public string NotificationsFile => Path.Combine(Root, "notifications.json");
     public string TimerSessionsFile => Path.Combine(Root, "timer-sessions.json");
     public string DatabaseFile => Path.Combine(Root, "gitdash.db");
     public string SecretsFolder => Path.Combine(Root, "secrets");
