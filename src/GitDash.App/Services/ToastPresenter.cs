@@ -65,7 +65,8 @@ public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow,
             if (window.Request.Url is { } url)
             {
                 showMainWindow();
-                (OpenPullRequest ?? launcher.Open)(url);
+                if (OpenPullRequest is { } open) open(url);
+                else launcher.Open(url);
             }
             else showMainWindow();
         }
