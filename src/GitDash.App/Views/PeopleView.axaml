@@ -724,6 +724,7 @@
                   </Border>
                 </StackPanel>
               </Expander.Header>
+            <StackPanel>
             <ItemsControl ItemsSource="{Binding PrFilters}" Margin="0,2,0,6">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -752,6 +753,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </StackPanel>
             </Expander>
 
             <Expander Classes="section" IsExpanded="False" IsVisible="{Binding HasEvents}">
@@ -763,6 +765,7 @@
                   </Border>
                 </StackPanel>
               </Expander.Header>
+            <StackPanel>
             <ItemsControl ItemsSource="{Binding EventFilters}" Margin="0,2,0,6">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -794,6 +797,7 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </StackPanel>
             </Expander>
 
             <!-- Right now (from the live sync) -->
