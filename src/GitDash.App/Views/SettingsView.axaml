@@ -115,9 +115,29 @@
             </Button>
               </StackPanel>
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="Reuses the login of the GitHub CLI (gh) on this computer: no token to copy and no app for your organization to approve. Run gh auth login once in a terminal, then click the button. GitDash reads the token with gh auth token." />
-              <Button Classes="primary" Content="Sign in with GitHub CLI" Command="{Binding UseGitHubCliCommand}"
-                      HorizontalAlignment="Left" />
+                         Text="Uses the GitHub CLI (gh) on this computer: no token to copy and no app for your organization to approve. If you are not logged in yet, GitDash starts the GitHub login for you: your browser opens and you type a short code. GitDash then copies the token into its own secure store." />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary" Content="Sign in with GitHub CLI" Command="{Binding UseGitHubCliCommand}"
+                        IsVisible="{Binding !IsDeviceFlowPending}" />
+                <Button Classes="ghost" Content="Get GitHub CLI" Command="{Binding GetGitHubCliCommand}"
+                        IsVisible="{Binding IsGitHubCliMissing}" ToolTip.Tip="Open the GitHub CLI download page" />
+              </StackPanel>
+
+              <!-- Shown while gh auth login waits for the code to be entered in the browser -->
+              <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="16"
+                      IsVisible="{Binding IsDeviceFlowPending}">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="label" Text="ENTER THIS CODE ON GITHUB" />
+                  <SelectableTextBlock Text="{Binding UserCode}" FontSize="30" FontWeight="Bold"
+                                       Foreground="{StaticResource Accent2Brush}" LetterSpacing="3" />
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="primary" Content="Open GitHub" Command="{Binding OpenVerificationCommand}" />
+                    <Button Classes="ghost" Content="Cancel" Command="{Binding CancelSignInCommand}" />
+                    <Ellipse Classes="pulse" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
+                             VerticalAlignment="Center" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
             </StackPanel>
           </Border>
 

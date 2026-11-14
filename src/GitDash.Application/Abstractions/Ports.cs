@@ -67,6 +67,25 @@ public interface IGitHubCliTokenSource
     Task<string> GetTokenAsync(CancellationToken ct = default);
 }
 
+public enum GitHubCliState
+{
+    NotInstalled,
+    NotSignedIn,
+    SignedIn,
+}
+
+/// <summary>Looks at the GitHub CLI on this computer and, when it is not logged in, runs its browser login.</summary>
+public interface IGitHubCliSetup
+{
+    Task<GitHubCliState> GetStateAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Runs <c>gh auth login --web</c>. <paramref name="onCode"/> gets the one-time code as soon as the CLI prints it;
+    /// the call returns when the user has finished in the browser and throws when the login failed or was cancelled.
+    /// </summary>
+    Task LoginAsync(Action<DeviceCodePrompt> onCode, CancellationToken ct = default);
+}
+
 /// <summary>Opens links in the default browser, restricted to GitHub hosts.</summary>
 public interface IUrlLauncher
 {
