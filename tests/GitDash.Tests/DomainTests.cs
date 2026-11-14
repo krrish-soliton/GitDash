@@ -303,6 +303,38 @@ public class ViewerApprovalTests
     }
 }
 
+public class WaitingForTests
+{
+    private static PullRequest Pr(Func<PullRequest, PullRequest> with) => TestData.Pr("w", with: with);
+
+    [Fact]
+    public void Waits_for_the_requested_reviewers()
+    {
+        var pr = Pr(p => p with { RequestedReviewers = ["maya", "leo"], Assignees = ["sam"] });
+        Assert.Equal(new[] { "maya", "leo" }, pr.WaitingFor.ToArray());
+        Assert.Equal("to review", pr.WaitingForReason);
+    }
+
+    [Fact]
+    public void Waits_for_the_author_after_changes_were_requested_or_once_approved()
+    {
+        var changes = Pr(p => p with { Author = "maya", Reviews = [new Review("leo", ReviewState.ChangesRequested, TestData.Now, 0)] });
+        Assert.Equal(new[] { "maya" }, changes.WaitingFor.ToArray());
+        Assert.Equal("to address the requested changes", changes.WaitingForReason);
+
+        var approved = Pr(p => p with { Author = "maya", Reviews = [new Review("leo", ReviewState.Approved, TestData.Now, 0)] });
+        Assert.Equal(new[] { "maya" }, approved.WaitingFor.ToArray());
+        Assert.Equal("to merge", approved.WaitingForReason);
+    }
+
+    [Fact]
+    public void Falls_back_to_the_assignees_and_is_empty_when_not_open()
+    {
+        Assert.Equal(new[] { "sam" }, Pr(p => p with { Assignees = ["sam"] }).WaitingFor.ToArray());
+        Assert.Empty(Pr(p => p with { Assignees = ["sam"], State = PullRequestState.Merged }).WaitingFor);
+    }
+}
+
 public class AiAuthorTests
 {
     [Fact]

@@ -68,10 +68,22 @@ public static class TimelineTags
 /// <summary>All timeline entries of one calendar day, under a date heading.</summary>
 public sealed record TimelineDayViewModel(string Header, IReadOnlyList<TimelineItemViewModel> Items);
 
+/// <summary>One emoji reaction chip under a comment, for example "👍 3".</summary>
+public sealed record ReactionChipViewModel(string Emoji, int Count)
+{
+    public string Label => $"{Emoji} {Count}";
+}
+
 public sealed record CommentViewModel(
     string Author, string Initials, string Accent, string When, string Source, string Body,
-    bool IsMine, bool MentionsMe, bool IsAi = false, bool IsResolved = false, bool IsUnresolved = false)
+    bool IsMine, bool MentionsMe, bool IsAi = false, bool IsResolved = false, bool IsUnresolved = false,
+    IReadOnlyList<ReactionChipViewModel>? Reactions = null, bool IsReply = false)
 {
+    public IReadOnlyList<ReactionChipViewModel> ReactionChips => Reactions ?? [];
+    public bool HasReactions => ReactionChips.Count > 0;
+    /// <summary>The first message of a conversation shows where it was said; replies only follow it.</summary>
+    public bool ShowsSource => !IsReply;
+
     /// <summary>Body rendered as Markdown blocks.</summary>
     public IReadOnlyList<GitDash.Presentation.Markdown.MarkdownBlock> Blocks { get; } =
         GitDash.Presentation.Markdown.MarkdownParser.Parse(Body);
@@ -173,6 +185,82 @@ public sealed class PullRequestCardViewModel(PullRequest pr, DateTimeOffset now,
         Humanize.Age(now - (pr.IsOnViewersDesk ? pr.ArrivedAt ?? pr.CreatedAt : pr.CreatedAt));
     public string Age { get; } = Humanize.Age(now - pr.CreatedAt);
 
+    // ----- Who it is waiting for -----
+    public bool HasWaitingFor => PullRequest.WaitingFor.Count > 0;
+    public string WaitingForText => PullRequest.WaitingFor.Count == 0
+        ? string.Empty
+        : $"Waiting for {string.Join(", ", PullRequest.WaitingFor.Select(w => Login.Same(w, PullRequest.ViewerLogin) ? "you" : w))}" +
+          (PullRequest.WaitingForReason.Length > 0 ? $" · {PullRequest.WaitingForReason}" : string.Empty);
+
+    // ----- Pipeline runs (from GitHub Actions) -----
+    private int? _pipelineRuns;
+    private int _runsActive;
+    private bool _lastRunFailed, _lastRunPassed;
+
+    /// <summary>How many of the repository's recent workflow runs belonged to this pull request; null until Actions was read.</summary>
+    public string PipelineRunsText => _pipelineRuns is { } n ? n.ToString() : "—";
+    public bool RunsActive => _runsActive > 0;
+    public string RunsActiveText => $"{_runsActive} running";
+    public bool LastRunFailed => _lastRunFailed && _runsActive == 0;
+    public bool LastRunPassed => _lastRunPassed && _runsActive == 0;
+    public bool HasRunTag => RunsActive || LastRunFailed || LastRunPassed;
+
+    public void ApplyActions(GitDash.Application.Monitoring.ActionsState state)
+    {
+        var runs = state.RunsFor(PullRequest.Repository, PullRequest.Number).ToList();
+        var latest = runs.OrderByDescending(r => r.StartedAt).FirstOrDefault();
+        _pipelineRuns = state.UpdatedAt is null ? null : state.RunCount(PullRequest.Repository, PullRequest.Number);
+        _runsActive = runs.Count(r => r.IsActive);
+        _lastRunFailed = latest?.Failed == true;
+        _lastRunPassed = latest?.Succeeded == true;
+        Raise(nameof(PipelineRunsText));
+        Raise(nameof(RunsActive));
+        Raise(nameof(RunsActiveText));
+        Raise(nameof(LastRunFailed));
+        Raise(nameof(LastRunPassed));
+        Raise(nameof(HasRunTag));
+    }
+
+    // ----- Approve and hand over (two clicks: ask, then confirm) -----
+    private string? _pending;
+    private bool _isBusy;
+
+    public bool CanApprove => PullRequest.State == GitDash.Domain.PullRequests.PullRequestState.Open && !PullRequest.IsAuthoredByViewer &&
+                              !PullRequest.IsDraft && !PullRequest.ViewerHasApproved;
+    public bool CanHandOver => PullRequest.State == GitDash.Domain.PullRequests.PullRequestState.Open && PullRequest.IsAssignedToViewer &&
+                               !PullRequest.IsAuthoredByViewer;
+    public bool HasActions => CanApprove || CanHandOver;
+    public bool ViewerApproved => PullRequest.ViewerHasApproved;
+
+    /// <summary>"approve", "handover" or null: the action waiting for a second click.</summary>
+    public string? Pending
+    {
+        get => _pending;
+        set
+        {
+            if (!Set(ref _pending, value)) return;
+            Raise(nameof(ApproveLabel));
+            Raise(nameof(HandOverLabel));
+            Raise(nameof(IsConfirming));
+        }
+    }
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (!Set(ref _isBusy, value)) return;
+            Raise(nameof(ApproveLabel));
+            Raise(nameof(HandOverLabel));
+        }
+    }
+
+    public string ApproveLabel => _isBusy ? "Working…" : _pending == "approve" ? "Confirm approve" : "Approve";
+    public string HandOverLabel => _isBusy ? "Working…" : _pending == "handover" ? "Confirm hand over" : "Hand to author";
+    public bool IsConfirming => _pending is not null;
+    public string HandOverTip => $"Remove you as assignee and assign {PullRequest.Author}";
+
     public int TotalComments => PullRequest.TotalComments;
     public int MyComments => PullRequest.CommentsByViewer;
     public int Commits => PullRequest.CommitCount;
@@ -220,12 +308,22 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     public MyPullRequestsViewModel(
         PullRequestMonitor monitor, IUrlLauncher launcher, IUiDispatcher ui, TimeProvider time,
-        Action<PullRequest> startReviewTimer)
+        Action<PullRequest> startReviewTimer, ActionsViewModel? actions = null)
         : base("My PRs", "IconCards")
     {
         _monitor = monitor;
         _ui = ui;
         _time = time;
+        Actions = actions;
+        if (actions is not null) actions.Updated += OnActionsUpdated;
+
+        ApproveCommand = new RelayCommand<PullRequestCardViewModel>(c =>
+            Confirmed(c, "approve", () => _monitor.ApproveAsync(c.PullRequest), $"Approved {c.Number}"));
+        HandOverCommand = new RelayCommand<PullRequestCardViewModel>(c =>
+            Confirmed(c, "handover", () => _monitor.HandOverToAuthorAsync(c.PullRequest),
+                $"{c.Number} handed to {c.Author}: you were removed as assignee"));
+        CancelPendingCommand = new RelayCommand<PullRequestCardViewModel>(c => c.Pending = null);
+        DismissActionMessageCommand = new RelayCommand(() => ActionMessage = string.Empty);
 
         Filters =
         [
@@ -280,6 +378,73 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         });
     }
 
+    // ----- Approve / hand over -----
+    private string _actionMessage = string.Empty;
+    private bool _isActionError;
+
+    public ActionsViewModel? Actions { get; }
+    public bool HasActions => Actions is not null;
+    public ICommand ApproveCommand { get; }
+    public ICommand HandOverCommand { get; }
+    public ICommand CancelPendingCommand { get; }
+    public ICommand DismissActionMessageCommand { get; }
+
+    /// <summary>Result of the last approve or hand over, shown above the cards.</summary>
+    public string ActionMessage
+    {
+        get => _actionMessage;
+        private set
+        {
+            if (Set(ref _actionMessage, value)) Raise(nameof(HasActionMessage));
+        }
+    }
+
+    public bool HasActionMessage => _actionMessage.Length > 0;
+    public bool IsActionError { get => _isActionError; private set => Set(ref _isActionError, value); }
+
+    /// <summary>First click arms the action, second click runs it, so a stray click cannot approve a pull request.</summary>
+    private void Confirmed(PullRequestCardViewModel card, string name, Func<Task> action, string done)
+    {
+        if (card.IsBusy) return;
+        if (card.Pending != name)
+        {
+            card.Pending = name;
+            return;
+        }
+
+        card.Pending = null;
+        card.IsBusy = true;
+        IsActionError = false;
+        ActionMessage = "Working…";
+        _ = RunAsync();
+
+        async Task RunAsync()
+        {
+            try
+            {
+                await Task.Run(action).ConfigureAwait(false);
+                _ui.Post(() => ActionMessage = done);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _ui.Post(() =>
+                {
+                    IsActionError = true;
+                    ActionMessage = ex.Message;
+                });
+            }
+            finally
+            {
+                _ui.Post(() => card.IsBusy = false);
+            }
+        }
+    }
+
+    private void OnActionsUpdated(GitDash.Application.Monitoring.ActionsState state)
+    {
+        foreach (var card in Cards) card.ApplyActions(state);
+    }
+
     private PullRequestCardViewModel? _pendingReview;
     private bool _isConfirmingReview;
     private string _confirmReviewMessage = string.Empty;
@@ -299,8 +464,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         set
         {
             if (value is null || !Set(ref _selectedFilter!, value)) return;
-            _selectedIndex = 0;
-            Rebuild(force: true);
+            Rebuild(force: true, startAtFirst: true);
         }
     }
 
@@ -411,7 +575,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         }
     }
 
-    private void Rebuild(bool force)
+    private void Rebuild(bool force, bool startAtFirst = false)
     {
         var all = _state.Open.GroupBy(p => p.Id).Select(g => g.First()).ToList();
         foreach (var option in Filters) option.Count = all.Count(option.Matches);
@@ -428,12 +592,15 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         if (!force && signature == _signature) return;
         _signature = signature;
 
-        var selectedId = Cards.ElementAtOrDefault(SelectedIndex)?.Id;
+        var selectedId = startAtFirst ? null : Cards.ElementAtOrDefault(SelectedIndex)?.Id;
         var now = _time.GetUtcNow();
         Reconcile(ordered, now);
 
         var index = selectedId is null ? -1 : ordered.FindIndex(p => p.Id == selectedId);
-        SelectedIndex = index >= 0 ? index : 0;
+        // Always announce the index: when it stays 0 across a filter change the cover flow would otherwise keep its
+        // old position, and a single remaining card ended up parked at the side instead of in the centre.
+        _selectedIndex = Math.Clamp(index >= 0 ? index : 0, 0, Math.Max(0, Cards.Count - 1));
+        Raise(nameof(SelectedIndex));
         MarkFront(); // cards were added or replaced, so the front flag has to be set again
         IsEmpty = Cards.Count == 0;
         EmptyText = filter.Filter switch
@@ -454,7 +621,12 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     /// </summary>
     private void Reconcile(List<PullRequest> ordered, DateTimeOffset now)
     {
-        PullRequestCardViewModel NewCard(PullRequest pr) => new(pr, now, _state.Avatars.GetValueOrDefault(pr.Author));
+        PullRequestCardViewModel NewCard(PullRequest pr)
+        {
+            var card = new PullRequestCardViewModel(pr, now, _state.Avatars.GetValueOrDefault(pr.Author));
+            if (Actions is { State: { } actionsState }) card.ApplyActions(actionsState);
+            return card;
+        }
 
         var wanted = ordered.Select(p => p.Id).ToHashSet();
         for (var i = Cards.Count - 1; i >= 0; i--)
@@ -597,8 +769,17 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         var viewer = DetailCard?.PullRequest.ViewerLogin ?? string.Empty;
         var all = _details?.Comments ?? [];
 
+        // A chat: oldest first, and a code conversation stays together with its replies right under the first message.
+        var ordered = all
+            .Select((c, i) => (Comment: c, Key: c.ThreadId ?? "single:" + i))
+            .GroupBy(x => x.Key)
+            .Select(g => g.OrderBy(x => x.Comment.At).Select((x, n) => (x.Comment, IsReply: n > 0)).ToList())
+            .OrderBy(g => g[0].Comment.At)
+            .SelectMany(g => g)
+            .ToList();
+
         Comments.Clear();
-        foreach (var c in all.OrderByDescending(c => c.At))
+        foreach (var (c, isReply) in ordered)
         {
             var mine = Login.Same(c.Author, viewer);
             var ai = !mine && c.IsAi;
@@ -618,7 +799,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
                     CommentSource.Review => "Review summary",
                     _ => "Conversation",
                 },
-                c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread));
+                c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread,
+                [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count))], isReply));
         }
 
         HasComments = Comments.Count > 0;

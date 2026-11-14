@@ -100,7 +100,7 @@ internal static class GitHubQueries
               createdAt
               body
               author { login }
-              reviewThreads(first: 100) { nodes { isResolved comments(first: 50) { nodes { id } } } }
+              reviewThreads(first: 100) { nodes { id isResolved comments(first: 50) { nodes { id } } } }
               timelineItems(last: 150, itemTypes: [PULL_REQUEST_COMMIT, ISSUE_COMMENT, PULL_REQUEST_REVIEW,
                 ASSIGNED_EVENT, UNASSIGNED_EVENT, REVIEW_REQUESTED_EVENT, REVIEW_REQUEST_REMOVED_EVENT,
                 REVIEW_DISMISSED_EVENT, READY_FOR_REVIEW_EVENT, CONVERT_TO_DRAFT_EVENT,
@@ -108,10 +108,10 @@ internal static class GitHubQueries
                 nodes {
                   __typename
                   ... on PullRequestCommit { commit { committedDate messageHeadline author { name user { login } } } }
-                  ... on IssueComment { createdAt author { login } bodyText body }
+                  ... on IssueComment { createdAt author { login } bodyText body reactionGroups { content reactors { totalCount } } }
                   ... on PullRequestReview {
                     submittedAt author { login } state bodyText body
-                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } } }
+                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } reactionGroups { content reactors { totalCount } } } }
                   }
                   ... on AssignedEvent { createdAt actor { login } assignee { ... on User { login } } }
                   ... on UnassignedEvent { createdAt actor { login } assignee { ... on User { login } } }

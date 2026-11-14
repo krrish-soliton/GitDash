@@ -290,3 +290,72 @@ public class SoundTests
         Assert.Equal("bell", SoundCatalog.Normalise("bell"));
     }
 }
+
+public class CommentReactionTests
+{
+    [Fact]
+    public void Maps_reactions_and_keeps_code_conversations_together()
+    {
+        const string json = """
+            {"repository":{"pullRequest":{"createdAt":"2026-11-10T08:00:00Z","body":"x","author":{"login":"maya"},
+              "reviewThreads":{"nodes":[{"id":"T1","isResolved":false,"comments":{"nodes":[{"id":"c1"},{"id":"c2"}]}}]},
+              "timelineItems":{"nodes":[
+                {"__typename":"IssueComment","createdAt":"2026-11-10T09:00:00Z","author":{"login":"leo"},"body":"great","bodyText":"great",
+                 "reactionGroups":[{"content":"ROCKET","reactors":{"totalCount":2}},{"content":"EYES","reactors":{"totalCount":0}}]},
+                {"__typename":"PullRequestReview","submittedAt":"2026-11-11T08:00:00Z","author":{"login":"krish"},"state":"COMMENTED","bodyText":"","body":"","comments":{"totalCount":2,"nodes":[
+                  {"id":"c1","createdAt":"2026-11-11T07:50:00Z","path":"src/A.cs","body":"Rename","author":{"login":"krish"},
+                   "reactionGroups":[{"content":"THUMBS_UP","reactors":{"totalCount":3}},{"content":"HEART","reactors":{"totalCount":0}}]},
+                  {"id":"c2","createdAt":"2026-11-11T07:55:00Z","path":"src/A.cs","body":"Done","author":{"login":"maya"}}]}}]}}}}
+            """;
+        using var doc = JsonDocument.Parse(json);
+        var comments = PullRequestMapper.MapDetails(doc.RootElement).Comments;
+
+        var conversation = comments.Single(c => c.Source == CommentSource.Conversation);
+        Assert.Equal(new CommentReaction("🚀", 2), Assert.Single(conversation.ReactionList));
+        Assert.Null(conversation.ThreadId);
+
+        var inline = comments.Where(c => c.Source == CommentSource.Inline).OrderBy(c => c.At).ToList();
+        Assert.Equal(new CommentReaction("👍", 3), Assert.Single(inline[0].ReactionList)); // zero counts are dropped
+        Assert.Empty(inline[1].ReactionList);
+        Assert.Equal("T1", inline[0].ThreadId);
+        Assert.Equal("T1", inline[1].ThreadId);
+    }
+}
+
+public class WorkflowRunMapperTests
+{
+    [Fact]
+    public void Maps_runs_and_counts_finished_steps()
+    {
+        const string runs = """
+            {"workflow_runs":[
+              {"id":1,"name":"CI","head_branch":"feature/x","status":"in_progress","conclusion":null,"created_at":"2026-11-13T08:00:00Z",
+               "run_started_at":"2026-11-13T08:00:05Z","updated_at":"2026-11-13T08:01:00Z","html_url":"https://github.com/a/b/actions/runs/1",
+               "actor":{"login":"maya"},"pull_requests":[{"number":5},{"number":6}]},
+              {"id":2,"name":"Lint","head_branch":"main","status":"completed","conclusion":"failure","created_at":"2026-11-13T07:00:00Z",
+               "updated_at":"2026-11-13T07:02:00Z","html_url":"https://github.com/a/b/actions/runs/2","actor":{"login":"leo"},"pull_requests":[]},
+              {"id":3,"name":"Deploy","head_branch":"main","status":"queued","created_at":"2026-11-13T09:00:00Z","updated_at":"2026-11-13T09:00:00Z",
+               "html_url":"https://github.com/a/b/actions/runs/3","actor":{"login":"sam"},"pull_requests":[]}]}
+            """;
+        const string jobs = """
+            {"jobs":[{"steps":[{"status":"completed"},{"status":"completed"}]},{"steps":[{"status":"in_progress"},{"status":"queued"}]}]}
+            """;
+        using var runDoc = JsonDocument.Parse(runs);
+        using var jobDoc = JsonDocument.Parse(jobs);
+        var repo = new RepositoryRef("a", "b");
+        var mapped = WorkflowRunMapper.MapRuns(runDoc.RootElement, repo);
+
+        Assert.Equal(3, mapped.Count);
+        Assert.Equal(GitDash.Domain.Actions.RunStatus.InProgress, mapped[0].Status);
+        Assert.Equal(new[] { 5, 6 }, mapped[0].PullRequests.ToArray());
+        Assert.True(mapped[0].BelongsTo(repo, 6));
+        Assert.True(mapped[1].Failed);
+        Assert.Equal(GitDash.Domain.Actions.RunStatus.Queued, mapped[2].Status);
+        Assert.Equal(1d, mapped[1].Progress);
+
+        var withSteps = WorkflowRunMapper.WithSteps(mapped[0], jobDoc.RootElement);
+        Assert.Equal(2, withSteps.StepsDone);
+        Assert.Equal(4, withSteps.StepsTotal);
+        Assert.Equal(0.5, withSteps.Progress);
+    }
+}

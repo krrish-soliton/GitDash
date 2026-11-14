@@ -387,6 +387,26 @@ public sealed class PullRequestMonitor : IAsyncDisposable
         return await _gitHub.GetDetailsAsync(token, pr.Repository, pr.Number, ct).ConfigureAwait(false);
     }
 
+    /// <summary>Approves the pull request as the signed-in user, then refreshes so the card shows it.</summary>
+    public async Task ApproveAsync(PullRequest pr, CancellationToken ct = default)
+    {
+        var token = await GetTokenAsync(pr.AccountId, ct).ConfigureAwait(false)
+            ?? throw new GitHubAuthorizationException("Not signed in.");
+        await _gitHub.ApproveAsync(token, pr.Repository, pr.Number, ct).ConfigureAwait(false);
+        RequestRefresh();
+    }
+
+    /// <summary>Takes the viewer off the assignees and puts the pull request's author on instead.</summary>
+    public async Task HandOverToAuthorAsync(PullRequest pr, CancellationToken ct = default)
+    {
+        if (pr.IsAuthoredByViewer) throw new InvalidOperationException("You are the author of this pull request.");
+        if (!pr.IsAssignedToViewer) throw new InvalidOperationException("This pull request is not assigned to you.");
+        var token = await GetTokenAsync(pr.AccountId, ct).ConfigureAwait(false)
+            ?? throw new GitHubAuthorizationException("Not signed in.");
+        await _gitHub.SwapAssigneeAsync(token, pr.Repository, pr.Number, pr.ViewerLogin, pr.Author, ct).ConfigureAwait(false);
+        RequestRefresh();
+    }
+
     private static (Guid, string) KeyOf(MonitoredRepository repo) =>
         (repo.AccountId, repo.ToRef().FullName.ToLowerInvariant());
 

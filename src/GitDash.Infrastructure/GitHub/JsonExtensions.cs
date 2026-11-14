@@ -46,4 +46,14 @@ internal static class JsonExtensions
 
     public static IEnumerable<JsonElement> Nodes(this JsonElement element, string connection) =>
         ((JsonElement?)element).Nodes(connection);
+
+    /// <summary>Objects of a plain JSON array property (not a GraphQL "nodes" connection).</summary>
+    public static IEnumerable<JsonElement> Items(this JsonElement element, string name)
+    {
+        if (element.Prop(name) is not { ValueKind: JsonValueKind.Array } items) yield break;
+        foreach (var item in items.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.Object) yield return item;
+        }
+    }
 }

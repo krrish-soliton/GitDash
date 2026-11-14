@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -15,18 +16,33 @@ namespace GitDash.App.Windows;
 /// notification and, while the cursor is over it, the oldest wait. Locked, it ignores the mouse (clicks fall through)
 /// until it expands; unlocked in the settings, it can be dragged to a new place.
 /// </summary>
+/// <summary>One notification row on the island.</summary>
+public sealed class IslandNote(ToastRequest request, bool autoClose)
+{
+    public ToastRequest Request => request;
+    public bool AutoClose => autoClose;
+    /// <summary>When the row closes by itself; set when it first becomes visible (null = stays until closed).</summary>
+    public DateTime? Expires { get; set; }
+    public string Title => request.Title;
+    public string Message => request.Message;
+    public IBrush Accent { get; } = ToneBrushConverter.Brush(request.Tone.ToString());
+}
+
 public partial class IslandWindow : FloatingWindow
 {
-    private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NotifyHeight = 92, HoverHeight = 74;
+    private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
+    private const int MaxVisibleNotes = 4, MaxWaiting = 20;
     private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 30;
     private int _timerRows;
     private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan Shrink = TimeSpan.FromMilliseconds(340);
 
     private readonly Action<ToastRequest?> _activated = _ => { };
-    private readonly DispatcherTimer _timer = new();
-    private ToastRequest? _current;
-    private bool _hoverOpen, _sticky;
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    // Notifications stack: the newest is on top, up to four are shown, the rest wait for room.
+    private readonly System.Collections.ObjectModel.ObservableCollection<IslandNote> _notes = [];
+    private readonly Queue<IslandNote> _waiting = new();
+    private bool _hoverOpen;
 
     // Required by the XAML loader and the previewer.
     public IslandWindow() => InitializeComponent();
@@ -37,11 +53,8 @@ public partial class IslandWindow : FloatingWindow
         _activated = activated;
         Width = CompactWidth + WindowPadX;
         Height = CompactHeight + WindowPadY;
-        _timer.Tick += (_, _) =>
-        {
-            _timer.Stop();
-            Dismiss();
-        };
+        Notes.ItemsSource = _notes;
+        _timer.Tick += (_, _) => CloseExpired();
         DataContextChanged += (_, _) => AttachTimers();
     }
 
@@ -62,14 +75,16 @@ public partial class IslandWindow : FloatingWindow
         var rows = Math.Min(_listed?.Count ?? 0, 4);
         if (rows == _timerRows) return;
         _timerRows = rows;
-        if (_current is not null) Expand(WideWidth, NotifyHeight);
+        if (_notes.Count > 0) Expand(WideWidth, NotesHeight);
         else if (_hoverOpen && IsLocked) Expand(WideWidth, HoverHeight);
         else Collapse();
     }
 
     private double TimerExtra => _timerRows * TimerRowHeight;
 
-    public bool IsShowingNotification => _current is not null;
+    public bool IsShowingNotification => _notes.Count > 0;
+
+    private double NotesHeight => _notes.Count * NoteHeight + 8;
 
     /// <summary>Raised when the notification ends here (closed, clicked or timed out).</summary>
     public event Action<ToastRequest>? Dismissed;
@@ -77,12 +92,18 @@ public partial class IslandWindow : FloatingWindow
     /// <summary>Closes the notification because the same one was closed somewhere else (the corner toast).</summary>
     public void DismissFromOutside(ToastRequest request)
     {
-        if (ReferenceEquals(_current, request)) Dismiss(fromOutside: true);
+        if (_notes.FirstOrDefault(n => ReferenceEquals(n.Request, request)) is { } note) Remove(note, fromOutside: true);
+        else if (_waiting.Any(n => ReferenceEquals(n.Request, request)))
+        {
+            var rest = _waiting.Where(n => !ReferenceEquals(n.Request, request)).ToList();
+            _waiting.Clear();
+            foreach (var n in rest) _waiting.Enqueue(n);
+        }
     }
 
     /// <summary>Mouse passes through unless click-through is off, it is being moved, or it shows a notification that must be closed by hand.</summary>
     protected override bool IgnoresMouse =>
-        IsLocked && ClickThroughEnabled && !OverHitButton && !(_current is not null && _sticky);
+        IsLocked && ClickThroughEnabled && !OverHitButton && !_notes.Any(n => !n.AutoClose);
 
     /// <summary>Horizontal centre and top edge in screen pixels: what is remembered as the island's place.</summary>
     public (int CenterX, int Top) Anchor => (CurrentCenterX(), Position.Y);
@@ -188,45 +209,61 @@ public partial class IslandWindow : FloatingWindow
         Position = new PixelPoint(screen.WorkingArea.X + screen.WorkingArea.Width / 2 - half, screen.WorkingArea.Y);
     }
 
-    /// <summary>Shows a notification. With <paramref name="autoClose"/> off it stays until closed.</summary>
+    /// <summary>
+    /// Adds a notification on top of the ones already shown. With <paramref name="autoClose"/> off it stays until
+    /// closed. <paramref name="animate"/> is kept for the caller's sake; rows simply appear and the pill grows.
+    /// </summary>
     public void Present(ToastRequest request, bool autoClose, bool animate)
     {
-        _current = request;
-        _sticky = !autoClose;
-        RefreshClickThrough();
-        TitleText.Text = request.Title;
-        MessageText.Text = request.Message;
-        var accent = ToneBrushConverter.Brush(request.Tone.ToString());
-        IconBadge.Background = accent;
-        Life.Background = accent;
-        CloseButton.IsVisible = true;
-
-        Life.Classes.Remove("run");
-        Life.IsVisible = autoClose;
-        Detail.IsVisible = true;
-        Expand(WideWidth, NotifyHeight);
-        if (autoClose && animate) Life.Classes.Add("run");
-
-        _timer.Stop();
-        if (autoClose)
+        var note = new IslandNote(request, autoClose);
+        if (_notes.Count >= MaxVisibleNotes)
         {
-            _timer.Interval = Lifetime;
-            _timer.Start();
+            if (_waiting.Count < MaxWaiting) _waiting.Enqueue(note);
+            return;
         }
+
+        Show(note);
     }
 
-    private void Dismiss(bool fromOutside = false)
+    private void Show(IslandNote note)
     {
-        var closed = _current;
-        _current = null;
-        _sticky = false;
+        note.Expires = note.AutoClose ? DateTime.UtcNow + Lifetime : null;
+        _notes.Insert(0, note);
+        Notes.IsVisible = true;
+        Detail.IsVisible = false;
+        Expand(WideWidth, NotesHeight);
         RefreshClickThrough();
+        if (!_timer.IsEnabled) _timer.Start();
+    }
+
+    private void CloseExpired()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var note in _notes.Where(n => n.Expires is { } at && at <= now).ToList()) Remove(note, fromOutside: false);
+        if (_notes.Count == 0) _timer.Stop();
+    }
+
+    private void Remove(IslandNote note, bool fromOutside)
+    {
+        if (!_notes.Remove(note)) return;
+        while (_notes.Count < MaxVisibleNotes && _waiting.TryDequeue(out var next))
+        {
+            next.Expires = next.AutoClose ? DateTime.UtcNow + Lifetime : null;
+            _notes.Add(next);
+        }
+
+        RefreshClickThrough();
+        if (!fromOutside) Dismissed?.Invoke(note.Request);
+        if (_notes.Count > 0)
+        {
+            Expand(WideWidth, NotesHeight);
+            return;
+        }
+
         _timer.Stop();
-        Life.IsVisible = false;
-        Life.Classes.Remove("run");
+        Notes.IsVisible = false;
         if (_hoverOpen && IsLocked) ShowHoverDetails();
         else Collapse();
-        if (!fromOutside && closed is not null) Dismissed?.Invoke(closed);
     }
 
     protected override void OnHoverChanged(bool hovering)
@@ -234,7 +271,7 @@ public partial class IslandWindow : FloatingWindow
         // While being moved the island stays compact so it is easy to grab.
         if (!IsLocked) return;
         _hoverOpen = hovering;
-        if (_current is null)
+        if (_notes.Count == 0)
         {
             if (hovering) ShowHoverDetails();
             else Collapse();
@@ -253,7 +290,7 @@ public partial class IslandWindow : FloatingWindow
             ? $"Assigned {(w.HasOldest ? w.OldestAge : "none")}   ·   Review {(w.HasOldestReview ? w.OldestReviewAge : "none")}"
             : $"{w.Total} open pull requests across your repositories";
         IconBadge.Background = ToneBrushConverter.Brush(any ? "Assigned" : "Merged");
-        CloseButton.IsVisible = false;
+        Notes.IsVisible = false;
         Detail.IsVisible = true;
         Expand(WideWidth, HoverHeight);
     }
@@ -267,7 +304,7 @@ public partial class IslandWindow : FloatingWindow
         // Let the pill finish shrinking before the window follows it.
         DispatcherTimer.RunOnce(() =>
         {
-            if (_current is not null || _hoverOpen) return;
+            if (_notes.Count > 0 || _hoverOpen) return;
             Fit(CompactWidth + WindowPadX, CompactHeight + TimerExtra + WindowPadY);
         }, Shrink);
     }
@@ -285,10 +322,18 @@ public partial class IslandWindow : FloatingWindow
     {
         if (!IsLocked) return; // dragging
         if (e.Source is Visual v && v.FindAncestorOfType<Button>(includeSelf: true) is not null) return;
-        var request = _current;
-        if (request is not null) Dismiss();
-        _activated(request);
+        if ((e.Source as StyledElement)?.DataContext is IslandNote note)
+        {
+            Remove(note, fromOutside: false);
+            _activated(note.Request);
+            return;
+        }
+
+        _activated(null);
     }
 
-    private void OnCloseClick(object? sender, RoutedEventArgs e) => Dismiss();
+    private void OnNoteCloseClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as StyledElement)?.DataContext is IslandNote note) Remove(note, fromOutside: false);
+    }
 }

@@ -97,7 +97,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     public ShellViewModel(
         PullRequestMonitor monitor, SettingsService settings, AccountService accounts, TimerHistory history,
-        NotificationRouter notifications, PersonActivityService personActivity, IUrlLauncher launcher, IAlarm alarm, IUiDispatcher ui, TimeProvider time)
+        NotificationRouter notifications, PersonActivityService personActivity, IUrlLauncher launcher, IAlarm alarm, IUiDispatcher ui, TimeProvider time,
+        ActionsMonitor? actionsMonitor = null)
     {
         _time = time;
         _monitor = monitor;
@@ -114,11 +115,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Dashboard.AttachTimers(Timers);
         People = new PeopleViewModel(launcher, time, personActivity);
         // "Review timer" on a card: start timing, then open the pull request on GitHub.
+        Actions = actionsMonitor is null ? null : new ActionsViewModel(actionsMonitor, launcher, ui, time);
         MyPullRequests = new MyPullRequestsViewModel(monitor, launcher, ui, time, pr =>
         {
             Timers.StartReviewFor(pr);
             launcher.Open(pr.Url);
-        });
+        }, Actions);
 
         _selectedRepositories = new HashSet<string>(settings.Current.SelectedRepositories, StringComparer.OrdinalIgnoreCase);
         RefreshRepositoryOptions(MonitorState.Empty);
@@ -146,6 +148,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public PeopleViewModel People { get; }
     public MyPullRequestsViewModel MyPullRequests { get; }
     public TimersViewModel Timers { get; }
+    public ActionsViewModel? Actions { get; }
     public SettingsViewModel Settings { get; }
     public AboutViewModel About { get; }
     public WidgetViewModel Widget { get; } = new();
@@ -372,6 +375,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _monitor.StateChanged -= OnStateChanged;
         _settings.Changed -= OnSettingsChanged;
         Timers.Dispose();
+        Actions?.Dispose();
         AiTools.Dispose();
     }
 }

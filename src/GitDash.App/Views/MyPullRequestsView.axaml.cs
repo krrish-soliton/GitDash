@@ -74,6 +74,26 @@ public partial class MyPullRequestsView : UserControl
         if (CardOf(sender) is { } card) Page?.StartReviewCommand.Execute(card);
     }
 
+    private void OnRunClick(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is RunItemViewModel run) Page?.Actions?.OpenRunCommand.Execute(run);
+    }
+
+    private void OnApproveClick(object? sender, RoutedEventArgs e)
+    {
+        if (CardOf(sender) is { } card) Page?.ApproveCommand.Execute(card);
+    }
+
+    private void OnHandOverClick(object? sender, RoutedEventArgs e)
+    {
+        if (CardOf(sender) is { } card) Page?.HandOverCommand.Execute(card);
+    }
+
+    private void OnCancelPendingClick(object? sender, RoutedEventArgs e)
+    {
+        if (CardOf(sender) is { } card) Page?.CancelPendingCommand.Execute(card);
+    }
+
     private void OnOpenClick(object? sender, RoutedEventArgs e)
     {
         if (CardOf(sender) is { } card) Page?.OpenInBrowserCommand.Execute(card);

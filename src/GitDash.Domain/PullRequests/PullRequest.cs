@@ -123,6 +123,30 @@ public sealed record PullRequest
     public bool ViewerHasApproved => LatestDecisions.Any(r =>
         Login.Same(r.Author, ViewerLogin) && r.State == ReviewState.Approved && !IsStale(r));
 
+    /// <summary>
+    /// Who the pull request is waiting for right now: the requested reviewers; the author when changes were requested
+    /// or it is approved and ready to merge; otherwise the assignees.
+    /// </summary>
+    public IReadOnlyList<string> WaitingFor
+    {
+        get
+        {
+            if (State != PullRequestState.Open) return [];
+            if (Verdict == ReviewState.ChangesRequested && RequestedReviewers.Count == 0) return [Author];
+            if (RequestedReviewers.Count > 0) return RequestedReviewers;
+            if (Verdict == ReviewState.Approved) return [Author];
+            return Assignees;
+        }
+    }
+
+    /// <summary>Why <see cref="WaitingFor"/> is waiting, in a few words.</summary>
+    public string WaitingForReason =>
+        State != PullRequestState.Open ? string.Empty
+        : Verdict == ReviewState.ChangesRequested && RequestedReviewers.Count == 0 ? "to address the requested changes"
+        : RequestedReviewers.Count > 0 ? "to review"
+        : Verdict == ReviewState.Approved ? "to merge"
+        : Assignees.Count > 0 ? "assigned" : string.Empty;
+
     /// <summary>The viewer already reviewed once and has been asked to look again.</summary>
     public bool IsReapproval => NeedsViewerApproval && ViewerHasReviewed;
 

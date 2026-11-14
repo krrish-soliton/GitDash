@@ -544,6 +544,96 @@ public class EndToEndTests
         await f.Monitor.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Changing_the_filter_always_announces_the_selected_card_so_a_single_card_is_centred()
+    {
+        var f = await CreateAsync();
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), TimeProvider.System, _ => { });
+        await f.Monitor.SyncAsync();
+        my.Apply(f.Monitor.State);
+
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.All);
+        Assert.True(my.Cards.Count > 2);
+        my.SelectedIndex = my.Cards.Count - 1;
+
+        var raised = 0;
+        my.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MyPullRequestsViewModel.SelectedIndex)) raised++; };
+        var all = my.Cards.Count;
+        my.SelectedFilter = my.Filters.Where(x => x.Filter != PullRequestFilter.All && x.Count > 0).OrderBy(x => x.Count).First();
+
+        Assert.True(my.Cards.Count < all);
+        Assert.Equal(0, my.SelectedIndex);
+        Assert.True(raised > 0); // the cover flow is told, so the lone card moves to the centre
+
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Actions_panel_lists_runs_and_cards_get_run_counts_and_tags()
+    {
+        var f = await CreateAsync();
+        var time = TimeProvider.System;
+        var gateway = new GitDash.Infrastructure.Demo.DemoGitHubGateway(time, 1);
+        var actions = new ActionsMonitor(f.Settings, f.Accounts, gateway, time);
+        var vm = new ActionsViewModel(actions, new NoLauncher(), new InlineDispatcher(), time);
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), time, _ => { }, vm);
+
+        await f.Monitor.SyncAsync();
+        await actions.RefreshAsync();
+        my.Apply(f.Monitor.State);
+
+        Assert.True(vm.HasRuns);
+        Assert.Contains(vm.Runs, r => r.IsActive && r.Progress > 0 && r.Progress < 1);
+        Assert.Contains(vm.Runs, r => r.Status == "Passed");
+        Assert.Contains(vm.Runs, r => r.Status == "Failed");
+        Assert.Equal(3, vm.ActiveCount); // one running demo run in each of the three repositories
+        Assert.Equal("Actions · 3 running", vm.Header);
+
+        // The demo runs belong to pull requests #90, #91 and #92 of every repository.
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.All);
+        var card = my.Cards.First(c => c.PullRequest.Number == 90 + 2 * 31);
+        Assert.NotEqual("—", card.PipelineRunsText);
+        Assert.True(card.RunsActive);
+
+        vm.ToggleCommand.Execute(null);
+        Assert.True(vm.IsOpen);
+        vm.Dispose();
+        await actions.DisposeAsync();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Approve_and_hand_over_need_a_second_click_and_report_the_result()
+    {
+        var f = await CreateAsync();
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), TimeProvider.System, _ => { });
+        await f.Monitor.SyncAsync();
+        my.Apply(f.Monitor.State);
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.AssignedToMe);
+
+        var card = my.Cards.First(c => c.CanApprove && c.CanHandOver);
+        my.ApproveCommand.Execute(card);
+        Assert.Equal("approve", card.Pending); // first click only asks
+        Assert.Equal("Confirm approve", card.ApproveLabel);
+        Assert.False(my.HasActionMessage);
+
+        my.CancelPendingCommand.Execute(card);
+        Assert.Null(card.Pending);
+
+        my.ApproveCommand.Execute(card);
+        my.ApproveCommand.Execute(card);
+        for (var i = 0; i < 100 && !my.ActionMessage.StartsWith("Approved"); i++) await Task.Delay(20);
+        Assert.Equal($"Approved {card.Number}", my.ActionMessage);
+        Assert.False(my.IsActionError);
+
+        my.HandOverCommand.Execute(card);
+        my.HandOverCommand.Execute(card);
+        for (var i = 0; i < 100 && !my.ActionMessage.Contains("handed"); i++) await Task.Delay(20);
+        Assert.Contains("handed to " + card.Author, my.ActionMessage);
+
+        await f.Monitor.DisposeAsync();
+    }
+
     private sealed class ManualTime : TimeProvider
     {
         private DateTimeOffset _now = new(2026, 11, 13, 9, 0, 0, TimeSpan.Zero);
