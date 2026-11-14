@@ -60,7 +60,7 @@ public sealed class MacUpdateInstaller(string bundlePath) : IUpdateInstaller
     {
         var script = Path.Combine(Path.GetTempPath(), "GitDash-update", "install.sh");
         File.WriteAllText(script, Script);
-        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        // Started with "bash <script>", so no execute permission is needed.
 
         // nohup + background so the helper keeps running after this process quits.
         var start = new ProcessStartInfo("/bin/sh")
