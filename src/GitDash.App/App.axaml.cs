@@ -13,6 +13,7 @@ public partial class App : AvaloniaApplication
 {
     private AppHost? _host;
     private bool _quitting;
+    private bool _lastDockLogged = true;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -60,7 +61,15 @@ public partial class App : AvaloniaApplication
                 var s = host.Settings.Current;
                 var overlayOn = s.ShowDynamicIsland || s.ShowFloatingWidget || s.ShowTimerWidget;
                 var overFullScreen = s is { OverlaysOverFullScreen: true, ShowTrayIcon: true } && overlayOn;
-                NativeWindow.SetDockIconVisible(!overFullScreen && (window.IsVisible || !s.HideDockIconWhenHidden));
+                var dockVisible = !overFullScreen && (window.IsVisible || !s.HideDockIconWhenHidden);
+                if (OperatingSystem.IsMacOS() && dockVisible != _lastDockLogged)
+                {
+                    _lastDockLogged = dockVisible;
+                    OverlayLog.Write($"dock icon visible={dockVisible} (overlayOn={overlayOn}, over-full-screen setting={s.OverlaysOverFullScreen}, " +
+                                     $"tray icon={s.ShowTrayIcon}, window visible={window.IsVisible}, hide-while-hidden={s.HideDockIconWhenHidden}) {NativeWindow.Describe(window)}");
+                }
+
+                NativeWindow.SetDockIconVisible(dockVisible);
             }
             window.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) UpdateDock(); };
             host.Settings.Changed += _ => Dispatcher.UIThread.Post(UpdateDock);

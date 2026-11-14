@@ -246,12 +246,15 @@ public partial class IslandWindow : FloatingWindow
         }
 
         var target = new PixelPoint(left, top);
+        OverlayLog.Write($"island Fit {width}x{height} window={Width}x{Height} pos={Position} scale={Scale} centre={centre} " +
+                         $"screen={(screen is null ? "none" : $"{screen.Bounds} work={screen.WorkingArea} scaling={screen.Scaling}")} target={target}");
         // New size first, around where the pill is now (so it grows/shrinks in place), then slide to the on-screen spot.
         var start = new PixelPoint(visualCentre - wpx / 2, Position.Y);
         _slide?.Stop();
         _slide = null;
         Place(start, width, height);
         _lastPos = start;
+        DispatcherTimer.RunOnce(() => OverlayLog.Write($"island after Fit: pos={Position} window={Width}x{Height} bounds={Bounds}"), TimeSpan.FromMilliseconds(600));
         if (start == target) return;
         if (!Classes.Contains("motion"))
         {

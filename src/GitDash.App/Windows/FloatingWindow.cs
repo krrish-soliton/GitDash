@@ -157,6 +157,9 @@ public abstract class FloatingWindow : Window
         // The native window exists only now, so the click-through flag has to be (re)applied here.
         NativeWindow.HideFromSwitcher(this);
         NativeWindow.ShowOnAllDesktops(this);
+        var kind = GetType().Name;
+        OverlayLog.Write($"{kind} opened: {NativeWindow.Describe(this)} pos={Position} size={Width}x{Height} scale={RenderScaling}");
+        DispatcherTimer.RunOnce(() => OverlayLog.Write($"{kind} 3 s later: {NativeWindow.Describe(this)} pos={Position}"), TimeSpan.FromSeconds(3));
         _applied = false;
         SetLocked(_locked);
     }

@@ -131,6 +131,24 @@ internal static class NativeWindow
         }
     }
 
+    /// <summary>What macOS currently says about the window and the app (for the diagnostics log). Empty off macOS.</summary>
+    public static string Describe(Window window)
+    {
+        try
+        {
+            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return string.Empty;
+            var app = MsgSendHandle(GetClass("NSApplication"), sel_registerName("sharedApplication"));
+            var policy = app == 0 ? -1 : MsgSendHandle(app, sel_registerName("activationPolicy"));
+            var behavior = MsgSendHandle(handle, sel_registerName("collectionBehavior"));
+            var level = MsgSendHandle(handle, sel_registerName("level"));
+            return $"policy={policy} collectionBehavior={behavior} level={level}";
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
+        {
+            return "describe failed: " + ex.GetType().Name;
+        }
+    }
+
     /// <summary>
     /// Where the cursor is, in the window's own units from its top-left corner (macOS). Asking the window itself avoids any
     /// conversion between screen coordinate systems, and it works while the window ignores the mouse. Null when unknown.
