@@ -105,7 +105,7 @@
       <ItemsControl x:Name="Notes" Grid.Row="1" Margin="12,2,12,6" IsVisible="False">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="w:IslandNote">
-            <Grid Height="52" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,4">
+            <Grid Height="52" RowDefinitions="*,Auto" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,4">
               <Border Width="30" Height="30" CornerRadius="10" Background="{Binding Accent}" VerticalAlignment="Center">
                 <PathIcon Data="{StaticResource IconPullRequest}" Width="14" Height="14" Foreground="#0B0D14" />
               </Border>
@@ -120,6 +120,10 @@
                       VerticalAlignment="Center" Click="OnNoteCloseClick" ToolTip.Tip="Dismiss">
                 <PathIcon Data="{StaticResource IconClose}" Width="8" Height="8" />
               </Button>
+              <!-- Shrinks while the row waits to close by itself -->
+              <ProgressBar Grid.Row="1" Grid.ColumnSpan="3" Minimum="0" Maximum="1" Value="{Binding Remaining}"
+                           IsVisible="{Binding HasTimer}" Height="3" MinHeight="3" CornerRadius="2"
+                           Margin="2,0,2,0" Background="#33FFFFFF" Foreground="{Binding Accent}" />
             </Grid>
           </DataTemplate>
         </ItemsControl.ItemTemplate>

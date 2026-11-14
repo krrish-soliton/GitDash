@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitDash.App.Converters;
 using GitDash.Application.Abstractions;
+using GitDash.Presentation.Mvvm;
 using GitDash.Presentation.ViewModels;
 
 namespace GitDash.App.Windows;
@@ -17,8 +18,21 @@ namespace GitDash.App.Windows;
 /// until it expands; unlocked in the settings, it can be dragged to a new place.
 /// </summary>
 /// <summary>One notification row on the island.</summary>
-public sealed class IslandNote(ToastRequest request, bool autoClose)
+public sealed class IslandNote(ToastRequest request, bool autoClose) : ObservableObject
 {
+    private double _remaining = 1;
+
+    /// <summary>Time left before the row closes by itself, 1 (just shown) to 0; drives the closing slider.</summary>
+    public double Remaining { get => _remaining; private set => Set(ref _remaining, value); }
+
+    /// <summary>Only rows that close by themselves show the slider.</summary>
+    public bool HasTimer => autoClose;
+
+    public void Tick(DateTime now, TimeSpan lifetime)
+    {
+        if (Expires is { } at) Remaining = Math.Clamp((at - now).TotalSeconds / lifetime.TotalSeconds, 0, 1);
+    }
+
     public ToastRequest Request => request;
     public bool AutoClose => autoClose;
     /// <summary>When the row closes by itself; set when it first becomes visible (null = stays until closed).</summary>
@@ -39,7 +53,7 @@ public partial class IslandWindow : FloatingWindow
     private static readonly TimeSpan Shrink = TimeSpan.FromMilliseconds(340);
 
     private readonly Action<ToastRequest?> _activated = _ => { };
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     // Notifications stack: the newest is on top, up to four are shown, the rest wait for room.
     private readonly System.Collections.ObjectModel.ObservableCollection<IslandNote> _notes = [];
     private readonly Queue<IslandNote> _waiting = new();
@@ -270,6 +284,7 @@ public partial class IslandWindow : FloatingWindow
     private void CloseExpired()
     {
         var now = DateTime.UtcNow;
+        foreach (var note in _notes) note.Tick(now, Lifetime);
         foreach (var note in _notes.Where(n => n.Expires is { } at && at <= now).ToList()) Remove(note, fromOutside: false);
         if (_notes.Count == 0) _timer.Stop();
     }
