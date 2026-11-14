@@ -55,6 +55,11 @@ public interface IGitHubGateway
         string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
         CancellationToken ct);
 
+    /// <summary>Commits one person authored in a repository since the two given moments, and in total. Counts only.</summary>
+    Task<CommitCounts> GetCommitCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct);
+
     /// <summary>The newest workflow runs of a repository; runs in progress carry how many steps are done. Empty when Actions are off.</summary>
     Task<IReadOnlyList<WorkflowRun>> GetWorkflowRunsAsync(string token, RepositoryRef repository, CancellationToken ct);
 

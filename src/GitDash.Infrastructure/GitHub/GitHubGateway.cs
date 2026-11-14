@@ -150,6 +150,61 @@ public sealed partial class GitHubGateway(HttpClient http) : IGitHubGateway
         return doc.RootElement.Int("total_count");
     }
 
+    public async Task<CommitCounts> GetCommitCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        if (!LoginPattern().IsMatch(login)) return CommitCounts.Unknown;
+        var week = CommitCountAsync(token, repository, login, weekStart, ct);
+        var month = CommitCountAsync(token, repository, login, monthStart, ct);
+        var total = CommitCountAsync(token, repository, login, null, ct);
+        return new CommitCounts(await week.ConfigureAwait(false), await month.ConfigureAwait(false),
+            await total.ConfigureAwait(false));
+    }
+
+    /// <summary>Asks for one commit per page: the number of the last page (from the Link header) is then the count.</summary>
+    private async Task<int?> CommitCountAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset? since, CancellationToken ct)
+    {
+        var from = since is { } s ? "&since=" + Uri.EscapeDataString(s.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")) : string.Empty;
+        var uri = new Uri(
+            $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
+            $"{Uri.EscapeDataString(repository.Name)}/commits?author={Uri.EscapeDataString(login)}&per_page=1{from}");
+        using var request = Authorized(HttpMethod.Get, uri, token);
+        using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
+            return null; // no access, or an empty repository
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        var link = response.Headers.TryGetValues("Link", out var values) ? string.Join(",", values) : string.Empty;
+        var count = LastPageOf(link);
+        if (count is not null) return count;
+        using var doc = await JsonDocument
+            .ParseAsync(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), default, ct)
+            .ConfigureAwait(false);
+        return doc.RootElement.ValueKind == JsonValueKind.Array ? doc.RootElement.GetArrayLength() : 0;
+    }
+
+    /// <summary>The page number of rel="last" in a Link header, or null when there is only one page.</summary>
+    public static int? LastPageOf(string link)
+    {
+        foreach (var part in link.Split(','))
+        {
+            if (!part.Contains("rel=\"last\"", StringComparison.Ordinal)) continue;
+            var at = part.IndexOf("page=", StringComparison.Ordinal);
+            while (at >= 0)
+            {
+                var start = at + 5;
+                var end = start;
+                while (end < part.Length && char.IsDigit(part[end])) end++;
+                var preceded = at > 0 && (part[at - 1] == '?' || part[at - 1] == '&');
+                if (preceded && end > start && int.TryParse(part.AsSpan(start, end - start), out var page)) return page;
+                at = part.IndexOf("page=", at + 5, StringComparison.Ordinal);
+            }
+        }
+
+        return null;
+    }
+
     public async Task<PullRequestDetails> GetDetailsAsync(
         string token, RepositoryRef repository, int number, CancellationToken ct)
     {

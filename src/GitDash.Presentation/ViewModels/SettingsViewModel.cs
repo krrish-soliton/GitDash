@@ -97,7 +97,7 @@ public sealed class SettingsViewModel : PageViewModel
                      {
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
-                         nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays),
+                         nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden),
                          nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
                          nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
                          nameof(CustomSoundName), nameof(HasCustomSound),
@@ -309,6 +309,16 @@ public sealed class SettingsViewModel : PageViewModel
     {
         get => Math.Round(_settings.Current.IslandOpacity * 100);
         set => Save(s => s with { IslandOpacity = Math.Clamp(value, 20, 100) / 100 });
+    }
+
+    /// <summary>The Dock option only exists on macOS.</summary>
+    public bool IsMacOS => OperatingSystem.IsMacOS();
+
+    /// <summary>macOS: no Dock icon while the main window is hidden.</summary>
+    public bool HideDockIconWhenHidden
+    {
+        get => _settings.Current.HideDockIconWhenHidden;
+        set => Save(s => s with { HideDockIconWhenHidden = value });
     }
 
     /// <summary>Mouse clicks go through the widgets and the island to whatever is underneath.</summary>

@@ -14,6 +14,15 @@ public static class Humanize
         return "just now";
     }
 
+    /// <summary>A word for how big a change is, by lines touched.</summary>
+    public static string SizeLabel(int lines) => lines switch
+    {
+        < 50 => "Small",
+        < 300 => "Medium",
+        < 1000 => "Large",
+        _ => "Huge",
+    };
+
     public static string Ago(TimeSpan span) => Age(span) is "just now" ? "just now" : $"{Age(span)} ago";
 
     public static string Clock(TimeSpan span)

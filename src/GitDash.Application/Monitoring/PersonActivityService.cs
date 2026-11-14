@@ -57,4 +57,34 @@ public sealed class PersonActivityService(
             return PipelineRunCounts.Unknown;
         }
     }
+
+    private readonly ConcurrentDictionary<string, (DateTimeOffset At, CommitCounts Value)> _commitCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Commit counts are optional (they cost three API calls), so they load on their own when asked for.</summary>
+    public async Task<CommitCounts> LoadCommitsAsync(string repositoryFullName, string login, CancellationToken ct)
+    {
+        var key = $"{repositoryFullName}|{login}";
+        var now = time.GetUtcNow();
+        if (_commitCache.TryGetValue(key, out var hit) && now - hit.At < CacheFor) return hit.Value;
+        var monitored = settings.Current.Repositories.FirstOrDefault(r => r.ToRef().FullName
+            .Equals(repositoryFullName, StringComparison.OrdinalIgnoreCase));
+        if (monitored is null) return CommitCounts.Unknown;
+        try
+        {
+            var token = await accounts.GetTokenAsync(monitored.AccountId, ct).ConfigureAwait(false);
+            if (token is null) return CommitCounts.Unknown;
+            var utc = now.UtcDateTime;
+            var monthStart = new DateTimeOffset(utc.Year, utc.Month, 1, 0, 0, 0, TimeSpan.Zero);
+            var weekStart = new DateTimeOffset(utc.Date, TimeSpan.Zero).AddDays(-(((int)utc.DayOfWeek + 6) % 7));
+            var counts = await gateway.GetCommitCountsAsync(token, monitored.ToRef(), login, weekStart, monthStart, ct)
+                .ConfigureAwait(false);
+            _commitCache[key] = (now, counts);
+            return counts;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return CommitCounts.Unknown;
+        }
+    }
 }

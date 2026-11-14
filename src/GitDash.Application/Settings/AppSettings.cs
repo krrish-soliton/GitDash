@@ -134,6 +134,8 @@ public sealed record AppSettings
     public bool HideToTrayOnMinimize { get; init; }
     /// <summary>Closing the window keeps the app running in the tray (needs the tray icon); off quits the app.</summary>
     public bool HideToTrayOnClose { get; init; } = true;
+    /// <summary>macOS: remove the Dock icon while the main window is hidden (the app then lives in the menu bar).</summary>
+    public bool HideDockIconWhenHidden { get; init; }
     public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();

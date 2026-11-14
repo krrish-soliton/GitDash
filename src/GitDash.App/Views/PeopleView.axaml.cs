@@ -52,5 +52,15 @@ public partial class PeopleView : UserControl
         if (sender is Control { DataContext: PersonEventViewModel ev }) Page?.OpenUrlCommand.Execute(ev.Url);
     }
 
+    private void OnPrFilterTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: FilterChipViewModel chip }) Page?.SetPrFilterCommand.Execute(chip);
+    }
+
+    private void OnEventFilterTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: FilterChipViewModel chip }) Page?.SetEventFilterCommand.Execute(chip);
+    }
+
     private void OnScrimTapped(object? sender, TappedEventArgs e) => Page?.ClosePersonCommand.Execute(null);
 }

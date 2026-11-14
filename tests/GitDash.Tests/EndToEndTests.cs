@@ -278,6 +278,16 @@ public class EndToEndTests
         Assert.NotEmpty(shell.Dashboard.DeskBooks);
         Assert.Contains(shell.Dashboard.DeskBooks, b => b.IsAssigned);
 
+        // Clicking a book opens its details and marks it in the list; clicking it again (or Close) clears it.
+        var pick = shell.Dashboard.DeskBooks[0];
+        shell.Dashboard.SelectBookCommand.Execute(pick);
+        Assert.True(shell.Dashboard.HasSelectedBook);
+        Assert.Equal(pick.Id, shell.Dashboard.SelectedBook!.Id);
+        Assert.Equal(1, shell.Dashboard.DeskBooks.Count(b => b.IsSelected));
+        shell.Dashboard.CloseBookCommand.Execute(null);
+        Assert.False(shell.Dashboard.HasSelectedBook);
+        Assert.Equal(0, shell.Dashboard.DeskBooks.Count(b => b.IsSelected));
+
         shell.Navigate(shell.People);
         Assert.Equal(3, shell.People.Floors.Count);
         Assert.Equal("Floor 3", shell.People.Floors[0].FloorLabel);
@@ -292,6 +302,30 @@ public class EndToEndTests
         Assert.Contains(shell.People.ActivityTiles, t => t.Label == "Merged");
         Assert.NotEmpty(shell.People.ActivityEvents);
         Assert.NotEmpty(shell.People.RecentPullRequests);
+
+        // Filters narrow the lists; "All" brings everything back.
+        var allPrs = shell.People.RecentPullRequests.Count;
+        var merged = shell.People.PrFilters.First(c => c.Key == "Merged");
+        shell.People.SetPrFilterCommand.Execute(merged);
+        Assert.True(shell.People.RecentPullRequests.All(p => p.State == "Merged"));
+        Assert.True(shell.People.RecentPullRequests.Count <= allPrs);
+        shell.People.SetPrFilterCommand.Execute(shell.People.PrFilters[0]);
+        Assert.Equal(allPrs, shell.People.RecentPullRequests.Count);
+        var comments = shell.People.EventFilters.First(c => c.Key == "Comment");
+        shell.People.SetEventFilterCommand.Execute(comments);
+        Assert.True(shell.People.ActivityEvents.All(e => e.Kind == "Comment"));
+
+        // The commit-count option loads three counts only when it is switched on.
+        Assert.False(shell.People.HasCommitStats);
+        shell.People.ShowCommitCounts = true;
+        for (var i = 0; i < 100 && !shell.People.HasCommitStats; i++) await Task.Delay(20);
+        Assert.Equal(3, shell.People.CommitStats.Count);
+        shell.People.ShowCommitCounts = false;
+        Assert.False(shell.People.HasCommitStats);
+
+        // The desk pile labels each book with its pull request number.
+        var worker = shell.People.Floors.SelectMany(f => f.People).First(p => p.Assigned + p.ToReview + p.Raised > 0);
+        Assert.True(worker.DeskBooks.Any(b => b.Label.StartsWith("#")));
 
         shell.Navigate(shell.MyPullRequests);
         var my = shell.MyPullRequests;

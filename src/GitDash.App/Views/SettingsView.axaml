@@ -658,6 +658,15 @@
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideToTrayOnClose}" IsEnabled="{Binding ShowTrayIcon}"
                           OnContent="" OffContent="" />
           </Grid>
+          <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsMacOS}">
+            <StackPanel>
+              <TextBlock Text="Remove the Dock icon while hidden" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="macOS: when the window is hidden GitDash leaves the Dock and Cmd+Tab and lives in the menu bar; the icon comes back when you open the window. Needs the tray icon so you can reopen it." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideDockIconWhenHidden}" IsEnabled="{Binding ShowTrayIcon}"
+                          OnContent="" OffContent="" />
+          </Grid>
           </StackPanel>
         </Expander>
       </Border>

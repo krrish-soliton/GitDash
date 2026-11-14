@@ -583,6 +583,35 @@ public class Round10Tests
     }
 
     [Fact]
+    public void Big_prs_make_clearly_taller_and_wider_books_than_small_ones()
+    {
+        var small = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(5, 2, 1);
+        var big = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(2500, 800, 40);
+        Assert.True(big - small >= 30);
+        Assert.True(GitDash.Presentation.ViewModels.DashboardViewModel.BookWidthFor(2500, 800, 40)
+                    - GitDash.Presentation.ViewModels.DashboardViewModel.BookWidthFor(5, 2, 1) >= 10);
+    }
+
+    [Fact]
+    public void Desk_books_carry_pull_request_numbers()
+    {
+        var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 0, 2, [11], null, [21, 22]);
+        Assert.Equal("#11", books[0].Label);
+        Assert.Equal("#21", books[1].Label);
+        Assert.Equal("#22", books[2].Label);
+        Assert.Equal("", GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 0, 0)[0].Label);
+    }
+
+    [Fact]
+    public void Commit_count_is_read_from_the_last_page_link()
+    {
+        var link = "<https://api.github.com/repositories/1/commits?author=a&per_page=1&page=2>; rel=\"next\", " +
+                   "<https://api.github.com/repositories/1/commits?author=a&per_page=1&page=347>; rel=\"last\"";
+        Assert.Equal(347, GitDash.Infrastructure.GitHub.GitHubGateway.LastPageOf(link));
+        Assert.Null(GitDash.Infrastructure.GitHub.GitHubGateway.LastPageOf(""));
+    }
+
+    [Fact]
     public void Desk_books_are_coloured_by_type_and_capped()
     {
         var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(2, 1, 1);

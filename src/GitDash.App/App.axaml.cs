@@ -52,6 +52,10 @@ public partial class App : AvaloniaApplication
                 if (host.Settings.Current is not { ShowTrayIcon: true, HideToTrayOnMinimize: true }) return;
                 Dispatcher.UIThread.Post(window.Hide);
             };
+            // macOS: with the option on, the Dock icon goes away while the window is hidden and returns when it is shown.
+            void UpdateDock() => NativeWindow.SetDockIconVisible(window.IsVisible || !host.Settings.Current.HideDockIconWhenHidden);
+            window.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) UpdateDock(); };
+            host.Settings.Changed += _ => Dispatcher.UIThread.Post(UpdateDock);
             desktop.Exit += (_, _) => host.Dispose();
 
             host.Start();

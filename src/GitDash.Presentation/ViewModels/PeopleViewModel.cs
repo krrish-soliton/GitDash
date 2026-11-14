@@ -19,7 +19,16 @@ public sealed class EntranceRegistry
 }
 
 /// <summary>One book lying in the pile on a desk: a hex colour for the type of PR waiting and a width in pixels.</summary>
-public sealed record DeskBookItem(string Color, double Width);
+public sealed record DeskBookItem(string Color, double Width, string Label = "");
+
+/// <summary>One filter chip above a list in the person panel.</summary>
+public sealed class FilterChipViewModel(string label, string key, bool active = false) : ObservableObject
+{
+    private bool _isActive = active;
+    public string Label { get; } = label;
+    public string Key { get; } = key;
+    public bool IsActive { get => _isActive; set => Set(ref _isActive, value); }
+}
 
 /// <summary>One animated person standing on a floor.</summary>
 public sealed record PersonViewModel(
@@ -43,18 +52,37 @@ public sealed record PersonViewModel(
     /// <summary>Open pull requests where this person's review is requested.</summary>
     public int ToReview { get; init; }
 
+    /// <summary>The numbers of the pull requests behind each kind of book, printed small on the pile.</summary>
+    public IReadOnlyList<int> AssignedNumbers { get; init; } = [];
+    public IReadOnlyList<int> ReviewNumbers { get; init; } = [];
+    public IReadOnlyList<int> RaisedNumbers { get; init; } = [];
+
+    private string NumbersKey => string.Join(',', AssignedNumbers) + "|" + string.Join(',', ReviewNumbers) + "|" + string.Join(',', RaisedNumbers);
+
+    // Lists compare by reference; compare by value so an unchanged person is not redrawn.
+    public bool Equals(PersonViewModel? other) =>
+        other is not null && Login == other.Login && Repository == other.Repository && Initials == other.Initials &&
+        Accent == other.Accent && AvatarUrl == other.AvatarUrl && Raised == other.Raised && Assigned == other.Assigned &&
+        AssignedUnder == other.AssignedUnder && OldestAssigned == other.OldestAssigned && OldestReview == other.OldestReview &&
+        IsViewer == other.IsViewer && Variant == other.Variant && ToReview == other.ToReview && NumbersKey == other.NumbersKey;
+
+    public override int GetHashCode() => HashCode.Combine(Login, Repository, Raised, Assigned, ToReview);
+
     /// <summary>
     /// Books piled on the desk from top to bottom, one per waiting item and coloured by type: Assigned cyan, Review Requested amber,
     /// PR Raised violet. At most <see cref="MaxDeskBooks"/> are drawn; every type present keeps at least one.
     /// </summary>
-    public IReadOnlyList<DeskBookItem> DeskBooks => BuildDeskBooks(Assigned, ToReview, Raised);
+    public IReadOnlyList<DeskBookItem> DeskBooks => BuildDeskBooks(Assigned, ToReview, Raised, AssignedNumbers, ReviewNumbers, RaisedNumbers);
 
     public const int MaxDeskBooks = 7;
     public const string AssignedBookColor = "#22D3EE", ReviewBookColor = "#F59E0B", RaisedBookColor = "#A78BFA";
     private static readonly int[] BookWidths = [30, 26, 32, 28, 24, 31, 27];
 
-    public static IReadOnlyList<DeskBookItem> BuildDeskBooks(int assigned, int toReview, int raised)
+    public static IReadOnlyList<DeskBookItem> BuildDeskBooks(
+        int assigned, int toReview, int raised,
+        IReadOnlyList<int>? assignedNumbers = null, IReadOnlyList<int>? reviewNumbers = null, IReadOnlyList<int>? raisedNumbers = null)
     {
+        var numbers = new[] { assignedNumbers, reviewNumbers, raisedNumbers };
         var counts = new[] { assigned, toReview, raised };
         var colors = new[] { AssignedBookColor, ReviewBookColor, RaisedBookColor };
         var take = new int[3];
@@ -74,7 +102,8 @@ public sealed record PersonViewModel(
         var books = new List<DeskBookItem>();
         for (var t = 0; t < 3; t++)
             for (var i = 0; i < take[t]; i++)
-                books.Add(new DeskBookItem(colors[t], BookWidths[books.Count % BookWidths.Length]));
+                books.Add(new DeskBookItem(colors[t], BookWidths[books.Count % BookWidths.Length],
+                    numbers[t] is { } list && i < list.Count ? $"#{list[i]}" : ""));
         return books;
     }
 
@@ -165,6 +194,85 @@ public sealed class PeopleViewModel : PageViewModel
         SelectPersonCommand = new RelayCommand<PersonViewModel>(Select);
         ClosePersonCommand = new RelayCommand(() => IsPersonOpen = false);
         OpenUrlCommand = new RelayCommand<string>(url => launcher.Open(url));
+        PrFilters = [new("All", "All", true), new("Open", "Open"), new("Draft", "Draft"), new("Merged", "Merged"), new("Closed", "Closed")];
+        EventFilters = [new("All", "All", true), new("Opened", "Opened"), new("Merged", "Merged"), new("Closed", "Closed"), new("Comments", "Comment"), new("Reviews", "Review")];
+        SetPrFilterCommand = new RelayCommand<FilterChipViewModel>(chip => { Activate(PrFilters, chip); ApplyFilters(); });
+        SetEventFilterCommand = new RelayCommand<FilterChipViewModel>(chip => { Activate(EventFilters, chip); ApplyFilters(); });
+    }
+
+    // ----- Filters on the person's lists -----
+    private List<PersonPullRequestViewModel> _allPrs = [];
+    private List<PersonEventViewModel> _allEvents = [];
+    public ObservableCollection<FilterChipViewModel> PrFilters { get; }
+    public ObservableCollection<FilterChipViewModel> EventFilters { get; }
+    public ICommand SetPrFilterCommand { get; }
+    public ICommand SetEventFilterCommand { get; }
+    public bool NoPrMatches => HasRecentPrs && RecentPullRequests.Count == 0;
+    public bool NoEventMatches => HasEvents && ActivityEvents.Count == 0;
+
+    private static void Activate(IEnumerable<FilterChipViewModel> chips, FilterChipViewModel? chosen)
+    {
+        if (chosen is null) return;
+        foreach (var chip in chips) chip.IsActive = ReferenceEquals(chip, chosen);
+    }
+
+    private void ApplyFilters()
+    {
+        var pr = PrFilters.First(c => c.IsActive).Key;
+        var ev = EventFilters.First(c => c.IsActive).Key;
+        DashboardViewModel.Replace(RecentPullRequests, _allPrs.Where(p => pr == "All" || p.State == pr));
+        DashboardViewModel.Replace(ActivityEvents, _allEvents.Where(e => ev == "All" || e.Kind == ev));
+        Raise(nameof(NoPrMatches));
+        Raise(nameof(NoEventMatches));
+    }
+
+    // ----- Commit counts: optional, loaded on demand -----
+    private bool _showCommitCounts, _isCommitsLoading;
+    private CancellationTokenSource? _commitsCts;
+
+    /// <summary>The "Commit counts" option: when on, the person panel also shows commits this week, this month and in total.</summary>
+    public bool ShowCommitCounts
+    {
+        get => _showCommitCounts;
+        set
+        {
+            if (!Set(ref _showCommitCounts, value)) return;
+            if (value) _ = LoadCommitsAsync();
+            else { _commitsCts?.Cancel(); CommitStats.Clear(); IsCommitsLoading = false; Raise(nameof(HasCommitStats)); }
+        }
+    }
+
+    public bool IsCommitsLoading { get => _isCommitsLoading; private set => Set(ref _isCommitsLoading, value); }
+    public ObservableCollection<PersonTileViewModel> CommitStats { get; } = [];
+    public bool HasCommitStats => CommitStats.Count > 0;
+
+    private async Task LoadCommitsAsync()
+    {
+        if (_activityService is null || SelectedPerson is not { } person || !_showCommitCounts) return;
+        _commitsCts?.Cancel();
+        var cts = _commitsCts = new CancellationTokenSource();
+        IsCommitsLoading = true;
+        try
+        {
+            var counts = await Task.Run(() => _activityService.LoadCommitsAsync(person.Repository, person.Login, cts.Token), cts.Token);
+            if (cts.IsCancellationRequested || !ReferenceEquals(person, SelectedPerson)) return;
+            static string N(int? n) => n is { } v ? v.ToString("N0", CultureInfo.InvariantCulture) : "–";
+            DashboardViewModel.Replace(CommitStats,
+            [
+                new("Commits this week", N(counts.Week), "Cyan"),
+                new("Commits this month", N(counts.Month), "Violet"),
+                new("Total commits", N(counts.Total), "Amber"),
+            ]);
+            Raise(nameof(HasCommitStats));
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer selection took over.
+        }
+        finally
+        {
+            if (ReferenceEquals(_commitsCts, cts)) IsCommitsLoading = false;
+        }
     }
 
     public ObservableCollection<FloorViewModel> Floors { get; } = [];
@@ -232,6 +340,9 @@ public sealed class PeopleViewModel : PageViewModel
         IsPersonOpen = true;
         ClearActivity();
         _ = LoadActivityAsync(forceRefresh: false);
+        CommitStats.Clear();
+        Raise(nameof(HasCommitStats));
+        if (_showCommitCounts) _ = LoadCommitsAsync();
     }
 
     private void ClearActivity()
@@ -243,6 +354,8 @@ public sealed class PeopleViewModel : PageViewModel
         SummaryStats.Clear();
         RecentPullRequests.Clear();
         ActivityEvents.Clear();
+        _allPrs = [];
+        _allEvents = [];
         PendingBranches.Clear();
         _openNow = "–";
         RebuildLiveTiles();
@@ -311,14 +424,16 @@ public sealed class PeopleViewModel : PageViewModel
         ]);
         DashboardViewModel.Replace(PendingBranches, a.PendingBranches.Select(b => PendingBranchViewModel.From(b, now, a.Repository)));
         HasPendingBranches = PendingBranches.Count > 0;
-        DashboardViewModel.Replace(RecentPullRequests, a.RecentPullRequests.Select(p => new PersonPullRequestViewModel(
+        _allPrs = a.RecentPullRequests.Select(p => new PersonPullRequestViewModel(
             p.Title,
             $"#{p.Number} · {(p.ClosedAt is { } closed ? Humanize.Ago(now - closed) : "opened " + Humanize.Ago(now - p.CreatedAt))}",
-            p.IsDraft ? "Draft" : Humanize.Pascal(p.State), p.Url)));
-        HasRecentPrs = RecentPullRequests.Count > 0;
-        DashboardViewModel.Replace(ActivityEvents, a.Events.Take(30).Select(e => new PersonEventViewModel(
-            Humanize.Ago(now - e.At), e.Kind.ToString(), $"#{e.Number} {e.PullRequestTitle}", e.Text, e.Url)));
-        HasEvents = ActivityEvents.Count > 0;
+            p.IsDraft ? "Draft" : Humanize.Pascal(p.State), p.Url)).ToList();
+        _allEvents = a.Events.Take(30).Select(e => new PersonEventViewModel(
+            Humanize.Ago(now - e.At), e.Kind.ToString(), $"#{e.Number} {e.PullRequestTitle}", e.Text, e.Url)).ToList();
+        HasRecentPrs = _allPrs.Count > 0;
+        HasEvents = _allEvents.Count > 0;
+        ApplyFilters();
+
         _openNow = a.Open.ToString("N0", inv);
         RebuildLiveTiles();
         HasActivity = true;
@@ -395,7 +510,11 @@ public sealed class PeopleViewModel : PageViewModel
                 avatars.GetValueOrDefault(p.Login), p.Raised, p.Assigned, p.AssignedUnder,
                 p.OldestAssignedSince is { } since ? Humanize.Age(DateTimeOffset.UtcNow - since) : "",
                 p.OldestReviewSince is { } reviewSince ? Humanize.Age(DateTimeOffset.UtcNow - reviewSince) : "",
-                viewers.Contains(p.Login), i % 3) { Entrance = _entrance, ToReview = p.ToReview }),
+                viewers.Contains(p.Login), i % 3)
+            {
+                Entrance = _entrance, ToReview = p.ToReview,
+                AssignedNumbers = p.AssignedNumbers, ReviewNumbers = p.ReviewNumbers, RaisedNumbers = p.RaisedNumbers,
+            }),
         ],
         floor.OpenCount,
         floor.DraftCount,

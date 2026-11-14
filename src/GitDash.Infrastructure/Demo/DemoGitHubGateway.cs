@@ -262,6 +262,14 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
         return Task.FromResult(new PipelineRunCounts(6 + seed * 2, 24 + seed * 9, 310 + seed * 85));
     }
 
+    public Task<CommitCounts> GetCommitCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        var seed = Math.Abs(login.GetHashCode()) % 7;
+        return Task.FromResult(new CommitCounts(9 + seed * 3, 41 + seed * 12, 520 + seed * 140));
+    }
+
     private static int DemoNumber(RepositoryRef repository, int i)
     {
         var index = Array.FindIndex(Monitored, r => r.Matches(repository));
