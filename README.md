@@ -181,3 +181,11 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **macOS:** after the app quits, a small helper script mounts the disk image for your CPU (arm64 / x64), replaces `GitDash.app` in place (the old copy is restored if the swap fails) and opens it. If GitDash lives in a folder it cannot write to, you are told and drag the new version in yourself.
 - **Settings > Updates:** "Check for updates" and an "Update automatically" switch. With it off you are still told about a new version and press *Update now* when you want it.
 - Release assets are expected as `GitDash-Setup-<version>.exe` and `GitDash-<version>-osx-arm64.dmg` / `-osx-x64.dmg` (what the Release workflow already produces). Untested against a real release: publish two tags to try it.
+
+## Layout and notification centre
+
+- **Home and Dashboard are centred** in the window (content width is capped, so wide windows no longer leave everything on the left).
+- **Overlays keep their place on any screen:** the island, the counter widget and the timer widget are saved as percentages of the main screen, so moving from a Full HD display to a 2K one (or projecting) puts them in the same part of the screen. Positions saved by older versions are converted the next time you move them.
+- **Home buttons:** Refresh and Open on GitHub are icon buttons on one row.
+- **Notification centre:** the bell in the title bar shows the number of unread notifications. It opens the last 50 notifications with their time; click one to mark it read and open the pull request, use the tick to mark one read, "Mark all read" or "Clear". The list is kept in `notifications.json` in the app data folder, so it survives restarts.
+- **Pictures on notifications:** toasts, the island and the list show the profile picture of the person involved (author, commenter, merger) on the corner of the notification icon, when there is one.

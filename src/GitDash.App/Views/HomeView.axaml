@@ -6,7 +6,7 @@
              x:Class="GitDash.App.Views.HomeView"
              x:DataType="vm:HomeViewModel">
   <ScrollViewer>
-    <StackPanel Margin="36,30,36,36" Spacing="24" MaxWidth="1100" HorizontalAlignment="Left">
+    <StackPanel Margin="36,30,36,36" Spacing="24" MaxWidth="1100" HorizontalAlignment="Stretch">
 
       <StackPanel Classes="enter" Spacing="4">
         <TextBlock Classes="muted" Text="{Binding Greeting}" />
@@ -47,12 +47,16 @@
                          IsVisible="{Binding Since, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             </StackPanel>
 
-            <StackPanel Grid.Column="2" Margin="0,52,0,0" Spacing="8" VerticalAlignment="Top">
-              <Button Classes="primary" Content="Open on GitHub ↗" Command="{Binding OpenProfileCommand}"
-                      IsEnabled="{Binding HasProfile}" />
-              <Button Classes="ghost" Content="Refresh" Command="{Binding RefreshCommand}" />
+            <StackPanel Grid.Column="2" Margin="0,52,0,0" Spacing="8" Orientation="Horizontal" VerticalAlignment="Top">
               <Ellipse Classes="pulse" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
-                       HorizontalAlignment="Center" IsVisible="{Binding IsLoading}" />
+                       VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
+              <Button Classes="round" Width="36" Height="36" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh">
+                <PathIcon Data="{StaticResource IconRefresh}" Width="15" Height="15" />
+              </Button>
+              <Button Classes="round" Width="36" Height="36" Command="{Binding OpenProfileCommand}"
+                      IsEnabled="{Binding HasProfile}" ToolTip.Tip="Open on GitHub">
+                <PathIcon Data="{StaticResource IconGitHub}" Width="16" Height="16" />
+              </Button>
             </StackPanel>
           </Grid>
         </Panel>

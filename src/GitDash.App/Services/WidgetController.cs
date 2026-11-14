@@ -59,7 +59,7 @@ public sealed class WidgetController(
         {
             _timer = new TimerWidgetWindow(showMainWindow) { DataContext = shell.Timers };
             _timer.Show();
-            _timer.Position = Place(_timer, s.TimerWidgetX, s.TimerWidgetY, 72 + 190);
+            _timer.Position = Place(_timer, s, 72 + 190);
         }
         else if (!showTimer && _timer is not null)
         {
@@ -93,8 +93,8 @@ public sealed class WidgetController(
     private static WidgetWindow.WidgetLayout LayoutOf(AppSettings s) =>
         new(s.MiniWidget, s.WidgetXPercent, s.WidgetYPercent, s.MiniXPercent, s.MiniYPercent);
 
-    private Func<int, int, AppSettings> SaveFor(FloatingWindow window) =>
-        (x, y) => settings.Current with { TimerWidgetX = x, TimerWidgetY = y };
+    private Func<double, double, AppSettings> SaveFor(FloatingWindow window) =>
+        (x, y) => settings.Current with { TimerWidgetXPercent = x, TimerWidgetYPercent = y, TimerWidgetX = null, TimerWidgetY = null };
 
     /// <summary>The counter widget is remembered as percentages of the free screen room, which keeps it on screen.</summary>
     private void RememberCounter()
@@ -104,9 +104,16 @@ public sealed class WidgetController(
         _ = settings.UpdateAsync(c => c with { WidgetXPercent = x, WidgetYPercent = y });
     }
 
-    private void Remember(FloatingWindow window, Func<int, int, AppSettings> change)
+    /// <summary>Saved as percentages of the free room on the main screen, so another resolution keeps the same spot.</summary>
+    private void Remember(FloatingWindow window, Func<double, double, AppSettings> change)
     {
-        var (x, y) = (window.RememberedPosition.X, window.RememberedPosition.Y);
+        var area = (window.Screens.Primary ?? window.Screens.All.FirstOrDefault())?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
+        var scale = window.RenderScaling <= 0 ? 1 : window.RenderScaling;
+        static double Pct(int value, int origin, double room) =>
+            room <= 0 ? 0 : Math.Round(Math.Clamp((value - origin) * 100.0 / room, 0, 100), 2);
+        var p = window.RememberedPosition;
+        var x = Pct(p.X, area.X, area.Width - window.Width * scale);
+        var y = Pct(p.Y, area.Y, area.Height - window.Height * scale);
         _ = settings.UpdateAsync(_ => change(x, y));
     }
 
@@ -125,19 +132,28 @@ public sealed class WidgetController(
         }
     }
 
-    private static PixelPoint Place(FloatingWindow window, int? x, int? y, int defaultTop)
+    private static PixelPoint Place(FloatingWindow window, AppSettings s, int defaultTop)
     {
         var screen = window.Screens.Primary ?? window.Screens.All.FirstOrDefault();
-        if (screen is null) return new PixelPoint(x ?? 80, y ?? 80);
-
-        // A remembered spot is only reused while it is still on a connected screen.
-        if (x is { } sx && y is { } sy && window.Screens.All.Any(s => s.WorkingArea.Contains(new PixelPoint(sx + 20, sy + 20))))
-            return new PixelPoint(sx, sy);
+        if (screen is null) return new PixelPoint(s.TimerWidgetX ?? 80, s.TimerWidgetY ?? 80);
 
         var scale = screen.Scaling;
-        return new PixelPoint(
-            screen.WorkingArea.Right - (int)((window.Width + 24) * scale),
-            screen.WorkingArea.Y + (int)(defaultTop * scale));
+        var area = screen.WorkingArea;
+        var w = (int)(window.Width * scale);
+        var h = (int)(window.Height * scale);
+
+        // Saved as a share of the free room on the screen: the same part of the screen at any resolution.
+        if (s.TimerWidgetXPercent is { } px && s.TimerWidgetYPercent is { } py)
+            return new PixelPoint(
+                area.X + (int)Math.Round(Math.Clamp(px, 0, 100) / 100 * Math.Max(0, area.Width - w)),
+                area.Y + (int)Math.Round(Math.Clamp(py, 0, 100) / 100 * Math.Max(0, area.Height - h)));
+
+        // Older settings saved pixels: reuse them while they are still on a connected screen.
+        if (s.TimerWidgetX is { } sx && s.TimerWidgetY is { } sy
+            && window.Screens.All.Any(a => a.WorkingArea.Contains(new PixelPoint(sx + 20, sy + 20))))
+            return new PixelPoint(sx, sy);
+
+        return new PixelPoint(area.Right - (int)((window.Width + 24) * scale), area.Y + (int)(defaultTop * scale));
     }
 
     public void Dispose()

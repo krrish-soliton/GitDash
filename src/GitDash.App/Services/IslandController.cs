@@ -38,7 +38,9 @@ public sealed class IslandController(
             _window = new IslandWindow(OnActivated) { DataContext = shell };
             _window.Dismissed += request => Closed?.Invoke(request);
             _window.Show();
-            _window.PlaceAt(s.IslandX, s.IslandY);
+            // Older settings saved pixels: use them once; the next time the island is moved the percentages take over.
+            if (s.IslandXPercent is null && s.IslandX is not null && s.IslandY is not null) _window.PlaceAt(s.IslandX, s.IslandY);
+            else _window.PlaceAtPercent(s.IslandXPercent, s.IslandYPercent);
         }
         else if (!s.ShowDynamicIsland && _window is not null)
         {
@@ -63,8 +65,8 @@ public sealed class IslandController(
     private void Remember()
     {
         if (_window is null) return;
-        var (x, y) = _window.Anchor;
-        _ = settings.UpdateAsync(s => s with { IslandX = x, IslandY = y });
+        var (x, y) = _window.AnchorPercent();
+        _ = settings.UpdateAsync(s => s with { IslandXPercent = x, IslandYPercent = y, IslandX = null, IslandY = null });
     }
 
     /// <summary>
