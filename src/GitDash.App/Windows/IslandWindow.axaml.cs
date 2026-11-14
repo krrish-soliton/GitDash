@@ -43,6 +43,8 @@ public partial class IslandWindow : FloatingWindow
     private readonly System.Collections.ObjectModel.ObservableCollection<IslandNote> _notes = [];
     private readonly Queue<IslandNote> _waiting = new();
     private bool _hoverOpen;
+    private readonly DispatcherTimer _rotate = new() { Interval = TimeSpan.FromSeconds(1) };
+    private const double StatusRowHeight = 20, StatusPerRow = 3;
 
     // Required by the XAML loader and the previewer.
     public IslandWindow() => InitializeComponent();
@@ -55,6 +57,8 @@ public partial class IslandWindow : FloatingWindow
         Height = CompactHeight + WindowPadY;
         Notes.ItemsSource = _notes;
         _timer.Tick += (_, _) => CloseExpired();
+        _rotate.Tick += (_, _) => RotateStatuses();
+        _rotate.Start();
         DataContextChanged += (_, _) => AttachTimers();
     }
 
@@ -80,7 +84,31 @@ public partial class IslandWindow : FloatingWindow
         else Collapse();
     }
 
-    private double TimerExtra => _timerRows * TimerRowHeight;
+    /// <summary>Hovered open with more counters than fit one line: the row wraps and the pill grows to match.</summary>
+    private double StatusExtra
+    {
+        get
+        {
+            if (!_hoverOpen || DataContext is not ShellViewModel shell) return 0;
+            var count = shell.Widget.IslandItems.Count;
+            return count <= 2 ? 0 : (Math.Ceiling(count / StatusPerRow) - 1) * StatusRowHeight;
+        }
+    }
+
+    private double TimerExtra => _timerRows * TimerRowHeight + StatusExtra;
+
+    /// <summary>Every second: after the configured interval, fade the pair out, swap it and fade back in.</summary>
+    private void RotateStatuses()
+    {
+        if (DataContext is not ShellViewModel shell) return;
+        if (_hoverOpen || !shell.Widget.TickIsland()) return;
+        StatusRow.Opacity = 0;
+        DispatcherTimer.RunOnce(() =>
+        {
+            shell.Widget.AdvanceIslandPage();
+            StatusRow.Opacity = 1;
+        }, TimeSpan.FromMilliseconds(190));
+    }
 
     public bool IsShowingNotification => _notes.Count > 0;
 
@@ -188,6 +216,7 @@ public partial class IslandWindow : FloatingWindow
     protected override void OnClosed(EventArgs e)
     {
         if (_listed is not null) _listed.CollectionChanged -= OnTimersChanged;
+        _rotate.Stop();
         _slide?.Stop();
         _slide = null;
         base.OnClosed(e);
@@ -271,6 +300,7 @@ public partial class IslandWindow : FloatingWindow
         // While being moved the island stays compact so it is easy to grab.
         if (!IsLocked) return;
         _hoverOpen = hovering;
+        if (DataContext is ShellViewModel hovered) hovered.Widget.IslandExpanded = hovering;
         if (_notes.Count == 0)
         {
             if (hovering) ShowHoverDetails();

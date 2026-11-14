@@ -209,6 +209,7 @@ public static class PullRequestMapper
                 reviews.Where(r => Login.Same(r.Author, viewerLogin)).Sum(r => r.CommentCount),
             LastCommentAuthor = lastComment?.Author,
             LastCommentAt = lastComment?.At,
+            UnresolvedThreads = node.Nodes("reviewThreads").Count(t => !t.Bool("isResolved")),
             CommitCount = node.Prop("commits").Int("totalCount"),
             LastCommitAt = node.Nodes("commits").Select(n => n.Prop("commit").Date("committedDate")).FirstOrDefault(),
             Additions = node.Int("additions"),

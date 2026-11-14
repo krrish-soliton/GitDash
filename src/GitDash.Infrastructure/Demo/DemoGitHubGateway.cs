@@ -130,6 +130,7 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
                 CommentsByViewer = reapproval ? 3 + seed % 3 : 0,
                 LastCommentAuthor = Team[(seed + 1) % Team.Length],
                 LastCommentAt = now - TimeSpan.FromMinutes(seed % 90),
+                UnresolvedThreads = seed % 4 == 1 ? 1 + seed % 3 : 0,
                 CommitCount = 1 + seed % 9,
                 // Some approvals and the viewer's earlier review predate the newest commit, so they show as stale.
                 LastCommitAt = reapproval ? arrived + TimeSpan.FromHours(3) : i % 10 == 1 ? created + TimeSpan.FromHours(5) : created + TimeSpan.FromHours(2),

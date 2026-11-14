@@ -1,4 +1,5 @@
 using GitDash.Application.Abstractions;
+using GitDash.Domain.Insights;
 using GitDash.Domain.Notifications;
 using GitDash.Domain.PullRequests;
 using GitDash.Domain.Timers;
@@ -115,6 +116,16 @@ public sealed record AppSettings
     public bool ShowMultipleTimers { get; init; } = true;
     /// <summary>A dynamic-island style pill at the top of the screen that also shows the notifications.</summary>
     public bool ShowDynamicIsland { get; init; }
+
+    /// <summary>
+    /// The counters shown on the island and the floating widget, in the order they appear. More than two on the island
+    /// rotate through its compact row; hovering shows all of them.
+    /// </summary>
+    public IReadOnlyList<StatusKind> IslandStatuses { get; init; } = [StatusKind.Assigned, StatusKind.Approval];
+    public IReadOnlyList<StatusKind> WidgetStatuses { get; init; } = [StatusKind.Assigned, StatusKind.Approval, StatusKind.Open];
+
+    /// <summary>How long each pair of island counters stays up before the next pair slides in.</summary>
+    public int StatusRotateSeconds { get; init; } = 4;
 
     /// <summary>How see-through the overlays are while the cursor is not over them (hovering makes them solid).</summary>
     public double WidgetOpacity { get; init; } = 0.65;

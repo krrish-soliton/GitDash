@@ -38,6 +38,9 @@ public sealed record PullRequest
     public string? LastCommentAuthor { get; init; }
     public DateTimeOffset? LastCommentAt { get; init; }
 
+    /// <summary>Review conversations on the diff that nobody has resolved yet.</summary>
+    public int UnresolvedThreads { get; init; }
+
     public int CommitCount { get; init; }
 
     /// <summary>GitHub reports that this branch cannot be merged cleanly into its base.</summary>

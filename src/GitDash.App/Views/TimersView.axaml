@@ -20,123 +20,123 @@
         </Border>
       </Grid>
 
-      <Grid ColumnDefinitions="*,20,*,20,*">
+      <Grid ColumnDefinitions="*,14,*,14,*">
 
         <!-- Task timer -->
         <Panel Grid.Column="0" Classes="enter1">
-          <Border Classes="card lift" MinHeight="430">
-            <DockPanel>
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="h2" Text="Task timer" />
-                <Ellipse Classes="pulse" Width="8" Height="8" Fill="{StaticResource GreenBrush}"
-                         VerticalAlignment="Center" IsVisible="{Binding IsTaskRunning}" />
-              </StackPanel>
-              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                <Button Classes="primary" Content="Start" Command="{Binding ToggleTaskCommand}"
+          <Border Classes="card lift" Padding="16,14">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Classes="h2" FontSize="15" Text="Task timer" />
+                  <Ellipse Classes="pulse" Width="8" Height="8" Fill="{StaticResource GreenBrush}"
+                           VerticalAlignment="Center" IsVisible="{Binding IsTaskRunning}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Classes="clock" FontSize="26" Text="{Binding TaskElapsed}" />
+              </Grid>
+              <TextBox Text="{Binding TaskName}" Watermark="What are you working on?" MaxLength="120" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary compact" Content="Start" Command="{Binding ToggleTaskCommand}"
                         IsVisible="{Binding !IsTaskRunning}" />
-                <Button Classes="primary" Content="Pause" Command="{Binding ToggleTaskCommand}"
+                <Button Classes="primary compact" Content="Pause" Command="{Binding ToggleTaskCommand}"
                         IsVisible="{Binding IsTaskRunning}" />
-                <Button Classes="ghost" Content="Finish &amp; save" Command="{Binding FinishTaskCommand}" />
+                <Button Classes="ghost compact" Content="Finish &amp; save" Command="{Binding FinishTaskCommand}" />
               </StackPanel>
-              <StackPanel VerticalAlignment="Center" Spacing="22">
-                <TextBox Text="{Binding TaskName}" Watermark="What are you working on?" MaxLength="120" />
-                <TextBlock Classes="clock" Text="{Binding TaskElapsed}" />
-              </StackPanel>
-            </DockPanel>
+            </StackPanel>
           </Border>
         </Panel>
 
         <!-- Pomodoro -->
         <Panel Grid.Column="2" Classes="enter2">
-          <Border Classes="card lift" MinHeight="430">
-            <DockPanel>
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="h2" Text="Pomodoro" />
-                <Ellipse Classes="pulse" Width="8" Height="8" Fill="{StaticResource PinkBrush}"
-                         VerticalAlignment="Center" IsVisible="{Binding IsPomodoroRunning}" />
-              </StackPanel>
-
-              <Expander DockPanel.Dock="Bottom" Header="Durations" Margin="0,12,0,0" HorizontalAlignment="Stretch">
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,4">
-                  <StackPanel Margin="0,0,6,8" Spacing="4">
-                    <TextBlock Classes="muted" FontSize="11" Text="Focus (min)" />
-                    <NumericUpDown Value="{Binding FocusMinutes}" Minimum="1" Maximum="180" Increment="5"
-                                   FormatString="0" />
-                  </StackPanel>
-                  <StackPanel Grid.Column="1" Margin="6,0,0,8" Spacing="4">
-                    <TextBlock Classes="muted" FontSize="11" Text="Short break (min)" />
-                    <NumericUpDown Value="{Binding ShortBreakMinutes}" Minimum="1" Maximum="60" Increment="1"
-                                   FormatString="0" />
-                  </StackPanel>
-                  <StackPanel Grid.Row="1" Margin="0,0,6,0" Spacing="4">
-                    <TextBlock Classes="muted" FontSize="11" Text="Long break (min)" />
-                    <NumericUpDown Value="{Binding LongBreakMinutes}" Minimum="1" Maximum="120" Increment="5"
-                                   FormatString="0" />
-                  </StackPanel>
-                  <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,0,0,0" Spacing="4">
-                    <TextBlock Classes="muted" FontSize="11" Text="Rounds before long break" />
-                    <NumericUpDown Value="{Binding Cycles}" Minimum="1" Maximum="12" Increment="1"
-                                   FormatString="0" />
-                  </StackPanel>
-                </Grid>
-              </Expander>
-
-              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                <Button Classes="primary" Content="Start" Command="{Binding TogglePomodoroCommand}"
-                        IsVisible="{Binding !IsPomodoroRunning}" />
-                <Button Classes="primary" Content="Pause" Command="{Binding TogglePomodoroCommand}"
-                        IsVisible="{Binding IsPomodoroRunning}" />
-                <Button Classes="ghost" Content="Skip" Command="{Binding SkipPomodoroCommand}" />
-                <Button Classes="ghost" Content="Reset" Command="{Binding ResetPomodoroCommand}" />
-              </StackPanel>
-
-              <Panel Width="196" Height="196" Margin="0,14">
-                <Ellipse Stroke="{DynamicResource Surface2Brush}" StrokeThickness="12" />
-                <Arc Stroke="{StaticResource AccentGradient}" StrokeThickness="12" StrokeLineCap="Round"
-                     StartAngle="-90" SweepAngle="{Binding PomodoroSweep}" />
-                <StackPanel VerticalAlignment="Center" Spacing="2">
-                  <TextBlock Classes="label" Text="{Binding PomodoroPhase}" HorizontalAlignment="Center"
-                             Foreground="{StaticResource PinkBrush}" />
-                  <TextBlock Classes="clock" FontSize="38" Text="{Binding PomodoroRemaining}" />
-                  <TextBlock Classes="muted" FontSize="11" Text="{Binding PomodoroRound}" HorizontalAlignment="Center" />
+          <Border Classes="card lift" Padding="16,14">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Classes="h2" FontSize="15" Text="Pomodoro" />
+                  <Ellipse Classes="pulse" Width="8" Height="8" Fill="{StaticResource PinkBrush}"
+                           VerticalAlignment="Center" IsVisible="{Binding IsPomodoroRunning}" />
                 </StackPanel>
-              </Panel>
-            </DockPanel>
+                <TextBlock Grid.Column="1" Classes="clock" FontSize="26" Text="{Binding PomodoroRemaining}" />
+              </Grid>
+              <StackPanel Spacing="4">
+                <ProgressBar Minimum="0" Maximum="360" Value="{Binding PomodoroSweep}" Height="6" MinHeight="6" CornerRadius="3"
+                             Background="{DynamicResource TrackBrush}" Foreground="{StaticResource PinkBrush}" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding PomodoroPhase}" Classes="label" Foreground="{StaticResource PinkBrush}" />
+                  <TextBlock Grid.Column="1" Classes="muted" FontSize="11" Text="{Binding PomodoroRound}" />
+                </Grid>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="primary compact" Content="Start" Command="{Binding TogglePomodoroCommand}"
+                        IsVisible="{Binding !IsPomodoroRunning}" />
+                <Button Classes="primary compact" Content="Pause" Command="{Binding TogglePomodoroCommand}"
+                        IsVisible="{Binding IsPomodoroRunning}" />
+                <Button Classes="ghost compact" Content="Skip" Command="{Binding SkipPomodoroCommand}" />
+                <Button Classes="ghost compact" Content="Reset" Command="{Binding ResetPomodoroCommand}" />
+                <Button Classes="ghost compact" Content="Durations ▾">
+                  <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight" Opening="OnDurationsOpening">
+                      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Width="300">
+                        <StackPanel Margin="0,0,6,8" Spacing="4">
+                          <TextBlock Classes="muted" FontSize="11" Text="Focus (min)" />
+                          <NumericUpDown Value="{Binding FocusMinutes}" Minimum="1" Maximum="180" Increment="5" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="6,0,0,8" Spacing="4">
+                          <TextBlock Classes="muted" FontSize="11" Text="Short break (min)" />
+                          <NumericUpDown Value="{Binding ShortBreakMinutes}" Minimum="1" Maximum="60" Increment="1" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Margin="0,0,6,0" Spacing="4">
+                          <TextBlock Classes="muted" FontSize="11" Text="Long break (min)" />
+                          <NumericUpDown Value="{Binding LongBreakMinutes}" Minimum="1" Maximum="120" Increment="5" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="6,0,0,0" Spacing="4">
+                          <TextBlock Classes="muted" FontSize="11" Text="Rounds before long break" />
+                          <NumericUpDown Value="{Binding Cycles}" Minimum="1" Maximum="12" Increment="1" FormatString="0" />
+                        </StackPanel>
+                      </Grid>
+                    </Flyout>
+                  </Button.Flyout>
+                </Button>
+              </StackPanel>
+            </StackPanel>
           </Border>
         </Panel>
 
         <!-- Pull request review timer -->
         <Panel Grid.Column="4" Classes="enter3">
-          <Border Classes="card lift" MinHeight="430">
-            <DockPanel>
-              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8">
-                <TextBlock Classes="h2" Text="PR review timer" />
-                <Ellipse Classes="pulse" Width="8" Height="8" Fill="{StaticResource AmberBrush}"
-                         VerticalAlignment="Center" IsVisible="{Binding IsReviewRunning}" />
-              </StackPanel>
-              <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                <Button Classes="primary" Content="Start" Command="{Binding ToggleReviewCommand}"
-                        IsVisible="{Binding !IsReviewRunning}" />
-                <Button Classes="primary" Content="Pause" Command="{Binding ToggleReviewCommand}"
-                        IsVisible="{Binding IsReviewRunning}" />
-                <Button Classes="ghost" Content="Finish &amp; save" Command="{Binding FinishReviewCommand}" />
-              </StackPanel>
-              <StackPanel VerticalAlignment="Center" Spacing="18">
-                <ComboBox ItemsSource="{Binding ReviewTargets}" SelectedItem="{Binding SelectedReviewTarget}"
-                          HorizontalAlignment="Stretch" PlaceholderText="Pick a pull request on your desk">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ReviewTargetViewModel">
-                      <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" MaxWidth="330" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-                <TextBlock Classes="clock" Text="{Binding ReviewElapsed}" />
-                <TextBlock Classes="muted" HorizontalAlignment="Center">
-                  <Run Text="Total on this pull request:" />
+          <Border Classes="card lift" Padding="16,14">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Classes="h2" FontSize="15" Text="PR review timer" />
+                  <Ellipse Classes="pulse" Width="8" Height="8" Fill="{StaticResource AmberBrush}"
+                           VerticalAlignment="Center" IsVisible="{Binding IsReviewRunning}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Classes="clock" FontSize="26" Text="{Binding ReviewElapsed}" />
+              </Grid>
+              <ComboBox ItemsSource="{Binding ReviewTargets}" SelectedItem="{Binding SelectedReviewTarget}"
+                        HorizontalAlignment="Stretch" PlaceholderText="Pick a pull request on your desk">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ReviewTargetViewModel">
+                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" MaxWidth="330" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Grid ColumnDefinitions="Auto,*">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Classes="primary compact" Content="Start" Command="{Binding ToggleReviewCommand}"
+                          IsVisible="{Binding !IsReviewRunning}" />
+                  <Button Classes="primary compact" Content="Pause" Command="{Binding ToggleReviewCommand}"
+                          IsVisible="{Binding IsReviewRunning}" />
+                  <Button Classes="ghost compact" Content="Finish &amp; save" Command="{Binding FinishReviewCommand}" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Classes="muted" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis">
+                  <Run Text="Total:" />
                   <Run Text="{Binding ReviewTotal}" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" />
                 </TextBlock>
-              </StackPanel>
-            </DockPanel>
+              </Grid>
+            </StackPanel>
           </Border>
         </Panel>
       </Grid>

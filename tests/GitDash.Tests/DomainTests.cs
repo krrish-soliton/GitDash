@@ -738,4 +738,28 @@ public class Round10Tests
         Assert.Equal("dev", GitDash.Presentation.ViewModels.AboutViewModel.VersionOf(null));
         Assert.True(GitDash.Infrastructure.Security.GitHubUrlLauncher.IsAllowed(GitDash.Presentation.ViewModels.SettingsViewModel.NewOAuthAppUrl));
     }
+
+    [Fact]
+    public void Status_counters_count_my_pull_requests_by_situation()
+    {
+        var approved = new Review("lena", ReviewState.Approved, Now.AddHours(-3), 0);
+        var open = new[]
+        {
+            Pr("mine-ready", Me, p => p with { Reviews = [approved], LastCommitAt = Now.AddHours(-5) }),
+            Pr("mine-broken", Me, p => p with { Reviews = [approved], PipelineFailed = true, UnresolvedThreads = 2, LastCommitAt = Now.AddHours(-5) }),
+            Pr("mine-draft", Me, p => p with { IsDraft = true, Reviews = [approved], LastCommitAt = Now.AddHours(-5) }),
+            Pr("assigned", "leo", p => p with { Assignees = [Me], UnresolvedThreads = 3 }),
+            Pr("review", "leo", p => p with { RequestedReviewers = [Me], UnresolvedThreads = 9 }),
+            Pr("merged", Me, p => p with { State = PullRequestState.Merged, Reviews = [approved] }),
+        };
+
+        Assert.Equal(1, StatusCounter.Count(StatusKind.Assigned, open));
+        Assert.Equal(1, StatusCounter.Count(StatusKind.Approval, open));
+        Assert.Equal(3, StatusCounter.Count(StatusKind.Raised, open));        // merged ones are not open
+        Assert.Equal(3, StatusCounter.Count(StatusKind.Approved, open));
+        Assert.Equal(1, StatusCounter.Count(StatusKind.ReadyToMerge, open));  // not broken, not a draft
+        Assert.Equal(1, StatusCounter.Count(StatusKind.Error, open));
+        Assert.Equal(5, StatusCounter.Count(StatusKind.Comments, open));      // 2 + 3; the review request is not mine to resolve
+        Assert.Equal(5, StatusCounter.Count(StatusKind.Open, open));
+    }
 }

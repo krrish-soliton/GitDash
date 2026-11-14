@@ -6,16 +6,31 @@
              xmlns:c="using:GitDash.App.Controls"
              x:Class="GitDash.App.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
-  <ScrollViewer>
-    <StackPanel Margin="36,30,36,36" Spacing="22" MaxWidth="980" HorizontalAlignment="Left">
+  <Grid RowDefinitions="Auto,*" Margin="36,30,36,0">
+    <StackPanel Classes="enter" Spacing="4" Margin="0,0,0,18">
+      <TextBlock Classes="h1" Text="Settings" />
+      <TextBlock Classes="muted" Text="Pick a category on the left; changes save as you make them." />
+    </StackPanel>
 
-      <StackPanel Classes="enter" Spacing="4">
-        <TextBlock Classes="h1" Text="Settings" />
-        <TextBlock Classes="muted" Text="Accounts, repositories, notifications and appearance." />
-      </StackPanel>
+    <Grid Grid.Row="1" ColumnDefinitions="236,24,*">
+      <!-- Category rail -->
+      <ListBox Classes="nav" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}"
+               VerticalAlignment="Top">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:SettingsSectionViewModel">
+            <StackPanel Spacing="1">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" />
+              <TextBlock Text="{Binding Hint}" FontSize="11" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <ScrollViewer Grid.Column="2">
+    <StackPanel Margin="0,0,0,36" Spacing="22" MaxWidth="820" HorizontalAlignment="Left">
 
       <!-- ===== Accounts ===== -->
-      <Border Classes="card enter1">
+      <Border Classes="card enter1" IsVisible="{Binding IsAccountsSection}">
         <StackPanel Spacing="16">
           <TextBlock Classes="h2" Text="GitHub accounts" />
 
@@ -107,11 +122,8 @@
           </Border>
 
           <!-- Advanced: token and OAuth App -->
-          <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-            <Expander.Header>
-              <TextBlock Text="Advanced sign-in options" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
-                         VerticalAlignment="Center" />
-            </Expander.Header>
+          <Button Classes="ghost" HorizontalAlignment="Left" Command="{Binding ToggleAdvancedCommand}" Content="{Binding AdvancedLabel}" />
+          <StackPanel Spacing="18" IsVisible="{Binding ShowAdvancedSignIn}">
             <StackPanel Spacing="18">
 
               <!-- Personal access token -->
@@ -254,7 +266,7 @@
               </Border>
               </StackPanel>
             </StackPanel>
-          </Expander>
+          </StackPanel>
 
           <TextBlock Text="{Binding AuthMessage}" Classes="muted" Classes.error="{Binding IsAuthError}"
                      TextWrapping="Wrap"
@@ -263,16 +275,14 @@
       </Border>
 
       <!-- ===== Repositories ===== -->
-      <Border Classes="card enter2">
-        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header>
+      <Border Classes="card enter2" IsVisible="{Binding IsRepositoriesSection}">
+        <StackPanel Spacing="16">
             <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
               <TextBlock Classes="h2" Text="Repositories to monitor" VerticalAlignment="Center" />
               <Border Grid.Column="1" Classes="chip" Margin="0,0,12,0">
                 <TextBlock Text="{Binding SelectionSummary}" />
               </Border>
             </Grid>
-          </Expander.Header>
           <StackPanel Spacing="14">
           <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                      Text="Lists your own repositories and those of the organizations you belong to. Only ticked repositories are synced." />
@@ -316,13 +326,13 @@
             </ListBox.ItemTemplate>
           </ListBox>
           </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
 
       <!-- ===== Notifications ===== -->
-      <Border Classes="card enter3">
-        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header><TextBlock Classes="h2" Text="Notifications" VerticalAlignment="Center" /></Expander.Header>
+      <Border Classes="card enter3" IsVisible="{Binding IsNotificationsSection}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Notifications" />
           <StackPanel Spacing="12">
           <TextBlock Classes="muted" FontSize="12" Text="Notify me whenever…" />
 
@@ -416,13 +426,13 @@
           </Grid>
           <Button Classes="ghost" Content="Send a test notification" Command="{Binding TestNotificationCommand}" />
         </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
 
       <!-- ===== Sounds ===== -->
-      <Border Classes="card enter3">
-        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header><TextBlock Classes="h2" Text="Sounds" VerticalAlignment="Center" /></Expander.Header>
+      <Border Classes="card enter3" IsVisible="{Binding IsSoundsSection}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Sounds" />
           <StackPanel Spacing="12">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel>
@@ -465,13 +475,13 @@
                       IsVisible="{Binding HasCustomSound}" />
             </Grid>
           </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
 
       <!-- ===== General ===== -->
-      <Border Classes="card enter3">
-        <Expander IsExpanded="True" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header><TextBlock Classes="h2" Text="Appearance" VerticalAlignment="Center" /></Expander.Header>
+      <Border Classes="card enter3" IsVisible="{Binding IsAppearanceSection}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Appearance" />
           <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
@@ -510,11 +520,11 @@
           </Grid>
         
           </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
-      <Border Classes="card enter3">
-        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header><TextBlock Classes="h2" Text="Widgets and island" VerticalAlignment="Center" /></Expander.Header>
+      <Border Classes="card enter3" IsVisible="{Binding IsSurfacesSection}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Widgets and island" />
           <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
@@ -617,11 +627,70 @@
                        Text="Where the small circle sits within the full widget's area. On hover the widget grows from the circle to its full size." />
           </StackPanel>
           </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
-      <Border Classes="card enter3">
-        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header><TextBlock Classes="h2" Text="Window and tray" VerticalAlignment="Center" /></Expander.Header>
+      <Border Classes="card enter3" IsVisible="{Binding IsSurfacesSection}">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h2" Text="Island counters" />
+          <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="Tick what the island shows and use the arrows to set the order. Unticked counters stay hidden." />
+          <ItemsControl ItemsSource="{Binding IslandLayout.Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:StatusChoiceViewModel">
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,4">
+                  <CheckBox IsChecked="{Binding IsSelected}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Width="9" Height="9" VerticalAlignment="Center"
+                               Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}" />
+                    </StackPanel>
+                  </CheckBox>
+                  <Button Grid.Column="1" Classes="ghost compact" Content="▲" Command="{Binding MoveUpCommand}"
+                          ToolTip.Tip="Move up" />
+                  <Button Grid.Column="2" Classes="ghost compact" Content="▼" Command="{Binding MoveDownCommand}"
+                          ToolTip.Tip="Move down" Margin="4,0,0,0" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+            <StackPanel>
+              <TextBlock Text="Rotate every (seconds)" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="With more than two counters the island shows two at a time and slides to the next pair after this long. Hovering shows all of them." />
+            </StackPanel>
+            <NumericUpDown Grid.Column="1" Width="120" Minimum="2" Maximum="60" Increment="1" FormatString="0"
+                           Value="{Binding StatusRotateSeconds}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card enter3" IsVisible="{Binding IsSurfacesSection}">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h2" Text="Widget counters" />
+          <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="The floating widget's card shows the ticked counters in this order (up to four per row)." />
+          <ItemsControl ItemsSource="{Binding WidgetLayout.Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:StatusChoiceViewModel">
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,4">
+                  <CheckBox IsChecked="{Binding IsSelected}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Width="9" Height="9" VerticalAlignment="Center"
+                               Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}" />
+                    </StackPanel>
+                  </CheckBox>
+                  <Button Grid.Column="1" Classes="ghost compact" Content="▲" Command="{Binding MoveUpCommand}"
+                          ToolTip.Tip="Move up" />
+                  <Button Grid.Column="2" Classes="ghost compact" Content="▼" Command="{Binding MoveDownCommand}"
+                          ToolTip.Tip="Move down" Margin="4,0,0,0" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+      <Border Classes="card enter3" IsVisible="{Binding IsWindowSection}">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Window and tray" />
           <StackPanel Spacing="12">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
@@ -668,16 +737,16 @@
                           OnContent="" OffContent="" />
           </Grid>
           </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
 
       <!-- ===== AI tools ===== -->
-      <ContentControl Content="{Binding AiTools}">
+      <ContentControl Content="{Binding AiTools}" IsVisible="{Binding IsAiSection}">
        <ContentControl.ContentTemplate>
         <DataTemplate x:DataType="vm:AiToolsViewModel">
       <Border Classes="card enter3">
-        <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="0,12,0,0">
-          <Expander.Header><TextBlock Classes="h2" Text="AI tool limits" VerticalAlignment="Center" /></Expander.Header>
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="AI tool limits" />
           <StackPanel Spacing="12">
           <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
                      Text="Track Claude, ChatGPT or any other AI tool. No vendor offers a way to read subscription usage, so press “Limit reached” when you hit the cap: GitDash counts down to the reset and rings an alarm with a notification when the tool is usable again." />
@@ -741,14 +810,14 @@
           <TextBlock Classes="muted" FontSize="11.5"
                      Text="The window is how long a limit lasts after you hit it: 300 min ≈ Claude's 5-hour window, 1440 min = daily, 43200 min = monthly." />
         </StackPanel>
-        </Expander>
+        </StackPanel>
       </Border>
         </DataTemplate>
        </ContentControl.ContentTemplate>
       </ContentControl>
 
       <!-- ===== Security ===== -->
-      <Border Classes="card enter3">
+      <Border Classes="card enter3" IsVisible="{Binding IsAccountsSection}">
         <StackPanel Spacing="8">
           <TextBlock Classes="h2" Text="How your credentials are protected" />
           <TextBlock Classes="muted" FontSize="12.5" TextWrapping="Wrap" LineHeight="19"
@@ -756,5 +825,7 @@
         </StackPanel>
       </Border>
     </StackPanel>
-  </ScrollViewer>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
 </UserControl>

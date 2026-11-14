@@ -3,6 +3,7 @@ using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
+using GitDash.Domain.Insights;
 using GitDash.Infrastructure.Demo;
 using GitDash.Infrastructure.Storage;
 using GitDash.Infrastructure.Security;
@@ -723,6 +724,64 @@ public class EndToEndTests
         Assert.Equal("https://avatars.githubusercontent.com/u/1", AvatarDirectory.UrlFor("anna-becker"));
         Assert.Null(AvatarDirectory.UrlFor("someone-else"));
 
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public void Island_rotates_pairs_when_more_than_two_counters_and_shows_all_when_expanded()
+    {
+        var widget = new WidgetViewModel();
+        widget.Configure(
+            [StatusKind.Error, StatusKind.Assigned, StatusKind.Raised, StatusKind.Approval, StatusKind.Comments],
+            [StatusKind.Assigned, StatusKind.Open], rotateSeconds: 3);
+
+        Assert.True(widget.IslandRotates);
+        Assert.Equal([StatusKind.Error, StatusKind.Assigned], widget.IslandRow.Select(i => i.Kind)); // chosen order
+        Assert.False(widget.TickIsland());
+        Assert.False(widget.TickIsland());
+        Assert.True(widget.TickIsland()); // interval reached: the next pair is due
+        widget.AdvanceIslandPage();
+        Assert.Equal([StatusKind.Raised, StatusKind.Approval], widget.IslandRow.Select(i => i.Kind));
+        widget.AdvanceIslandPage();
+        Assert.Equal([StatusKind.Comments], widget.IslandRow.Select(i => i.Kind));
+        widget.AdvanceIslandPage();
+        Assert.Equal(StatusKind.Error, widget.IslandRow[0].Kind); // wraps around
+
+        widget.IslandExpanded = true;
+        Assert.Equal(5, widget.IslandRow.Count);
+        Assert.False(widget.TickIsland()); // no rotation while everything is shown
+
+        widget.Configure([StatusKind.Approved], [StatusKind.Assigned], 3);
+        Assert.False(widget.IslandRotates);
+        Assert.Single(widget.IslandRow);
+        Assert.Equal(1, widget.WidgetColumns);
+    }
+
+    [Fact]
+    public async Task Counter_choice_and_order_are_saved_in_settings()
+    {
+        var f = await CreateAsync();
+        var settings = new SettingsViewModel(f.Settings, f.Accounts, f.Router, new NoLauncher(), new InlineDispatcher());
+
+        var island = settings.IslandLayout;
+        Assert.Equal([StatusKind.Assigned, StatusKind.Approval], island.Items.Where(i => i.IsSelected).Select(i => i.Kind));
+
+        island.Items.Single(i => i.Kind == StatusKind.Error).IsSelected = true;
+        island.Items.Single(i => i.Kind == StatusKind.Error).MoveUpCommand!.Execute(null); // up from the first unselected slot
+        await Task.Delay(50);
+
+        var saved = f.Settings.Current.IslandStatuses;
+        Assert.True(saved.Contains(StatusKind.Error));
+        Assert.Equal(saved.Count, island.Items.Count(i => i.IsSelected));
+        Assert.Equal(saved, island.Items.Where(i => i.IsSelected).Select(i => i.Kind));
+
+        island.Items[0].MoveDownCommand!.Execute(null);
+        await Task.Delay(50);
+        Assert.Equal(island.Items.Where(i => i.IsSelected).Select(i => i.Kind), f.Settings.Current.IslandStatuses);
+
+        settings.StatusRotateSeconds = 9;
+        await Task.Delay(50);
+        Assert.Equal(9, f.Settings.Current.StatusRotateSeconds);
         await f.Monitor.DisposeAsync();
     }
 }

@@ -42,6 +42,7 @@ internal static class GitHubQueries
           reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl(size: 96) } } } }
           reviews(last: 100) { nodes { author { login } state submittedAt comments { totalCount } } }
           comments(last: 100) { totalCount nodes { author { login } createdAt } }
+          reviewThreads(first: 100) { nodes { isResolved } }
           commits(last: 1) { totalCount nodes { commit { committedDate statusCheckRollup { state } } } }
           timelineItems(last: 40, itemTypes: [ASSIGNED_EVENT, REVIEW_REQUESTED_EVENT]) {
             nodes {
