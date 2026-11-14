@@ -10,7 +10,7 @@ A lightweight, animated desktop radar for GitHub pull requests — Windows and m
 | Repositories | Pick exactly which repositories to monitor, from your own and from your organizations. Nothing else is synced. |
 | Dashboard | Animated cards: open pull requests, assigned to me, needs my approval. Per-repository bars and a recent-activity feed. |
 | People | Each repository is a floor; each person is an animated figure with their GitHub photo, showing pull requests raised and waiting on them. Click a person for their pull requests. Per-floor statistics. |
-| My PRs | Cover-flow cards with filters (Assigned to me, All PRs, Requested review, Own PRs). Click the front card for a popup with tabs: day-grouped timeline with filters, description, comments (by me / by others / mentioning me) and approvals. |
+| Pull requests | Cover-flow cards with filters (Assigned to me, All PRs, Requested review, Own PRs) and a multi-select author filter. Click the front card for a popup with tabs: day-grouped timeline with filters, description, comments (by me / by others / mentioning me) and approvals. |
 | Live updates | Each repository is checked for changes every few seconds (default 10 s) and only downloaded when something changed. |
 | Notifications | Choose which events notify you (assigned, added as reviewer, new comments on your pull requests, merged). Animated in-app toasts, or switch to OS notifications in Settings. |
 | Widgets | A draggable always-on-top floating widget, and a native tray icon (Windows) / menu-bar item (macOS) with the same three numbers. |
@@ -107,7 +107,7 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **Dashboard desk**: an animated desk with one "book" per PR waiting on you (assigned books are outlined, older PRs are thicker).
 - **Floating widgets**: semi-transparent and click-through (they light up under the mouse but never steal a click). The PR widget also shows the oldest assigned PR's wait in seconds / minutes / hours / days. A second widget shows the running timer. To move them, switch on *Settings → Move the floating widgets*, drag, then switch it off; the position is remembered.
 - **Notifications**: *Close notifications automatically* can be switched off, so toasts stay until you close them.
-- **My PRs**: PRs assigned to you have a glowing frame and an "ASSIGNED TO YOU" ribbon; descriptions and comments render Markdown; the Comments tab has an **AI comments** filter (Copilot, CodeRabbit, Claude, …).
+- **Pull requests** (formerly My PRs): PRs assigned to you have a glowing frame and an "ASSIGNED TO YOU" ribbon; descriptions and comments render Markdown; the Comments tab has an **AI comments** filter (Copilot, CodeRabbit, Claude, …).
 - **People**: each card now shows raised, assigned, waiting and the oldest wait.
 - **AI tool limits** (Settings): add Claude, ChatGPT and others, press *Limit reached* to start the countdown; an alarm and a notification fire when the tool is usable again. (No vendor offers a read-only usage API for subscriptions, so the limit start is marked by hand.)
 - **Accounts** show avatar, name, sign-in method and watched-repository count; the repository picker is collapsible.
@@ -163,3 +163,12 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **One border per card:** the glowing assigned frame is gone; the border colour shows only the review state, and the status is shown by tags that sit side by side in the card header (cyan ASSIGNED, green APPROVED, plus the re-approval / stale tags).
 - **Error tags and state colours (My PRs):** PIPELINE FAILED (checks on the newest commit failed) and MERGE CONFLICT (GitHub reports the branch cannot merge cleanly) tags show on every card and in the details popup; this needs the new `mergeable` and `statusCheckRollup` fields in the GraphQL query (untested against live GitHub). The single card border is now: red = pipeline failed or merge conflict, blue = stale review, green = approved, orange = changes requested, purple = not reviewed (first match wins).
 
+## Batch E: Pull requests polish, people as chips, configurable counters
+
+- **Pull request cards:** one row of buttons (Details, Actions); the GitHub link and the Review timer (play + running clock) are icons at the top. The Actions menu holds Approve, Assign author and Remove me as assignee in their own colours, on the card and in the detail view.
+- **People are first-name chips** (`Controls/UserChip.cs`): a round profile picture (initials until it loads) and the first name; the full login is the tooltip and stays in the People tab. `Login.FirstName` handles `anna-becker`, `LenaMueller` and `j.smith` style logins; notifications and waiting-for text use it too.
+- **No stray GitHub links:** Dashboard, People, Home, toasts and the island open the detailed review screen of the Pull requests page (`ShellViewModel.OpenPullRequest`); the browser is only a fallback when the pull request is not in the loaded list. GitHub links remain on the card icon and in the detail view.
+- **Actions** (CI runs) only list the pull requests on the cards, with an "only the card in front" switch and an Actions tab in the detail popup.
+- **Settings** is a category rail (Accounts, Repositories, Notifications, Sounds, Appearance, Widgets and island, Window and tray, AI tool limits) showing one section at a time instead of stacked collapsible cards.
+- **Timers** cards are compact; Pomodoro durations moved into a flyout.
+- **Island and widget counters:** pick any of Assigned, Approval, Raised, Approved, Comments (unresolved only), Ready to merge, Error (plus All open) and their order under *Settings > Widgets and island*. With more than two on the island, it shows a pair at a time and slides to the next pair every N seconds; hovering shows all of them. Unresolved comments need the new `reviewThreads { isResolved }` field in the list query (untested against live GitHub).

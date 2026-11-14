@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using GitDash.Application.Abstractions;
 using System.Text.RegularExpressions;
+using GitDash.Domain.Actions;
 using GitDash.Domain.Insights;
 using GitDash.Domain.PullRequests;
 
@@ -149,6 +150,61 @@ public sealed partial class GitHubGateway(HttpClient http) : IGitHubGateway
         return doc.RootElement.Int("total_count");
     }
 
+    public async Task<CommitCounts> GetCommitCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        if (!LoginPattern().IsMatch(login)) return CommitCounts.Unknown;
+        var week = CommitCountAsync(token, repository, login, weekStart, ct);
+        var month = CommitCountAsync(token, repository, login, monthStart, ct);
+        var total = CommitCountAsync(token, repository, login, null, ct);
+        return new CommitCounts(await week.ConfigureAwait(false), await month.ConfigureAwait(false),
+            await total.ConfigureAwait(false));
+    }
+
+    /// <summary>Asks for one commit per page: the number of the last page (from the Link header) is then the count.</summary>
+    private async Task<int?> CommitCountAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset? since, CancellationToken ct)
+    {
+        var from = since is { } s ? "&since=" + Uri.EscapeDataString(s.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")) : string.Empty;
+        var uri = new Uri(
+            $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
+            $"{Uri.EscapeDataString(repository.Name)}/commits?author={Uri.EscapeDataString(login)}&per_page=1{from}");
+        using var request = Authorized(HttpMethod.Get, uri, token);
+        using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.Unauthorized or HttpStatusCode.Conflict)
+            return null; // no access, or an empty repository
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+        var link = response.Headers.TryGetValues("Link", out var values) ? string.Join(",", values) : string.Empty;
+        var count = LastPageOf(link);
+        if (count is not null) return count;
+        using var doc = await JsonDocument
+            .ParseAsync(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), default, ct)
+            .ConfigureAwait(false);
+        return doc.RootElement.ValueKind == JsonValueKind.Array ? doc.RootElement.GetArrayLength() : 0;
+    }
+
+    /// <summary>The page number of rel="last" in a Link header, or null when there is only one page.</summary>
+    public static int? LastPageOf(string link)
+    {
+        foreach (var part in link.Split(','))
+        {
+            if (!part.Contains("rel=\"last\"", StringComparison.Ordinal)) continue;
+            var at = part.IndexOf("page=", StringComparison.Ordinal);
+            while (at >= 0)
+            {
+                var start = at + 5;
+                var end = start;
+                while (end < part.Length && char.IsDigit(part[end])) end++;
+                var preceded = at > 0 && (part[at - 1] == '?' || part[at - 1] == '&');
+                if (preceded && end > start && int.TryParse(part.AsSpan(start, end - start), out var page)) return page;
+                at = part.IndexOf("page=", at + 5, StringComparison.Ordinal);
+            }
+        }
+
+        return null;
+    }
+
     public async Task<PullRequestDetails> GetDetailsAsync(
         string token, RepositoryRef repository, int number, CancellationToken ct)
     {
@@ -162,6 +218,99 @@ public sealed partial class GitHubGateway(HttpClient http) : IGitHubGateway
         }
 
         return PullRequestMapper.MapDetails(data);
+    }
+
+    private const int MaxJobLookups = 8;
+
+    public async Task<IReadOnlyList<WorkflowRun>> GetWorkflowRunsAsync(
+        string token, RepositoryRef repository, CancellationToken ct)
+    {
+        var baseUri = $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
+                      $"{Uri.EscapeDataString(repository.Name)}/actions/runs";
+        IReadOnlyList<WorkflowRun> runs;
+        using (var request = Authorized(HttpMethod.Get, new Uri(baseUri + "?per_page=100"), token))
+        using (var response = await http.SendAsync(request, ct).ConfigureAwait(false))
+        {
+            // No Actions access (or Actions turned off) is normal: there is simply nothing to show.
+            if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound or HttpStatusCode.Unauthorized) return [];
+            await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+            using var doc = await JsonDocument
+                .ParseAsync(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), default, ct)
+                .ConfigureAwait(false);
+            runs = WorkflowRunMapper.MapRuns(doc.RootElement, repository);
+        }
+
+        // Steps are only looked up for runs that are still going: that is what the progress bar needs.
+        var result = new List<WorkflowRun>(runs.Count);
+        var lookups = 0;
+        foreach (var run in runs)
+        {
+            if (run.Status != RunStatus.InProgress || lookups >= MaxJobLookups)
+            {
+                result.Add(run);
+                continue;
+            }
+
+            lookups++;
+            using var request = Authorized(HttpMethod.Get, new Uri($"{baseUri}/{run.Id}/jobs?per_page=100"), token);
+            using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                result.Add(run);
+                continue;
+            }
+
+            using var jobs = await JsonDocument
+                .ParseAsync(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), default, ct)
+                .ConfigureAwait(false);
+            result.Add(WorkflowRunMapper.WithSteps(run, jobs.RootElement));
+        }
+
+        return result;
+    }
+
+    public async Task ApproveAsync(string token, RepositoryRef repository, int number, CancellationToken ct)
+    {
+        var uri = new Uri(
+            $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
+            $"{Uri.EscapeDataString(repository.Name)}/pulls/{number}/reviews");
+        using var request = Authorized(HttpMethod.Post, uri, token);
+        request.Content = JsonContent.Create(new { @event = "APPROVE" });
+        using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+    }
+
+    public async Task SwapAssigneeAsync(
+        string token, RepositoryRef repository, int number, string remove, string add, CancellationToken ct)
+    {
+        var uri = new Uri(
+            $"https://{GitHubHttpClientFactory.ApiHost}/repos/{Uri.EscapeDataString(repository.Owner)}/" +
+            $"{Uri.EscapeDataString(repository.Name)}/issues/{number}/assignees");
+
+        if (add.Length > 0)
+        {
+            using var addRequest = Authorized(HttpMethod.Post, uri, token);
+            addRequest.Content = JsonContent.Create(new { assignees = new[] { add } });
+            using var response = await http.SendAsync(addRequest, ct).ConfigureAwait(false);
+            await EnsureSuccessAsync(response, ct).ConfigureAwait(false);
+
+            // GitHub answers 201 even when it silently skips someone who cannot be assigned: check before removing anyone.
+            using var doc = await JsonDocument
+                .ParseAsync(await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false), default, ct)
+                .ConfigureAwait(false);
+            if (!doc.RootElement.Items("assignees").Any(a => a.Str("login").Equals(add, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new GitHubApiException(remove.Length > 0
+                    ? $"{add} cannot be assigned in this repository, so you were not removed."
+                    : $"{add} cannot be assigned in this repository.");
+            }
+        }
+
+        if (remove.Length == 0) return;
+        using var removeRequest = Authorized(HttpMethod.Delete, uri, token);
+        removeRequest.Content = JsonContent.Create(new { assignees = new[] { remove } });
+        using var removed = await http.SendAsync(removeRequest, ct).ConfigureAwait(false);
+        await EnsureSuccessAsync(removed, ct).ConfigureAwait(false);
     }
 
     public async Task<RepositoryProbe> ProbeAsync(

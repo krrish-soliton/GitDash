@@ -34,12 +34,12 @@ public partial class PeopleView : UserControl
 
     private void OnPullRequestTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Control { DataContext: PullRequestLinkViewModel link }) Page?.OpenUrlCommand.Execute(link.Url);
+        if (sender is Control { DataContext: PullRequestLinkViewModel link }) Page?.OpenPullRequestCommand.Execute(link.Url);
     }
 
     private void OnPersonPrTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Control { DataContext: PersonPullRequestViewModel pr }) Page?.OpenUrlCommand.Execute(pr.Url);
+        if (sender is Control { DataContext: PersonPullRequestViewModel pr }) Page?.OpenPullRequestCommand.Execute(pr.Url);
     }
 
     private void OnBranchTapped(object? sender, TappedEventArgs e)
@@ -49,7 +49,17 @@ public partial class PeopleView : UserControl
 
     private void OnPersonEventTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Control { DataContext: PersonEventViewModel ev }) Page?.OpenUrlCommand.Execute(ev.Url);
+        if (sender is Control { DataContext: PersonEventViewModel ev }) Page?.OpenPullRequestCommand.Execute(ev.Url);
+    }
+
+    private void OnPrFilterTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: FilterChipViewModel chip }) Page?.SetPrFilterCommand.Execute(chip);
+    }
+
+    private void OnEventFilterTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: FilterChipViewModel chip }) Page?.SetEventFilterCommand.Execute(chip);
     }
 
     private void OnScrimTapped(object? sender, TappedEventArgs e) => Page?.ClosePersonCommand.Execute(null);

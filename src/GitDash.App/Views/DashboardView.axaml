@@ -5,6 +5,20 @@
              xmlns:conv="using:GitDash.App.Converters"
              x:Class="GitDash.App.Views.DashboardView"
              x:DataType="vm:DashboardViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.book.selected">
+      <Setter Property="BorderThickness" Value="3" />
+      <Setter Property="BoxShadow" Value="0 0 14 2 #CCFBBF24" />
+    </Style>
+    <Style Selector="Border.deskRow.selected">
+      <Setter Property="Background" Value="#26818CF8" />
+      <Setter Property="BorderBrush" Value="{StaticResource Accent2Brush}" />
+    </Style>
+    <Style Selector="Border.deskRow">
+      <Setter Property="BorderThickness" Value="2,0,0,0" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+  </UserControl.Styles>
   <ScrollViewer>
     <StackPanel Margin="36,30,36,36" Spacing="24">
 
@@ -113,7 +127,7 @@
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,46">
 
               <!-- Bookcase -->
-              <Border Grid.Column="0" Margin="36,14,0,0" Width="292" VerticalAlignment="Bottom" CornerRadius="8,8,0,0"
+              <Border Grid.Column="0" Margin="36,14,0,0" Width="372" VerticalAlignment="Bottom" CornerRadius="8,8,0,0"
                       Background="{DynamicResource DeskEdgeBrush}" Padding="10,10,10,0" BoxShadow="0 6 18 0 #44000000">
                 <ItemsControl ItemsSource="{Binding Shelves}">
                   <ItemsControl.ItemTemplate>
@@ -130,11 +144,26 @@
                               <DataTemplate x:DataType="vm:DeskBookViewModel">
                                 <Panel Classes="drop" Cursor="Hand" VerticalAlignment="Bottom" Tapped="OnBookTapped">
                                   <Panel.RenderTransform><TranslateTransform /></Panel.RenderTransform>
-                                  <Border Width="26" Height="{Binding Height}" CornerRadius="3,3,1,1" VerticalAlignment="Bottom"
+                                  <Border Width="{Binding Width}" Height="{Binding Height}" CornerRadius="3,3,1,1" VerticalAlignment="Bottom"
                                           Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}"
                                           BorderBrush="{StaticResource Accent2Brush}"
-                                          Classes.assigned="{Binding IsAssigned}" Classes="book"
-                                          ToolTip.Tip="{Binding Tip}">
+                                          Classes.assigned="{Binding IsAssigned}" Classes.selected="{Binding IsSelected}" Classes="book">
+                                    <ToolTip.Tip>
+                                      <Border MaxWidth="300" Padding="2">
+                                        <StackPanel Spacing="5">
+                                          <TextBlock Text="{Binding Title}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                                     FontWeight="SemiBold" FontSize="13" />
+                                          <TextBlock Text="{Binding Where}" Classes="muted" FontSize="11.5" />
+                                          <c:UserChip Login="{Binding Author}" />
+                                          <TextBlock FontSize="11.5">
+                                            <Run Text="{Binding Size}" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding Lines}" /><Run Text="  ·  " /><Run Text="{Binding FilesText}" />
+                                          </TextBlock>
+                                          <TextBlock Text="{Binding Waiting}" Classes="muted" FontSize="11" IsVisible="{Binding HasWaiting}" />
+                                          <c:PullRequestTagStrip DataContext="{Binding Tags}" />
+                                          <TextBlock Text="Click for details" Classes="muted" FontSize="10" />
+                                        </StackPanel>
+                                      </Border>
+                                    </ToolTip.Tip>
                                     <Border.RenderTransform><RotateTransform Angle="{Binding Tilt}" /></Border.RenderTransform>
                                     <Grid RowDefinitions="Auto,*" Margin="0,5">
                                       <Border Height="3" Margin="5,0" CornerRadius="2" Background="#66FFFFFF" />
@@ -163,10 +192,10 @@
                   <TextBlock Text="Nothing waiting on you — enjoy the quiet." Classes="muted" HorizontalAlignment="Center"
                              VerticalAlignment="Center" IsVisible="{Binding DeskIsEmpty}" />
                   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding DeskBooks}" Margin="8,6,12,6">
+                    <ItemsControl x:Name="DeskList" ItemsSource="{Binding DeskBooks}" Margin="8,6,12,6">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:DeskBookViewModel">
-                          <Border Background="Transparent" Cursor="Hand" Padding="0,6" Tapped="OnBookTapped">
+                          <Border Classes="deskRow" Classes.selected="{Binding IsSelected}" Background="Transparent" Cursor="Hand" Padding="0,6" Tapped="OnBookTapped">
                             <Grid ColumnDefinitions="Auto,*,Auto">
                               <Border Width="5" CornerRadius="3" Margin="0,2,12,2"
                                       Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
@@ -174,8 +203,9 @@
                                 <TextBlock Text="{Binding Title}" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource TextBrush}" />
                                 <TextBlock Classes="muted" FontSize="11.5">
-                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  by " /><Run Text="{Binding Author}" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
+                                  <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
                                 </TextBlock>
+                                <c:UserChip Login="{Binding Author}" />
                                 <c:PullRequestTagStrip DataContext="{Binding Tags}" />
                               </StackPanel>
                               <StackPanel Grid.Column="2" Spacing="3" Margin="12,0,0,0" VerticalAlignment="Center">
@@ -219,6 +249,37 @@
               <Border Height="6" VerticalAlignment="Top" Background="{DynamicResource DeskEdgeBrush}" />
             </Border>
           </Panel>
+
+        <!-- Details of the clicked book -->
+        <Border Grid.RowSpan="2" Background="#99000000" IsVisible="{Binding HasSelectedBook}" Tapped="OnBackdropTapped">
+          <Border Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Classes="card" Padding="22"
+                  DataContext="{Binding SelectedBook}" x:DataType="vm:DeskBookViewModel" Tapped="OnPopupTapped">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <Border Width="6" CornerRadius="3" Margin="0,2,12,2"
+                        Background="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                <StackPanel Grid.Column="1" Spacing="3">
+                  <TextBlock Text="{Binding Title}" Classes="h2" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Where}" Classes="muted" />
+                </StackPanel>
+                <Button Grid.Column="2" Content="✕" Classes="ghost" VerticalAlignment="Top" Click="OnCloseBookClick" />
+              </Grid>
+              <c:UserChip Login="{Binding Author}" />
+              <TextBlock Text="{Binding Waiting}" Foreground="{StaticResource AmberBrush}" FontWeight="SemiBold"
+                         IsVisible="{Binding HasWaiting}" />
+              <TextBlock FontSize="13">
+                <Run Text="{Binding Size}" FontWeight="SemiBold" /><Run Text="  ·  " /><Run Text="{Binding Lines}" /><Run Text="  ·  " /><Run Text="{Binding FilesText}" /><Run Text="  ·  " /><Run Text="{Binding CommitsText}" />
+              </TextBlock>
+              <TextBlock Text="{Binding Summary}" Classes="muted" TextWrapping="Wrap" MaxLines="6" TextTrimming="CharacterEllipsis"
+                         IsVisible="{Binding HasSummary}" />
+              <c:PullRequestTagStrip DataContext="{Binding Tags}" />
+              <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button Content="Close" Click="OnCloseBookClick" />
+                <Button Classes="primary" Content="Open details" Click="OnOpenBookClick" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Border>
         </Grid>
       </Border>
 

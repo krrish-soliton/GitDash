@@ -1,4 +1,5 @@
 using GitDash.Application.Abstractions;
+using GitDash.Domain.Insights;
 using GitDash.Domain.Notifications;
 using GitDash.Domain.PullRequests;
 using GitDash.Domain.Timers;
@@ -116,6 +117,16 @@ public sealed record AppSettings
     /// <summary>A dynamic-island style pill at the top of the screen that also shows the notifications.</summary>
     public bool ShowDynamicIsland { get; init; }
 
+    /// <summary>
+    /// The counters shown on the island and the floating widget, in the order they appear. More than two on the island
+    /// rotate through its compact row; hovering shows all of them.
+    /// </summary>
+    public IReadOnlyList<StatusKind> IslandStatuses { get; init; } = [StatusKind.Assigned, StatusKind.Approval];
+    public IReadOnlyList<StatusKind> WidgetStatuses { get; init; } = [StatusKind.Assigned, StatusKind.Approval, StatusKind.Open];
+
+    /// <summary>How long each pair of island counters stays up before the next pair slides in.</summary>
+    public int StatusRotateSeconds { get; init; } = 4;
+
     /// <summary>How see-through the overlays are while the cursor is not over them (hovering makes them solid).</summary>
     public double WidgetOpacity { get; init; } = 0.65;
     public double IslandOpacity { get; init; } = 0.9;
@@ -134,9 +145,26 @@ public sealed record AppSettings
     public bool HideToTrayOnMinimize { get; init; }
     /// <summary>Closing the window keeps the app running in the tray (needs the tray icon); off quits the app.</summary>
     public bool HideToTrayOnClose { get; init; } = true;
+    /// <summary>macOS: remove the Dock icon while the main window is hidden (the app then lives in the menu bar).</summary>
+    public bool HideDockIconWhenHidden { get; init; }
     public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();
+
+    /// <summary>Wall-clock alarms set on the Timers page.</summary>
+    public IReadOnlyList<AlarmEntry> Alarms { get; init; } = [];
+
+    /// <summary>Master switch for every sound (timers, alarms and notifications).</summary>
+    public bool SoundEnabled { get; init; } = true;
+
+    /// <summary>One of <see cref="SoundCatalog.BuiltIn"/>, or <see cref="SoundCatalog.CustomId"/> to use <see cref="CustomSoundPath"/>.</summary>
+    public string SoundId { get; init; } = SoundCatalog.DefaultId;
+
+    /// <summary>The user's own tone (wav, mp3, aiff, m4a). Never copied; if the file disappears the built-in sound is used.</summary>
+    public string? CustomSoundPath { get; init; }
+
+    /// <summary>Also play the sound for ordinary notifications, not only for timers and alarms.</summary>
+    public bool SoundOnNotifications { get; init; } = true;
 
     public TimeSpan LiveCheckInterval =>
         TimeSpan.FromSeconds(Math.Clamp(LiveCheckSeconds, MinLiveCheckSeconds, MaxLiveCheckSeconds));

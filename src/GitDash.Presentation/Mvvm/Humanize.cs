@@ -14,6 +14,15 @@ public static class Humanize
         return "just now";
     }
 
+    /// <summary>A word for how big a change is, by lines touched.</summary>
+    public static string SizeLabel(int lines) => lines switch
+    {
+        < 50 => "Small",
+        < 300 => "Medium",
+        < 1000 => "Large",
+        _ => "Huge",
+    };
+
     public static string Ago(TimeSpan span) => Age(span) is "just now" ? "just now" : $"{Age(span)} ago";
 
     public static string Clock(TimeSpan span)
@@ -64,6 +73,9 @@ public static class Humanize
     public static string Pascal(string text) =>
         string.Join(' ', text.Split([' ', '_'], StringSplitOptions.RemoveEmptyEntries)
             .Select(w => char.ToUpperInvariant(w[0]) + w[1..].ToLowerInvariant()));
+
+    /// <summary>A friendly first name from a GitHub login: "gowtham-krishnan" → "Gowtham". See <see cref="GitDash.Domain.PullRequests.Login.FirstName"/>.</summary>
+    public static string FirstName(string login) => GitDash.Domain.PullRequests.Login.FirstName(login);
 
     public static string Initials(string login)
     {

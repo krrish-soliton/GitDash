@@ -1,4 +1,5 @@
 using GitDash.Application.Abstractions;
+using GitDash.Domain.Actions;
 using GitDash.Domain.Insights;
 using GitDash.Domain.PullRequests;
 
@@ -129,6 +130,7 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
                 CommentsByViewer = reapproval ? 3 + seed % 3 : 0,
                 LastCommentAuthor = Team[(seed + 1) % Team.Length],
                 LastCommentAt = now - TimeSpan.FromMinutes(seed % 90),
+                UnresolvedThreads = seed % 4 == 1 ? 1 + seed % 3 : 0,
                 CommitCount = 1 + seed % 9,
                 // Some approvals and the viewer's earlier review predate the newest commit, so they show as stale.
                 LastCommitAt = reapproval ? arrived + TimeSpan.FromHours(3) : i % 10 == 1 ? created + TimeSpan.FromHours(5) : created + TimeSpan.FromHours(2),
@@ -228,12 +230,51 @@ public sealed class DemoGitHubGateway(TimeProvider time, int changeEveryProbes =
         });
     }
 
+    public Task<IReadOnlyList<WorkflowRun>> GetWorkflowRunsAsync(string token, RepositoryRef repository, CancellationToken ct)
+    {
+        // A run that is always partway through (it loops once a minute), one that passed and one that failed.
+        var now = time.GetUtcNow();
+        var phase = now.Second / 60d;
+        var total = 20;
+        IReadOnlyList<WorkflowRun> runs =
+        [
+            new(900_001, repository, "CI build and test", "feature/timers", Team[0], RunStatus.InProgress, null,
+                now.AddSeconds(-now.Second), now, $"https://github.com/{repository.FullName}/actions/runs/900001", [DemoNumber(repository, 0)],
+                Math.Max(1, (int)(phase * total)), total),
+            new(900_002, repository, "Lint", "feature/api-cache", Team[1], RunStatus.Completed, "success",
+                now.AddMinutes(-9), now.AddMinutes(-8), $"https://github.com/{repository.FullName}/actions/runs/900002", [DemoNumber(repository, 1)]),
+            new(900_003, repository, "CI build and test", "fix/null-check", Team[2], RunStatus.Completed, "failure",
+                now.AddMinutes(-25), now.AddMinutes(-22), $"https://github.com/{repository.FullName}/actions/runs/900003", [DemoNumber(repository, 2)]),
+        ];
+        return Task.FromResult(runs);
+    }
+
+    public Task ApproveAsync(string token, RepositoryRef repository, int number, CancellationToken ct) => Task.CompletedTask;
+
+    public Task SwapAssigneeAsync(
+        string token, RepositoryRef repository, int number, string remove, string add, CancellationToken ct) =>
+        Task.CompletedTask;
+
     public Task<PipelineRunCounts> GetPipelineRunCountsAsync(
         string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
         CancellationToken ct)
     {
         var seed = Math.Abs(login.GetHashCode()) % 7;
         return Task.FromResult(new PipelineRunCounts(6 + seed * 2, 24 + seed * 9, 310 + seed * 85));
+    }
+
+    public Task<CommitCounts> GetCommitCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct)
+    {
+        var seed = Math.Abs(login.GetHashCode()) % 7;
+        return Task.FromResult(new CommitCounts(9 + seed * 3, 41 + seed * 12, 520 + seed * 140));
+    }
+
+    private static int DemoNumber(RepositoryRef repository, int i)
+    {
+        var index = Array.FindIndex(Monitored, r => r.Matches(repository));
+        return 90 + (index + 2) * 31 + i * 7;
     }
 
     public Task<PullRequestDetails> GetDetailsAsync(

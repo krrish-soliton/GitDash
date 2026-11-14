@@ -3,6 +3,7 @@ using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
+using GitDash.Domain.Insights;
 using GitDash.Infrastructure.Demo;
 using GitDash.Infrastructure.Storage;
 using GitDash.Infrastructure.Security;
@@ -57,7 +58,14 @@ internal sealed class JsonStateCache : IStateCache
     }
 }
 
-internal sealed class NoAlarm : IAlarm { public void Play() { } }
+internal sealed class NoAlarm : IAlarm { public void Play() { } public void Preview(string soundId, string? customPath) { } }
+
+internal sealed class CountingAlarm : IAlarm
+{
+    public int Plays { get; private set; }
+    public void Play() => Plays++;
+    public void Preview(string soundId, string? customPath) { }
+}
 
 public class EndToEndTests
 {
@@ -271,6 +279,16 @@ public class EndToEndTests
         Assert.NotEmpty(shell.Dashboard.DeskBooks);
         Assert.Contains(shell.Dashboard.DeskBooks, b => b.IsAssigned);
 
+        // Clicking a book opens its details and marks it in the list; clicking it again (or Close) clears it.
+        var pick = shell.Dashboard.DeskBooks[0];
+        shell.Dashboard.SelectBookCommand.Execute(pick);
+        Assert.True(shell.Dashboard.HasSelectedBook);
+        Assert.Equal(pick.Id, shell.Dashboard.SelectedBook!.Id);
+        Assert.Equal(1, shell.Dashboard.DeskBooks.Count(b => b.IsSelected));
+        shell.Dashboard.CloseBookCommand.Execute(null);
+        Assert.False(shell.Dashboard.HasSelectedBook);
+        Assert.Equal(0, shell.Dashboard.DeskBooks.Count(b => b.IsSelected));
+
         shell.Navigate(shell.People);
         Assert.Equal(3, shell.People.Floors.Count);
         Assert.Equal("Floor 3", shell.People.Floors[0].FloorLabel);
@@ -285,6 +303,30 @@ public class EndToEndTests
         Assert.Contains(shell.People.ActivityTiles, t => t.Label == "Merged");
         Assert.NotEmpty(shell.People.ActivityEvents);
         Assert.NotEmpty(shell.People.RecentPullRequests);
+
+        // Filters narrow the lists; "All" brings everything back.
+        var allPrs = shell.People.RecentPullRequests.Count;
+        var merged = shell.People.PrFilters.First(c => c.Key == "Merged");
+        shell.People.SetPrFilterCommand.Execute(merged);
+        Assert.True(shell.People.RecentPullRequests.All(p => p.State == "Merged"));
+        Assert.True(shell.People.RecentPullRequests.Count <= allPrs);
+        shell.People.SetPrFilterCommand.Execute(shell.People.PrFilters[0]);
+        Assert.Equal(allPrs, shell.People.RecentPullRequests.Count);
+        var comments = shell.People.EventFilters.First(c => c.Key == "Comment");
+        shell.People.SetEventFilterCommand.Execute(comments);
+        Assert.True(shell.People.ActivityEvents.All(e => e.Kind == "Comment"));
+
+        // The commit-count option loads three counts only when it is switched on.
+        Assert.False(shell.People.HasCommitStats);
+        shell.People.ShowCommitCounts = true;
+        for (var i = 0; i < 100 && !shell.People.HasCommitStats; i++) await Task.Delay(20);
+        Assert.Equal(3, shell.People.CommitStats.Count);
+        shell.People.ShowCommitCounts = false;
+        Assert.False(shell.People.HasCommitStats);
+
+        // The desk pile labels each book with its pull request number.
+        var worker = shell.People.Floors.SelectMany(f => f.People).First(p => p.Assigned + p.ToReview + p.Raised > 0);
+        Assert.True(worker.DeskBooks.Any(b => b.Label.StartsWith("#")));
 
         shell.Navigate(shell.MyPullRequests);
         var my = shell.MyPullRequests;
@@ -360,7 +402,7 @@ public class EndToEndTests
     {
         var f = await CreateAsync();
         var clock = new ManualTime();
-        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new InlineDispatcher(), clock);
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), clock);
 
         timers.TaskName = "Write report";
         timers.ToggleTaskCommand.Execute(null);
@@ -376,10 +418,384 @@ public class EndToEndTests
         await f.Monitor.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Several_task_timers_run_at_once_and_stop_buttons_pause_them()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+
+        timers.NewTimerName = "Write docs";
+        timers.AddTaskTimerCommand.Execute(null);
+        timers.NewTimerName = "Fix bug";
+        timers.AddTaskTimerCommand.Execute(null);
+
+        Assert.Equal(2, timers.MoreTimers.Count);
+        Assert.True(timers.MoreTimers.All(t => t.IsRunning));
+        Assert.Equal(2, timers.RunningTimers.Count);
+
+        timers.MoreTimers[0].Line.StopCommand.Execute(null); // the stop button on the island / widget
+        Assert.False(timers.MoreTimers[0].IsRunning);
+        Assert.True(timers.MoreTimers[1].IsRunning);
+        Assert.Single(timers.RunningTimers);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Countdown_rings_saves_a_session_and_stops_at_zero()
+    {
+        var f = await CreateAsync();
+        var clock = new ManualTime();
+        var alarm = new CountingAlarm();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, alarm, new InlineDispatcher(), clock);
+
+        timers.CountdownMinutes = 1;
+        timers.AddCountdownCommand.Execute(null);
+        var countdown = Assert.Single(timers.MoreTimers);
+        Assert.Equal("01:00", countdown.Clock);
+
+        clock.Advance(TimeSpan.FromSeconds(30));
+        timers.Reformat(); // redraws and re-reads every timer
+        Assert.Equal("00:30", countdown.Clock);
+        Assert.Equal(0, alarm.Plays);
+
+        clock.Advance(TimeSpan.FromSeconds(40));
+        timers.Reformat();
+        Assert.True(countdown.IsFinished);
+        Assert.False(countdown.IsRunning);
+        Assert.Equal(1, alarm.Plays);
+        Assert.Empty(timers.RunningTimers);
+
+        for (var i = 0; i < 50 && f.History.Sessions.Count == 0; i++) await Task.Delay(20);
+        var session = Assert.Single(f.History.Sessions);
+        Assert.Equal(GitDash.Domain.Timers.TimerKind.Countdown, session.Kind);
+        Assert.Equal(TimeSpan.FromMinutes(1), session.Duration);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    private static GitDash.Domain.PullRequests.PullRequest DeskPr(bool approved) => TestData.Pr("p1", with: p => p with
+    {
+        Assignees = [TestData.Me],
+        Reviews = approved ? [new GitDash.Domain.PullRequests.Review(
+            TestData.Me, GitDash.Domain.PullRequests.ReviewState.Approved, TestData.Now, 0)] : [],
+    });
+
+    [Fact]
+    public async Task Review_timer_stops_by_itself_once_you_approve()
+    {
+        var f = await CreateAsync();
+        var clock = new ManualTime();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), clock);
+        timers.StartReviewFor(DeskPr(approved: false));
+        Assert.True(timers.IsReviewRunning);
+        clock.Advance(TimeSpan.FromMinutes(12));
+
+        timers.Apply(GitDash.Application.Monitoring.MonitorState.Empty with { Open = [DeskPr(approved: true)] });
+
+        Assert.False(timers.IsReviewRunning);
+        for (var i = 0; i < 50 && f.History.Sessions.Count == 0; i++) await Task.Delay(20);
+        Assert.Equal(GitDash.Domain.Timers.TimerKind.PullRequestReview, Assert.Single(f.History.Sessions).Kind);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Starting_a_review_timer_on_an_approved_pull_request_asks_first_and_then_keeps_running()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+        var state = GitDash.Application.Monitoring.MonitorState.Empty with { Open = [DeskPr(approved: true)] };
+        timers.Apply(state);
+        timers.SelectedReviewTarget = timers.ReviewTargets.Single();
+
+        timers.ToggleReviewCommand.Execute(null);
+        Assert.True(timers.IsConfirmingApproved);
+        Assert.False(timers.IsReviewRunning);
+
+        timers.CancelApprovedStartCommand.Execute(null);
+        Assert.False(timers.IsConfirmingApproved);
+        Assert.False(timers.IsReviewRunning);
+
+        timers.ToggleReviewCommand.Execute(null);
+        timers.ConfirmApprovedStartCommand.Execute(null);
+        Assert.True(timers.IsReviewRunning);
+
+        timers.Apply(state); // still approved: confirmed on purpose, so it must not stop
+        Assert.True(timers.IsReviewRunning);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task A_second_pull_request_gets_its_own_review_timer_while_the_first_is_running()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+        timers.StartReviewFor(DeskPr(approved: false));
+        var other = TestData.Pr("p2", with: p => p with { Assignees = [TestData.Me] });
+        timers.StartReviewFor(other);
+
+        Assert.True(timers.IsReviewRunning);
+        var extra = Assert.Single(timers.MoreTimers);
+        Assert.True(extra.IsReview);
+        Assert.True(extra.IsRunning);
+        Assert.Equal(2, timers.RunningTimers.Count);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Alarms_are_added_toggled_and_removed_in_the_settings()
+    {
+        var f = await CreateAsync();
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+
+        timers.NewAlarmTime = new TimeSpan(7, 30, 0);
+        timers.NewAlarmLabel = "Stand-up";
+        timers.NewAlarmDaily = true;
+        timers.AddAlarmCommand.Execute(null);
+        for (var i = 0; i < 50 && timers.Alarms.Count == 0; i++) await Task.Delay(20);
+
+        var alarm = Assert.Single(timers.Alarms);
+        Assert.Equal("Stand-up", alarm.Label);
+        Assert.Equal("Every day", alarm.Repeat);
+        Assert.True(Assert.Single(f.Settings.Current.Alarms).Daily);
+
+        alarm.IsEnabled = false;
+        for (var i = 0; i < 50 && f.Settings.Current.Alarms[0].Enabled; i++) await Task.Delay(20);
+        Assert.False(f.Settings.Current.Alarms[0].Enabled);
+
+        timers.Alarms[0].RemoveCommand.Execute(null);
+        for (var i = 0; i < 50 && f.Settings.Current.Alarms.Count > 0; i++) await Task.Delay(20);
+        Assert.Empty(f.Settings.Current.Alarms);
+
+        timers.Dispose();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Changing_the_filter_always_announces_the_selected_card_so_a_single_card_is_centred()
+    {
+        var f = await CreateAsync();
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), TimeProvider.System, _ => { });
+        await f.Monitor.SyncAsync();
+        my.Apply(f.Monitor.State);
+
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.All);
+        Assert.True(my.Cards.Count > 2);
+        my.SelectedIndex = my.Cards.Count - 1;
+
+        var raised = 0;
+        my.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MyPullRequestsViewModel.SelectedIndex)) raised++; };
+        var all = my.Cards.Count;
+        my.SelectedFilter = my.Filters.Where(x => x.Filter != PullRequestFilter.All && x.Count > 0).OrderBy(x => x.Count).First();
+
+        Assert.True(my.Cards.Count < all);
+        Assert.Equal(0, my.SelectedIndex);
+        Assert.True(raised > 0); // the cover flow is told, so the lone card moves to the centre
+
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Actions_panel_lists_runs_and_cards_get_run_counts_and_tags()
+    {
+        var f = await CreateAsync();
+        var time = TimeProvider.System;
+        var gateway = new GitDash.Infrastructure.Demo.DemoGitHubGateway(time, 1);
+        var actions = new ActionsMonitor(f.Settings, f.Accounts, gateway, time);
+        var vm = new ActionsViewModel(actions, new NoLauncher(), new InlineDispatcher(), time);
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), time, _ => { }, vm);
+
+        await f.Monitor.SyncAsync();
+        await actions.RefreshAsync();
+        my.Apply(f.Monitor.State);
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.All); // the panel lists runs of the pull requests on the cards
+
+        Assert.True(vm.HasRuns);
+        Assert.Contains(vm.Runs, r => r.IsActive && r.Progress > 0 && r.Progress < 1);
+        Assert.Contains(vm.Runs, r => r.Status == "Passed");
+        Assert.Contains(vm.Runs, r => r.Status == "Failed");
+        Assert.Equal(3, vm.ActiveCount); // one running demo run in each of the three repositories
+        Assert.Equal("Actions · 3 running", vm.Header);
+
+        // The demo runs belong to the first three pull requests of every repository.
+        var card = my.Cards.First(c => c.PullRequest.Number == 90 + 2 * 31);
+        Assert.NotEqual("—", card.PipelineRunsText);
+        Assert.True(card.RunsActive);
+
+        vm.ToggleCommand.Execute(null);
+        Assert.True(vm.IsOpen);
+
+        // "Only this card" narrows the panel to the pull request in front; its own tab lists the same runs.
+        var all = vm.Runs.Count;
+        my.SelectedIndex = my.Cards.IndexOf(card);
+        vm.OnlyCurrentCard = true;
+        Assert.True(vm.Runs.Count > 0 && vm.Runs.Count < all);
+        Assert.Equal(vm.Runs.Count, vm.RunsFor(card.PullRequest.Repository, card.PullRequest.Number).Count);
+        vm.OnlyCurrentCard = false;
+        Assert.Equal(all, vm.Runs.Count);
+        // A filter that leaves out the cards of those runs hides them.
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.Own);
+        Assert.True(vm.Runs.Count < all);
+
+        vm.Dispose();
+        await actions.DisposeAsync();
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Approve_and_hand_over_need_a_second_click_and_report_the_result()
+    {
+        var f = await CreateAsync();
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), TimeProvider.System, _ => { });
+        await f.Monitor.SyncAsync();
+        my.Apply(f.Monitor.State);
+        my.SelectedFilter = my.Filters.Single(x => x.Filter == PullRequestFilter.AssignedToMe);
+
+        var card = my.Cards.First(c => c.CanApprove && c.CanHandOver);
+        my.ApproveCommand.Execute(card);
+        Assert.Equal("approve", card.Pending); // first click only asks
+        Assert.Equal("Confirm approve", card.ApproveLabel);
+        Assert.False(my.HasActionMessage);
+
+        my.CancelPendingCommand.Execute(card);
+        Assert.Null(card.Pending);
+
+        my.ApproveCommand.Execute(card);
+        my.ApproveCommand.Execute(card);
+        for (var i = 0; i < 100 && !my.ActionMessage.StartsWith("Approved"); i++) await Task.Delay(20);
+        Assert.Equal($"Approved {card.Number}", my.ActionMessage);
+        Assert.False(my.IsActionError);
+
+        my.HandOverCommand.Execute(card);
+        my.HandOverCommand.Execute(card);
+        for (var i = 0; i < 100 && !my.ActionMessage.Contains("handed"); i++) await Task.Delay(20);
+        Assert.Contains("handed to " + card.Author, my.ActionMessage);
+
+        // Assign author and remove me are separate actions, each with its own confirm click.
+        var other = my.Cards.First(c => c.CanRemoveMe);
+        my.RemoveMeCommand.Execute(other);
+        Assert.Equal("Confirm remove me", other.RemoveMeLabel);
+        my.RemoveMeCommand.Execute(other);
+        for (var i = 0; i < 100 && !my.ActionMessage.Contains("removed as assignee"); i++) await Task.Delay(20);
+        Assert.Contains("removed as assignee", my.ActionMessage);
+        var assignable = my.Cards.FirstOrDefault(c => c.CanAssignAuthor);
+        if (assignable is not null)
+        {
+            my.AssignAuthorCommand.Execute(assignable);
+            my.AssignAuthorCommand.Execute(assignable);
+            for (var i = 0; i < 100 && !my.ActionMessage.Contains("is now assigned"); i++) await Task.Delay(20);
+            Assert.Contains("is now assigned", my.ActionMessage);
+        }
+
+        await f.Monitor.DisposeAsync();
+    }
+
     private sealed class ManualTime : TimeProvider
     {
         private DateTimeOffset _now = new(2026, 11, 13, 9, 0, 0, TimeSpan.Zero);
         public override DateTimeOffset GetUtcNow() => _now;
         public void Advance(TimeSpan by) => _now += by;
+    }
+
+    [Fact]
+    public async Task A_pull_request_url_opens_the_detail_screen_and_unknown_ones_fall_back()
+    {
+        var f = await CreateAsync();
+        var time = TimeProvider.System;
+        var my = new MyPullRequestsViewModel(f.Monitor, new NoLauncher(), new InlineDispatcher(), time, _ => { });
+        await f.Monitor.SyncAsync();
+        my.Apply(f.Monitor.State);
+
+        var target = my.Cards.Last().PullRequest;
+        Assert.True(my.ShowPullRequest(target.Url));
+        Assert.True(my.IsDetailOpen);
+        Assert.Equal(target.Url, my.DetailCard!.Url);
+        Assert.False(my.ShowPullRequest("https://github.com/nobody/nothing/pull/1"));
+
+        AvatarDirectory.Update(new Dictionary<string, string> { ["Anna-Becker"] = "https://avatars.githubusercontent.com/u/1" });
+        Assert.Equal("https://avatars.githubusercontent.com/u/1", AvatarDirectory.UrlFor("anna-becker"));
+        Assert.Null(AvatarDirectory.UrlFor("someone-else"));
+
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public void Island_rotates_pairs_when_more_than_two_counters_and_shows_all_when_expanded()
+    {
+        var widget = new WidgetViewModel();
+        widget.Configure(
+            [StatusKind.Error, StatusKind.Assigned, StatusKind.Raised, StatusKind.Approval, StatusKind.Comments],
+            [StatusKind.Assigned, StatusKind.Open], rotateSeconds: 3);
+
+        Assert.True(widget.IslandRotates);
+        Assert.Equal([StatusKind.Error, StatusKind.Assigned], widget.IslandRow.Select(i => i.Kind)); // chosen order
+        Assert.False(widget.TickIsland());
+        Assert.False(widget.TickIsland());
+        Assert.True(widget.TickIsland()); // interval reached: the next pair is due
+        widget.AdvanceIslandPage();
+        Assert.Equal([StatusKind.Raised, StatusKind.Approval], widget.IslandRow.Select(i => i.Kind));
+        widget.AdvanceIslandPage();
+        Assert.Equal([StatusKind.Comments], widget.IslandRow.Select(i => i.Kind));
+        widget.AdvanceIslandPage();
+        Assert.Equal(StatusKind.Error, widget.IslandRow[0].Kind); // wraps around
+
+        widget.IslandExpanded = true;
+        Assert.Equal(5, widget.IslandRow.Count);
+        Assert.False(widget.TickIsland()); // no rotation while everything is shown
+
+        widget.Configure([StatusKind.Approved], [StatusKind.Assigned], 3);
+        Assert.False(widget.IslandRotates);
+        Assert.Single(widget.IslandRow);
+        Assert.Equal(1, widget.WidgetColumns);
+    }
+
+    [Fact]
+    public async Task Counter_choice_and_order_are_saved_in_settings()
+    {
+        var f = await CreateAsync();
+        var settings = new SettingsViewModel(f.Settings, f.Accounts, f.Router, new NoLauncher(), new InlineDispatcher());
+
+        var island = settings.IslandLayout;
+        Assert.Equal([StatusKind.Assigned, StatusKind.Approval], island.Items.Where(i => i.IsSelected).Select(i => i.Kind));
+
+        island.Items.Single(i => i.Kind == StatusKind.Error).IsSelected = true;
+        island.Items.Single(i => i.Kind == StatusKind.Error).MoveUpCommand!.Execute(null); // up from the first unselected slot
+        await Task.Delay(50);
+
+        var saved = f.Settings.Current.IslandStatuses;
+        Assert.True(saved.Contains(StatusKind.Error));
+        Assert.Equal(saved.Count, island.Items.Count(i => i.IsSelected));
+        Assert.Equal(saved, island.Items.Where(i => i.IsSelected).Select(i => i.Kind));
+
+        island.Items[0].MoveDownCommand!.Execute(null);
+        await Task.Delay(50);
+        Assert.Equal(island.Items.Where(i => i.IsSelected).Select(i => i.Kind), f.Settings.Current.IslandStatuses);
+
+        settings.StatusRotateSeconds = 9;
+        await Task.Delay(50);
+        Assert.Equal(9, f.Settings.Current.StatusRotateSeconds);
+        await f.Monitor.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Recent_sessions_list_shows_up_to_one_hundred()
+    {
+        var f = await CreateAsync();
+        for (var i = 0; i < 130; i++)
+            await f.History.AddAsync(new GitDash.Domain.Timers.TimerSession(
+                Guid.NewGuid(), GitDash.Domain.Timers.TimerKind.Task, $"Task {i}", DateTimeOffset.UtcNow.AddMinutes(-i), TimeSpan.FromMinutes(5)));
+
+        var timers = new TimersViewModel(f.Settings, f.History, f.Router, new NoAlarm(), new InlineDispatcher(), new ManualTime());
+        Assert.Equal(100, timers.History.Count);
+        Assert.Equal("Task 129", timers.History[0].Label); // newest first
+        await f.Monitor.DisposeAsync();
     }
 }

@@ -6,13 +6,115 @@ using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
 using GitDash.Application.Timers;
+using GitDash.Domain.Insights;
 using GitDash.Presentation.Mvvm;
 
 namespace GitDash.Presentation.ViewModels;
 
 /// <summary>The three numbers shown by the floating widget and the tray icon.</summary>
+/// <summary>One counter on the island or the widget.</summary>
+public sealed record StatusItemViewModel(StatusKind Kind, string Label, int Count, string Accent, double ValueSize)
+{
+    public string Caption => Label.ToUpperInvariant();
+}
+
 public sealed class WidgetViewModel : ObservableObject
 {
+    private const int IslandPageSize = 2;
+    private readonly Dictionary<StatusKind, int> _counts = [];
+    private IReadOnlyList<StatusKind> _islandKinds = [StatusKind.Assigned, StatusKind.Approval];
+    private IReadOnlyList<StatusKind> _widgetKinds = [StatusKind.Assigned, StatusKind.Approval, StatusKind.Open];
+    private IReadOnlyList<StatusItemViewModel> _islandItems = [], _islandRow = [], _widgetItems = [];
+    private int _page, _rotateSeconds = 4, _secondsOnPage;
+    private bool _islandExpanded;
+    private string _islandSignature = string.Empty, _widgetSignature = string.Empty;
+
+    /// <summary>Every counter the island is set to show, in the chosen order.</summary>
+    public IReadOnlyList<StatusItemViewModel> IslandItems { get => _islandItems; private set => Set(ref _islandItems, value); }
+
+    /// <summary>What the island's compact row shows right now: one page of two while it rotates, everything while expanded.</summary>
+    public IReadOnlyList<StatusItemViewModel> IslandRow { get => _islandRow; private set => Set(ref _islandRow, value); }
+
+    /// <summary>The counters on the floating widget's card.</summary>
+    public IReadOnlyList<StatusItemViewModel> WidgetItems { get => _widgetItems; private set => Set(ref _widgetItems, value); }
+    public int WidgetColumns => Math.Clamp(_widgetItems.Count, 1, 4);
+
+    /// <summary>More than two counters: the compact island row rotates through them.</summary>
+    public bool IslandRotates => _islandItems.Count > IslandPageSize;
+
+    /// <summary>The island is hovered open: show every counter at once.</summary>
+    public bool IslandExpanded
+    {
+        get => _islandExpanded;
+        set { if (Set(ref _islandExpanded, value)) RebuildIslandRow(); }
+    }
+
+    /// <summary>Applies the user's choice of counters, their order and the rotation interval.</summary>
+    public void Configure(IReadOnlyList<StatusKind> island, IReadOnlyList<StatusKind> widget, int rotateSeconds)
+    {
+        var seconds = Math.Clamp(rotateSeconds, 2, 60);
+        if (island.SequenceEqual(_islandKinds) && widget.SequenceEqual(_widgetKinds) && seconds == _rotateSeconds) return;
+        _islandKinds = island;
+        _widgetKinds = widget;
+        _rotateSeconds = seconds;
+        _page = 0;
+        _secondsOnPage = 0;
+        RebuildItems();
+    }
+
+    /// <summary>Called once a second by the island. True when the interval has passed and the next pair is due.</summary>
+    public bool TickIsland()
+    {
+        if (!IslandRotates || _islandExpanded) return false;
+        if (++_secondsOnPage < _rotateSeconds) return false;
+        _secondsOnPage = 0;
+        return true;
+    }
+
+    /// <summary>Shows the next pair of counters (wrapping around). True when the pair changed.</summary>
+    public bool AdvanceIslandPage()
+    {
+        if (!IslandRotates) return false;
+        var pages = (int)Math.Ceiling(_islandItems.Count / (double)IslandPageSize);
+        _page = (_page + 1) % pages;
+        RebuildIslandRow();
+        return true;
+    }
+
+    private void RebuildItems()
+    {
+        var island = _islandKinds.Distinct().Select(k => Item(k, 20)).ToList();
+        var dense = _widgetKinds.Distinct().Count() > 4;
+        var widget = _widgetKinds.Distinct().Select(k => Item(k, dense ? 18 : _widgetKinds.Count > 3 ? 24 : 30)).ToList();
+
+        var islandSig = string.Join('|', island.Select(i => $"{i.Kind}:{i.Count}"));
+        if (islandSig != _islandSignature)
+        {
+            _islandSignature = islandSig;
+            IslandItems = island;
+            Raise(nameof(IslandRotates));
+            var pages = Math.Max(1, (int)Math.Ceiling(island.Count / (double)IslandPageSize));
+            if (_page >= pages) _page = 0;
+            RebuildIslandRow();
+        }
+
+        var widgetSig = string.Join('|', widget.Select(i => $"{i.Kind}:{i.Count}:{i.ValueSize}"));
+        if (widgetSig != _widgetSignature)
+        {
+            _widgetSignature = widgetSig;
+            WidgetItems = widget;
+            Raise(nameof(WidgetColumns));
+        }
+    }
+
+    private StatusItemViewModel Item(StatusKind kind, double size) =>
+        new(kind, StatusCounter.Label(kind), _counts.GetValueOrDefault(kind), StatusCounter.Accent(kind), size);
+
+    private void RebuildIslandRow() =>
+        IslandRow = _islandExpanded || !IslandRotates
+            ? _islandItems
+            : [.. _islandItems.Skip(_page * IslandPageSize).Take(IslandPageSize)];
+
     private int _assigned, _approval, _total;
     private DateTimeOffset? _oldestSince, _oldestReviewSince;
     private string _oldestAge = "none waiting", _oldestReviewAge = "none waiting";
@@ -53,6 +155,8 @@ public sealed class WidgetViewModel : ObservableObject
         Assigned = state.Summary.AssignedToMe;
         Approval = state.Summary.NeedsMyApproval;
         Total = state.Summary.TotalOpen;
+        foreach (var kind in StatusCounter.All) _counts[kind] = StatusCounter.Count(kind, state.Open);
+        RebuildItems();
 
         var assigned = state.Open.Where(p => p.IsAssignedToViewer)
             .OrderBy(p => p.AssignedToViewerAt ?? p.CreatedAt)
@@ -89,6 +193,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly IUiDispatcher _ui;
     private readonly TimeProvider _time;
     private PageViewModel _currentPage;
+    private readonly IUrlLauncher _launcher;
     private MonitorState _state = MonitorState.Empty;
     private int _updateQueued;
     private int _renderedRevision = -1;
@@ -97,9 +202,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     public ShellViewModel(
         PullRequestMonitor monitor, SettingsService settings, AccountService accounts, TimerHistory history,
-        NotificationRouter notifications, PersonActivityService personActivity, IUrlLauncher launcher, IAlarm alarm, IUiDispatcher ui, TimeProvider time)
+        NotificationRouter notifications, PersonActivityService personActivity, IUrlLauncher launcher, IAlarm alarm, IUiDispatcher ui, TimeProvider time,
+        ActionsMonitor? actionsMonitor = null)
     {
         _time = time;
+        _launcher = launcher;
         _monitor = monitor;
         _settings = settings;
         _ui = ui;
@@ -107,22 +214,27 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Humanize.Format = settings.Current.TimeFormat;
 
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
-        Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools };
+        Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
-        Timers = new TimersViewModel(settings, history, notifications, ui, time);
+        Timers = new TimersViewModel(settings, history, notifications, alarm, ui, time);
         Dashboard = new DashboardViewModel(launcher, time, () => Navigate(Settings));
         Dashboard.AttachTimers(Timers);
         People = new PeopleViewModel(launcher, time, personActivity);
         // "Review timer" on a card: start timing, then open the pull request on GitHub.
+        Actions = actionsMonitor is null ? null : new ActionsViewModel(actionsMonitor, launcher, ui, time);
         MyPullRequests = new MyPullRequestsViewModel(monitor, launcher, ui, time, pr =>
         {
             Timers.StartReviewFor(pr);
             launcher.Open(pr.Url);
-        });
+        }, Actions);
+        Timers.Ticked += () => MyPullRequests.UpdateReviewClocks(Timers.ReviewClockFor);
 
         _selectedRepositories = new HashSet<string>(settings.Current.SelectedRepositories, StringComparer.OrdinalIgnoreCase);
         RefreshRepositoryOptions(MonitorState.Empty);
         About = new AboutViewModel(launcher);
+        Home.PullRequestOpener = OpenPullRequest;
+        Dashboard.PullRequestOpener = OpenPullRequest;
+        People.PullRequestOpener = OpenPullRequest;
         Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings, About];
         _currentPage = Home;
         Home.IsSelected = true;
@@ -130,8 +242,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         NavigateCommand = new RelayCommand<PageViewModel>(Navigate);
         RefreshCommand = new RelayCommand(monitor.RequestRefresh);
 
-        notifications.Published += request => ui.Post(() => Widget.NotificationArrived(request.Title));
+        notifications.Published += request => ui.Post(() =>
+        {
+            Widget.NotificationArrived(request.Title);
+            // Timers and alarms ring on their own; everything else follows the "sound with notifications" setting.
+            if (request.Tone != ToastTone.Timer && settings.Current.SoundOnNotifications) alarm.Play();
+        });
         _monitor.StateChanged += OnStateChanged;
+        Widget.Configure(settings.Current.IslandStatuses, settings.Current.WidgetStatuses, settings.Current.StatusRotateSeconds);
         _settings.Changed += OnSettingsChanged;
     }
 
@@ -141,6 +259,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public PeopleViewModel People { get; }
     public MyPullRequestsViewModel MyPullRequests { get; }
     public TimersViewModel Timers { get; }
+    public ActionsViewModel? Actions { get; }
     public SettingsViewModel Settings { get; }
     public AboutViewModel About { get; }
     public WidgetViewModel Widget { get; } = new();
@@ -301,6 +420,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>Called once a second by the floating widget while it is on screen.</summary>
     public void TickWidget() => Widget.Tick(_time.GetUtcNow());
 
+    /// <summary>
+    /// Shows a pull request in the detailed review screen of the Pull requests page. Only when it is not part of the
+    /// loaded list (for example another team's repository) does it fall back to the browser.
+    /// </summary>
+    public void OpenPullRequest(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return;
+        Navigate(MyPullRequests);
+        if (!MyPullRequests.ShowPullRequest(url)) _launcher.Open(url);
+    }
+
     public void Navigate(PageViewModel page)
     {
         if (ReferenceEquals(page, CurrentPage)) return;
@@ -313,6 +443,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private void OnSettingsChanged(AppSettings settings) => _ui.Post(() =>
     {
         ReduceMotion = settings.ReduceMotion;
+        Widget.Configure(settings.IslandStatuses, settings.WidgetStatuses, settings.StatusRotateSeconds);
         Raise(nameof(SidebarPinned));
         if (Humanize.Format != settings.TimeFormat)
         {
@@ -328,6 +459,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         // Several updates can arrive in a burst; only the newest one needs to reach the UI.
         _state = state;
+        AvatarDirectory.Update(state.Avatars);
         if (Interlocked.Exchange(ref _updateQueued, 1) == 1) return;
         _ui.Post(() =>
         {
@@ -367,6 +499,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _monitor.StateChanged -= OnStateChanged;
         _settings.Changed -= OnSettingsChanged;
         Timers.Dispose();
+        Actions?.Dispose();
         AiTools.Dispose();
     }
 }

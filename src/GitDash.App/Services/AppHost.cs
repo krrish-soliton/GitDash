@@ -29,6 +29,7 @@ public sealed class AppHost : IDisposable
 {
     private readonly HttpClient? _http;
     private readonly TimerHistory _history;
+    private readonly ActionsMonitor _actions;
     private readonly WidgetController _widget;
     private readonly IslandController _island;
     private readonly TrayController _tray;
@@ -79,6 +80,7 @@ public sealed class AppHost : IDisposable
             launcher, showMainWindow, () => Settings.Current.ReduceMotion, tone => Settings.Current.AutoCloses(tone));
         var notifications = new NotificationRouter(Settings, toasts, new NativeNotifier());
         Monitor = new PullRequestMonitor(Settings, accounts, gitHub, notifications, time, stateCache);
+        _actions = new ActionsMonitor(Settings, accounts, gitHub, time);
         _history = new TimerHistory(sessionStore);
 
         if (demo)
@@ -94,9 +96,10 @@ public sealed class AppHost : IDisposable
         }
 
         Shell = new ShellViewModel(Monitor, Settings, accounts, _history, notifications,
-            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(), ui, time);
+            new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions);
         _widget = new WidgetController(Shell, Settings, showMainWindow);
-        _island = new IslandController(Shell, Settings, launcher, showMainWindow);
+        _island = new IslandController(Shell, Settings, showMainWindow);
+        toasts.OpenPullRequest = Shell.OpenPullRequest;
         toasts.Island = _island.TryShow;
         // Closing a notification on one surface closes the same notification on the other.
         toasts.Closed += _island.CloseFor;
@@ -117,6 +120,7 @@ public sealed class AppHost : IDisposable
         _island.Start();
         _tray.Start();
         Monitor.Start();
+        _actions.Start();
     }
 
     public void Dispose()
@@ -127,6 +131,7 @@ public sealed class AppHost : IDisposable
         Shell.Dispose();
         // Bounded wait so a slow network call can never keep the process alive after Quit.
         Monitor.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
+        _actions.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2));
         _http?.Dispose();
     }
 }

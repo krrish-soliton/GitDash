@@ -146,7 +146,7 @@ public class ChangeDetectorTests
         var result = PullRequestChangeDetector.Detect(before, after, All, Now);
         Assert.Single(result);
         Assert.Equal(NotificationKind.Merged, result[0].Kind);
-        Assert.Contains("leo", result[0].Title);
+        Assert.Contains("Leo", result[0].Title);
     }
 
     [Fact]
@@ -237,6 +237,103 @@ public class TimerTests
     }
 }
 
+
+public class AlarmTests
+{
+    private static readonly AlarmEntry Daily = new(Guid.NewGuid(), "Stand-up", new TimeOnly(9, 30), Daily: true);
+    private static readonly DateTime Day = new(2026, 11, 13, 0, 0, 0);
+
+    [Fact]
+    public void Rings_from_its_time_for_a_few_minutes_only()
+    {
+        Assert.False(Daily.IsDue(Day.AddHours(9).AddMinutes(29)));
+        Assert.True(Daily.IsDue(Day.AddHours(9).AddMinutes(30)));
+        Assert.True(Daily.IsDue(Day.AddHours(9).AddMinutes(34)));
+        Assert.False(Daily.IsDue(Day.AddHours(9).AddMinutes(36))); // the app was closed at 9:30: stay silent
+    }
+
+    [Fact]
+    public void Daily_alarm_waits_for_tomorrow_and_one_off_alarm_switches_off()
+    {
+        var ringing = Day.AddHours(9).AddMinutes(30);
+        var after = Daily.Rang(ringing);
+        Assert.False(after.IsDue(ringing.AddMinutes(1)));
+        Assert.True(after.IsDue(ringing.AddDays(1)));
+
+        var once = Daily with { Daily = false };
+        var done = once.Rang(ringing);
+        Assert.False(done.Enabled);
+        Assert.False(done.IsDue(ringing.AddDays(1)));
+    }
+
+    [Fact]
+    public void Disabled_alarm_stays_silent()
+    {
+        Assert.False((Daily with { Enabled = false }).IsDue(Day.AddHours(9).AddMinutes(31)));
+    }
+}
+
+public class ViewerApprovalTests
+{
+    private static PullRequest With(params Review[] reviews) => TestData.Pr("a", with: p => p with
+    {
+        Reviews = reviews,
+        LastCommitAt = TestData.Now.AddHours(-1),
+    });
+
+    [Fact]
+    public void Approval_after_the_last_commit_counts()
+    {
+        Assert.True(With(new Review(TestData.Me, ReviewState.Approved, TestData.Now, 0)).ViewerHasApproved);
+    }
+
+    [Fact]
+    public void Approval_before_the_last_commit_is_stale_and_does_not_count()
+    {
+        Assert.False(With(new Review(TestData.Me, ReviewState.Approved, TestData.Now.AddHours(-3), 0)).ViewerHasApproved);
+    }
+
+    [Fact]
+    public void Someone_elses_approval_or_a_later_change_request_does_not_count()
+    {
+        Assert.False(With(new Review("maya", ReviewState.Approved, TestData.Now, 0)).ViewerHasApproved);
+        Assert.False(With(
+            new Review(TestData.Me, ReviewState.Approved, TestData.Now.AddMinutes(-10), 0),
+            new Review(TestData.Me, ReviewState.ChangesRequested, TestData.Now, 0)).ViewerHasApproved);
+    }
+}
+
+public class WaitingForTests
+{
+    private static PullRequest Pr(Func<PullRequest, PullRequest> with) => TestData.Pr("w", with: with);
+
+    [Fact]
+    public void Waits_for_the_requested_reviewers()
+    {
+        var pr = Pr(p => p with { RequestedReviewers = ["maya", "leo"], Assignees = ["sam"] });
+        Assert.Equal(new[] { "maya", "leo" }, pr.WaitingFor.ToArray());
+        Assert.Equal("to review", pr.WaitingForReason);
+    }
+
+    [Fact]
+    public void Waits_for_the_author_after_changes_were_requested_or_once_approved()
+    {
+        var changes = Pr(p => p with { Author = "maya", Reviews = [new Review("leo", ReviewState.ChangesRequested, TestData.Now, 0)] });
+        Assert.Equal(new[] { "maya" }, changes.WaitingFor.ToArray());
+        Assert.Equal("to address the requested changes", changes.WaitingForReason);
+
+        var approved = Pr(p => p with { Author = "maya", Reviews = [new Review("leo", ReviewState.Approved, TestData.Now, 0)] });
+        Assert.Equal(new[] { "maya" }, approved.WaitingFor.ToArray());
+        Assert.Equal("to merge", approved.WaitingForReason);
+    }
+
+    [Fact]
+    public void Falls_back_to_the_assignees_and_is_empty_when_not_open()
+    {
+        Assert.Equal(new[] { "sam" }, Pr(p => p with { Assignees = ["sam"] }).WaitingFor.ToArray());
+        Assert.Empty(Pr(p => p with { Assignees = ["sam"], State = PullRequestState.Merged }).WaitingFor);
+    }
+}
 
 public class AiAuthorTests
 {
@@ -486,6 +583,47 @@ public class Round10Tests
     }
 
     [Fact]
+    public void Big_prs_make_clearly_taller_and_wider_books_than_small_ones()
+    {
+        var small = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(5, 2, 1);
+        var big = GitDash.Presentation.ViewModels.DashboardViewModel.BookHeightFor(2500, 800, 40);
+        Assert.True(big - small >= 30);
+        Assert.True(GitDash.Presentation.ViewModels.DashboardViewModel.BookWidthFor(2500, 800, 40)
+                    - GitDash.Presentation.ViewModels.DashboardViewModel.BookWidthFor(5, 2, 1) >= 10);
+    }
+
+    [Fact]
+    public void First_names_come_from_logins()
+    {
+        Assert.Equal("Gowtham", GitDash.Presentation.Mvvm.Humanize.FirstName("gowtham-krishnan"));
+        Assert.Equal("Jane", GitDash.Presentation.Mvvm.Humanize.FirstName("JaneDoe"));
+        Assert.Equal("John", GitDash.Presentation.Mvvm.Humanize.FirstName("john_smith42"));
+        Assert.Equal("Octocat", GitDash.Presentation.Mvvm.Humanize.FirstName("octocat"));
+        Assert.Equal("Anna", GitDash.Presentation.Mvvm.Humanize.FirstName("anna.k"));
+        var chip = new GitDash.Presentation.ViewModels.ReactionChipViewModel("👍", 5, ["anna-k", "ben_lee", "cy"]);
+        Assert.Equal("👍 Anna, Ben, Cy +2", chip.Label);
+    }
+
+    [Fact]
+    public void Desk_books_carry_pull_request_numbers()
+    {
+        var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 0, 2, [11], null, [21, 22]);
+        Assert.Equal("#11", books[0].Label);
+        Assert.Equal("#21", books[1].Label);
+        Assert.Equal("#22", books[2].Label);
+        Assert.Equal("", GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(1, 0, 0)[0].Label);
+    }
+
+    [Fact]
+    public void Commit_count_is_read_from_the_last_page_link()
+    {
+        var link = "<https://api.github.com/repositories/1/commits?author=a&per_page=1&page=2>; rel=\"next\", " +
+                   "<https://api.github.com/repositories/1/commits?author=a&per_page=1&page=347>; rel=\"last\"";
+        Assert.Equal(347, GitDash.Infrastructure.GitHub.GitHubGateway.LastPageOf(link));
+        Assert.Null(GitDash.Infrastructure.GitHub.GitHubGateway.LastPageOf(""));
+    }
+
+    [Fact]
     public void Desk_books_are_coloured_by_type_and_capped()
     {
         var books = GitDash.Presentation.ViewModels.PersonViewModel.BuildDeskBooks(2, 1, 1);
@@ -599,5 +737,29 @@ public class Round10Tests
     {
         Assert.Equal("dev", GitDash.Presentation.ViewModels.AboutViewModel.VersionOf(null));
         Assert.True(GitDash.Infrastructure.Security.GitHubUrlLauncher.IsAllowed(GitDash.Presentation.ViewModels.SettingsViewModel.NewOAuthAppUrl));
+    }
+
+    [Fact]
+    public void Status_counters_count_my_pull_requests_by_situation()
+    {
+        var approved = new Review("lena", ReviewState.Approved, Now.AddHours(-3), 0);
+        var open = new[]
+        {
+            Pr("mine-ready", Me, p => p with { Reviews = [approved], LastCommitAt = Now.AddHours(-5) }),
+            Pr("mine-broken", Me, p => p with { Reviews = [approved], PipelineFailed = true, UnresolvedThreads = 2, LastCommitAt = Now.AddHours(-5) }),
+            Pr("mine-draft", Me, p => p with { IsDraft = true, Reviews = [approved], LastCommitAt = Now.AddHours(-5) }),
+            Pr("assigned", "leo", p => p with { Assignees = [Me], UnresolvedThreads = 3 }),
+            Pr("review", "leo", p => p with { RequestedReviewers = [Me], UnresolvedThreads = 9 }),
+            Pr("merged", Me, p => p with { State = PullRequestState.Merged, Reviews = [approved] }),
+        };
+
+        Assert.Equal(1, StatusCounter.Count(StatusKind.Assigned, open));
+        Assert.Equal(1, StatusCounter.Count(StatusKind.Approval, open));
+        Assert.Equal(3, StatusCounter.Count(StatusKind.Raised, open));        // merged ones are not open
+        Assert.Equal(3, StatusCounter.Count(StatusKind.Approved, open));
+        Assert.Equal(1, StatusCounter.Count(StatusKind.ReadyToMerge, open));  // not broken, not a draft
+        Assert.Equal(1, StatusCounter.Count(StatusKind.Error, open));
+        Assert.Equal(5, StatusCounter.Count(StatusKind.Comments, open));      // 2 + 3; the review request is not mine to resolve
+        Assert.Equal(5, StatusCounter.Count(StatusKind.Open, open));
     }
 }

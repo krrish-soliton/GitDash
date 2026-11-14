@@ -42,6 +42,7 @@ internal static class GitHubQueries
           reviewRequests(first: 20) { nodes { requestedReviewer { __typename ... on User { login avatarUrl(size: 96) } } } }
           reviews(last: 100) { nodes { author { login } state submittedAt comments { totalCount } } }
           comments(last: 100) { totalCount nodes { author { login } createdAt } }
+          reviewThreads(first: 100) { nodes { isResolved } }
           commits(last: 1) { totalCount nodes { commit { committedDate statusCheckRollup { state } } } }
           timelineItems(last: 40, itemTypes: [ASSIGNED_EVENT, REVIEW_REQUESTED_EVENT]) {
             nodes {
@@ -100,7 +101,7 @@ internal static class GitHubQueries
               createdAt
               body
               author { login }
-              reviewThreads(first: 100) { nodes { isResolved comments(first: 50) { nodes { id } } } }
+              reviewThreads(first: 100) { nodes { id isResolved comments(first: 50) { nodes { id } } } }
               timelineItems(last: 150, itemTypes: [PULL_REQUEST_COMMIT, ISSUE_COMMENT, PULL_REQUEST_REVIEW,
                 ASSIGNED_EVENT, UNASSIGNED_EVENT, REVIEW_REQUESTED_EVENT, REVIEW_REQUEST_REMOVED_EVENT,
                 REVIEW_DISMISSED_EVENT, READY_FOR_REVIEW_EVENT, CONVERT_TO_DRAFT_EVENT,
@@ -108,10 +109,10 @@ internal static class GitHubQueries
                 nodes {
                   __typename
                   ... on PullRequestCommit { commit { committedDate messageHeadline author { name user { login } } } }
-                  ... on IssueComment { createdAt author { login } bodyText body }
+                  ... on IssueComment { createdAt author { login } bodyText body reactionGroups { content reactors(first: 12) { totalCount nodes { ... on User { login } ... on Bot { login } ... on Mannequin { login } } } } }
                   ... on PullRequestReview {
                     submittedAt author { login } state bodyText body
-                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } } }
+                    comments(first: 50) { totalCount nodes { id createdAt path body author { login } reactionGroups { content reactors(first: 12) { totalCount nodes { ... on User { login } ... on Bot { login } ... on Mannequin { login } } } } } }
                   }
                   ... on AssignedEvent { createdAt actor { login } assignee { ... on User { login } } }
                   ... on UnassignedEvent { createdAt actor { login } assignee { ... on User { login } } }

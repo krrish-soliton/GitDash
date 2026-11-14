@@ -4,6 +4,7 @@ using GitDash.Application.Abstractions;
 using GitDash.Application.Accounts;
 using GitDash.Application.Monitoring;
 using GitDash.Application.Settings;
+using GitDash.Domain.Insights;
 using GitDash.Presentation.Mvvm;
 
 namespace GitDash.Presentation.ViewModels;
@@ -37,6 +38,83 @@ public sealed class RepositoryChoiceViewModel(
     }
 }
 
+/// <summary>One counter in a surface's content list: ticked to show it, moved to change the order.</summary>
+public sealed class StatusChoiceViewModel(StatusKind kind, bool isSelected, Action<StatusChoiceViewModel> changed) : ObservableObject
+{
+    private bool _isSelected = isSelected;
+    public StatusKind Kind { get; } = kind;
+    public string Title { get; } = StatusCounter.Title(kind);
+    public string Accent { get; } = StatusCounter.Accent(kind);
+    public ICommand? MoveUpCommand { get; init; }
+    public ICommand? MoveDownCommand { get; init; }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set { if (Set(ref _isSelected, value)) changed(this); }
+    }
+}
+
+/// <summary>The ordered, tickable list of counters for the island or the widget.</summary>
+public sealed class StatusLayoutViewModel : ObservableObject
+{
+    private readonly Func<IReadOnlyList<StatusKind>> _read;
+    private readonly Action<IReadOnlyList<StatusKind>> _write;
+    private bool _loading;
+
+    public StatusLayoutViewModel(Func<IReadOnlyList<StatusKind>> read, Action<IReadOnlyList<StatusKind>> write)
+    {
+        _read = read;
+        _write = write;
+        Reload();
+    }
+
+    public ObservableCollection<StatusChoiceViewModel> Items { get; } = [];
+
+    /// <summary>Selected counters first (in their saved order), then the ones that are off.</summary>
+    public void Reload()
+    {
+        var chosen = _read();
+        _loading = true;
+        Items.Clear();
+        foreach (var kind in chosen.Distinct()) Items.Add(Make(kind, true));
+        foreach (var kind in StatusCounter.All.Where(k => !chosen.Contains(k))) Items.Add(Make(kind, false));
+        _loading = false;
+    }
+
+    private StatusChoiceViewModel Make(StatusKind kind, bool selected)
+    {
+        StatusChoiceViewModel? choice = null;
+        choice = new StatusChoiceViewModel(kind, selected, OnChanged)
+        {
+            MoveUpCommand = new RelayCommand(() => Move(choice, -1)),
+            MoveDownCommand = new RelayCommand(() => Move(choice, 1)),
+        };
+        return choice;
+    }
+
+    private void OnChanged(StatusChoiceViewModel _) => Save();
+
+    private void Move(StatusChoiceViewModel? choice, int by)
+    {
+        if (choice is null) return;
+        var from = Items.IndexOf(choice);
+        var to = from + by;
+        if (from < 0 || to < 0 || to >= Items.Count) return;
+        Items.Move(from, to);
+        Save();
+    }
+
+    private void Save()
+    {
+        if (_loading) return;
+        _write([.. Items.Where(i => i.IsSelected).Select(i => i.Kind)]);
+    }
+}
+
+/// <summary>One entry of the settings category rail.</summary>
+public sealed record SettingsSectionViewModel(string Key, string Title, string Hint);
+
 public sealed class SettingsViewModel : PageViewModel
 {
     private readonly SettingsService _settings;
@@ -45,8 +123,70 @@ public sealed class SettingsViewModel : PageViewModel
     private readonly IUrlLauncher _launcher;
     private readonly IUiDispatcher _ui;
 
+    // ----- Category rail: one section is shown at a time -----
+    public IReadOnlyList<SettingsSectionViewModel> Sections { get; } =
+    [
+        new("accounts", "Accounts", "Sign in and manage access"),
+        new("repositories", "Repositories", "Which repositories to watch"),
+        new("notifications", "Notifications", "What alerts you"),
+        new("sounds", "Sounds", "Alarm and notification tones"),
+        new("appearance", "Appearance", "Theme, time and motion"),
+        new("surfaces", "Widgets and island", "Floating surfaces and their content"),
+        new("window", "Window and tray", "Startup, tray and refresh"),
+        new("ai", "AI tool limits", "Usage caps and resets"),
+    ];
+
+    private SettingsSectionViewModel? _selectedSection;
+
+    /// <summary>Which counters the island and the widget show, and in which order.</summary>
+    public StatusLayoutViewModel IslandLayout { get; private set; } = null!;
+    public StatusLayoutViewModel WidgetLayout { get; private set; } = null!;
+
+    /// <summary>Seconds each pair of island counters stays before the next pair appears (used when more than two are chosen).</summary>
+    public int StatusRotateSeconds
+    {
+        get => _settings.Current.StatusRotateSeconds;
+        set => Save(s => s with { StatusRotateSeconds = Math.Clamp(value, 2, 60) });
+    }
+
+    public SettingsSectionViewModel SelectedSection
+    {
+        get => _selectedSection ??= Sections[0];
+        set
+        {
+            if (value is null || !Set(ref _selectedSection!, value)) return;
+            Raise(nameof(IsAccountsSection)); Raise(nameof(IsRepositoriesSection)); Raise(nameof(IsNotificationsSection));
+            Raise(nameof(IsSoundsSection)); Raise(nameof(IsAppearanceSection)); Raise(nameof(IsSurfacesSection));
+            Raise(nameof(IsWindowSection)); Raise(nameof(IsAiSection));
+        }
+    }
+
+    public bool IsAccountsSection => SelectedSection.Key == "accounts";
+    public bool IsRepositoriesSection => SelectedSection.Key == "repositories";
+    public bool IsNotificationsSection => SelectedSection.Key == "notifications";
+    public bool IsSoundsSection => SelectedSection.Key == "sounds";
+    public bool IsAppearanceSection => SelectedSection.Key == "appearance";
+    public bool IsSurfacesSection => SelectedSection.Key == "surfaces";
+    public bool IsWindowSection => SelectedSection.Key == "window";
+    public bool IsAiSection => SelectedSection.Key == "ai";
+
+    /// <summary>Token and OAuth sign-in options are tucked away until asked for.</summary>
+    public bool ShowAdvancedSignIn
+    {
+        get => _showAdvancedSignIn;
+        set { if (Set(ref _showAdvancedSignIn, value)) Raise(nameof(AdvancedLabel)); }
+    }
+
+    private bool _showAdvancedSignIn;
+    public string AdvancedLabel => ShowAdvancedSignIn ? "Advanced sign-in options  ▴" : "Advanced sign-in options  ▾";
+    public ICommand ToggleAdvancedCommand => _toggleAdvanced ??= new RelayCommand(() => ShowAdvancedSignIn = !ShowAdvancedSignIn);
+    private ICommand? _toggleAdvanced;
+
     /// <summary>AI usage tracker shown in the settings page.</summary>
     public AiToolsViewModel? AiTools { get; init; }
+
+    /// <summary>Plays the sound previews on this page.</summary>
+    public IAlarm? Alarm { get; init; }
 
     private List<RepositoryChoiceViewModel> _allRepositories = [];
     private AccountItemViewModel? _selectedAccount;
@@ -62,6 +202,8 @@ public sealed class SettingsViewModel : PageViewModel
         : base("Settings", "IconSettings")
     {
         _settings = settings;
+        IslandLayout = new StatusLayoutViewModel(() => _settings.Current.IslandStatuses, kinds => Save(s => s with { IslandStatuses = kinds }));
+        WidgetLayout = new StatusLayoutViewModel(() => _settings.Current.WidgetStatuses, kinds => Save(s => s with { WidgetStatuses = kinds }));
         _accounts = accounts;
         _notifications = notifications;
         _launcher = launcher;
@@ -79,6 +221,13 @@ public sealed class SettingsViewModel : PageViewModel
         ReloadRepositoriesCommand = new AsyncRelayCommand(LoadRepositoriesAsync, ex => RepositoryMessage = ex.Message);
         TestNotificationCommand = new RelayCommand(() => _ = _notifications.PublishAsync(new ToastRequest(
             "Test notification", "This is how GitDash will let you know.", ToastTone.Review)));
+        PreviewSoundCommand = new RelayCommand(() => Alarm?.Preview(
+            SoundCatalog.Normalise(_settings.Current.SoundId), _settings.Current.CustomSoundPath));
+        ClearCustomSoundCommand = new RelayCommand(() => Save(s => s with
+        {
+            CustomSoundPath = null,
+            SoundId = s.SoundId == SoundCatalog.CustomId ? SoundCatalog.DefaultId : s.SoundId,
+        }));
 
         _settings.Changed += _ => _ui.Post(() =>
         {
@@ -87,8 +236,10 @@ public sealed class SettingsViewModel : PageViewModel
                      {
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
-                         nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(ReduceMotion),
+                         nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(ReduceMotion),
+                         nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
+                         nameof(CustomSoundName), nameof(HasCustomSound),
                      })
                 Raise(name);
         });
@@ -192,6 +343,58 @@ public sealed class SettingsViewModel : PageViewModel
 
     public ICommand TestNotificationCommand { get; }
 
+    // ----- Sounds -----
+    public bool SoundEnabled
+    {
+        get => _settings.Current.SoundEnabled;
+        set => Save(s => s with { SoundEnabled = value });
+    }
+
+    public bool SoundOnNotifications
+    {
+        get => _settings.Current.SoundOnNotifications;
+        set => Save(s => s with { SoundOnNotifications = value });
+    }
+
+    /// <summary>The built-in sounds, plus the user's own tone once one is loaded.</summary>
+    public IReadOnlyList<SoundOption> SoundOptions =>
+    [
+        .. SoundCatalog.BuiltIn,
+        .. HasCustomSound ? [new SoundOption(SoundCatalog.CustomId, $"Custom: {CustomSoundName}")] : Array.Empty<SoundOption>(),
+    ];
+
+    public SoundOption? SelectedSound
+    {
+        get
+        {
+            var id = SoundCatalog.Normalise(_settings.Current.SoundId);
+            if (id == SoundCatalog.CustomId && !HasCustomSound) id = SoundCatalog.DefaultId;
+            return SoundOptions.FirstOrDefault(o => o.Id == id);
+        }
+        set
+        {
+            if (value is null || value.Id == SoundCatalog.Normalise(_settings.Current.SoundId)) return;
+            Save(s => s with { SoundId = value.Id });
+            Alarm?.Preview(value.Id, _settings.Current.CustomSoundPath); // hear it as it is picked
+        }
+    }
+
+    public bool HasCustomSound => !string.IsNullOrWhiteSpace(_settings.Current.CustomSoundPath);
+
+    public string CustomSoundName => HasCustomSound
+        ? Path.GetFileName(_settings.Current.CustomSoundPath!)
+        : "No custom tone loaded";
+
+    /// <summary>Uses the user's own sound file for notifications, timers and alarms.</summary>
+    public void SetCustomSound(string path)
+    {
+        Save(s => s with { CustomSoundPath = path, SoundId = SoundCatalog.CustomId });
+        Alarm?.Preview(SoundCatalog.CustomId, path);
+    }
+
+    public ICommand PreviewSoundCommand { get; }
+    public ICommand ClearCustomSoundCommand { get; }
+
     // ----- General -----
     public decimal? LiveCheckSeconds
     {
@@ -245,6 +448,16 @@ public sealed class SettingsViewModel : PageViewModel
     {
         get => Math.Round(_settings.Current.IslandOpacity * 100);
         set => Save(s => s with { IslandOpacity = Math.Clamp(value, 20, 100) / 100 });
+    }
+
+    /// <summary>The Dock option only exists on macOS.</summary>
+    public bool IsMacOS => OperatingSystem.IsMacOS();
+
+    /// <summary>macOS: no Dock icon while the main window is hidden.</summary>
+    public bool HideDockIconWhenHidden
+    {
+        get => _settings.Current.HideDockIconWhenHidden;
+        set => Save(s => s with { HideDockIconWhenHidden = value });
     }
 
     /// <summary>Mouse clicks go through the widgets and the island to whatever is underneath.</summary>

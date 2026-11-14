@@ -38,6 +38,9 @@ public sealed record PullRequest
     public string? LastCommentAuthor { get; init; }
     public DateTimeOffset? LastCommentAt { get; init; }
 
+    /// <summary>Review conversations on the diff that nobody has resolved yet.</summary>
+    public int UnresolvedThreads { get; init; }
+
     public int CommitCount { get; init; }
 
     /// <summary>GitHub reports that this branch cannot be merged cleanly into its base.</summary>
@@ -118,6 +121,34 @@ public sealed record PullRequest
 
     /// <summary>The viewer reviewed, and the code changed after that: a fresh look is due.</summary>
     public bool ViewerReviewIsStale => LatestDecisions.Any(r => Login.Same(r.Author, ViewerLogin) && IsStale(r));
+
+    /// <summary>The viewer's latest decision is an approval of the code as it is now (no newer commit since).</summary>
+    public bool ViewerHasApproved => LatestDecisions.Any(r =>
+        Login.Same(r.Author, ViewerLogin) && r.State == ReviewState.Approved && !IsStale(r));
+
+    /// <summary>
+    /// Who the pull request is waiting for right now: the requested reviewers; the author when changes were requested
+    /// or it is approved and ready to merge; otherwise the assignees.
+    /// </summary>
+    public IReadOnlyList<string> WaitingFor
+    {
+        get
+        {
+            if (State != PullRequestState.Open) return [];
+            if (Verdict == ReviewState.ChangesRequested && RequestedReviewers.Count == 0) return [Author];
+            if (RequestedReviewers.Count > 0) return RequestedReviewers;
+            if (Verdict == ReviewState.Approved) return [Author];
+            return Assignees;
+        }
+    }
+
+    /// <summary>Why <see cref="WaitingFor"/> is waiting, in a few words.</summary>
+    public string WaitingForReason =>
+        State != PullRequestState.Open ? string.Empty
+        : Verdict == ReviewState.ChangesRequested && RequestedReviewers.Count == 0 ? "to address the requested changes"
+        : RequestedReviewers.Count > 0 ? "to review"
+        : Verdict == ReviewState.Approved ? "to merge"
+        : Assignees.Count > 0 ? "assigned" : string.Empty;
 
     /// <summary>The viewer already reviewed once and has been asked to look again.</summary>
     public bool IsReapproval => NeedsViewerApproval && ViewerHasReviewed;

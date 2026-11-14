@@ -7,16 +7,64 @@
              x:DataType="vm:MyPullRequestsViewModel"
              Focusable="True"
              KeyDown="OnKeyDown">
+  <UserControl.Resources>
+    <DataTemplate x:Key="RunTemplate" x:DataType="vm:RunItemViewModel">
+                <Button Classes="ghost" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                        Padding="10,8" Margin="0,0,0,8" Click="OnRunClick" ToolTip.Tip="Open this run on GitHub">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding PullRequest}" FontSize="11.5"
+                                 Foreground="{StaticResource Accent2Brush}" Margin="8,0,0,0" />
+                    </Grid>
+                    <TextBlock Text="{Binding Where}" Classes="muted" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding Progress}" IsIndeterminate="{Binding IsWaiting}"
+                                 Height="5" MinHeight="5" CornerRadius="3" Background="{DynamicResource TrackBrush}"
+                                 Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Status}" FontSize="11.5" FontWeight="SemiBold"
+                                 Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                      <TextBlock Grid.Column="1" FontSize="11.5" Classes="muted">
+                        <Run Text="{Binding Who}" /><Run Text=" · " /><Run Text="{Binding Elapsed}" />
+                      </TextBlock>
+                    </Grid>
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="Border.card.actionError"><Setter Property="BorderBrush" Value="#F87171" /><Setter Property="BorderThickness" Value="1" /></Style>
+    <Style Selector="Button.act"><Setter Property="HorizontalAlignment" Value="Stretch" /><Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="Padding" Value="12,7" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="Button.act.approve /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#34D399" /><Setter Property="Foreground" Value="#0B0D14" /></Style>
+    <Style Selector="Button.act.assign /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#A78BFA" /><Setter Property="Foreground" Value="#0B0D14" /></Style>
+    <Style Selector="Button.act.remove /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#F472B6" /><Setter Property="Foreground" Value="#0B0D14" /></Style>
+    <Style Selector="Button.act:pointerover"><Setter Property="Opacity" Value="0.88" /></Style>
+    <Style Selector="Grid.chat"><Setter Property="Margin" Value="0,0,0,10" /></Style>
+    <Style Selector="Grid.chat.reply"><Setter Property="Margin" Value="30,-4,0,10" /></Style>
+    <Style Selector="Border.bubble">
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    </Style>
+    <Style Selector="Border.bubble.mine">
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Background" Value="{DynamicResource ChipBrush}" />
+    </Style>
+  </UserControl.Styles>
   <Grid>
+    <!-- Slowly drifting particles behind the cards -->
+    <c:ParticleField />
     <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="36,30,36,22">
 
       <Grid ColumnDefinitions="*,Auto" Classes="enter">
         <StackPanel Spacing="4">
-          <TextBlock Classes="h1" Text="My pull requests" />
+          <TextBlock Classes="h1" Text="Pull requests" />
           <TextBlock Classes="muted" Text="Pick a view below. Click the front card to open its timeline, description, comments and approvals." />
         </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
-                    IsVisible="{Binding !IsEmpty}">
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+        <Button Classes="ghost compact" Command="{Binding Actions.ToggleCommand}" Content="{Binding Actions.Header}"
+                IsVisible="{Binding HasActions}" ToolTip.Tip="Show GitHub Actions runs with live progress" />
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" IsVisible="{Binding !IsEmpty}">
           <TextBlock Text="{Binding Position}" Classes="muted" VerticalAlignment="Center" Margin="0,0,6,0" />
           <Button Classes="round" Command="{Binding PreviousCommand}" ToolTip.Tip="Previous (←)">
             <PathIcon Data="{StaticResource IconLeft}" Width="14" Height="14" />
@@ -25,10 +73,12 @@
             <PathIcon Data="{StaticResource IconRight}" Width="14" Height="14" />
           </Button>
         </StackPanel>
+        </StackPanel>
       </Grid>
 
       <!-- Which pull requests to show -->
-      <ListBox Grid.Row="1" Classes="chips enter1" Margin="0,18,0,0" ItemsSource="{Binding Filters}"
+      <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,18,0,0">
+      <ListBox Classes="chips enter1" ItemsSource="{Binding Filters}"
                SelectedItem="{Binding SelectedFilter}" SelectionChanged="OnFilterChanged"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemsPanel>
@@ -47,6 +97,46 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
+        <Button Grid.Column="1" Classes="ghost compact" Margin="12,0,0,0" VerticalAlignment="Center"
+                ToolTip.Tip="Show only pull requests by these authors">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconUser}" Width="12" Height="12" />
+            <TextBlock Text="{Binding AuthorSummary}" VerticalAlignment="Center" />
+            <PathIcon Data="{StaticResource IconChevronDown}" Width="10" Height="10" />
+          </StackPanel>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight" Opening="OnActionsFlyoutOpening">
+              <StackPanel Spacing="6" MinWidth="240">
+                <TextBlock Classes="label" Text="Authors" />
+                <ScrollViewer MaxHeight="320">
+                  <ItemsControl ItemsSource="{Binding AuthorOptions}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:AuthorOptionViewModel">
+                        <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
+                          <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="{Binding Login}">
+                            <Panel Width="22" Height="22">
+                              <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                              <TextBlock Text="{Binding Initials}" FontSize="8" FontWeight="Bold" Foreground="#0B0D14"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+                              <Border CornerRadius="11" ClipToBounds="True">
+                                <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                              </Border>
+                            </Panel>
+                            <TextBlock Text="{Binding FirstName}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Count}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" />
+                          </StackPanel>
+                        </CheckBox>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+                <Button Classes="ghost compact" Content="Clear" Command="{Binding ClearAuthorsCommand}"
+                        IsEnabled="{Binding HasAuthorFilter}" HorizontalAlignment="Right" />
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+      </Grid>
 
       <Border Grid.Row="2" Classes="card enter1" IsVisible="{Binding IsEmpty}" VerticalAlignment="Center"
               HorizontalAlignment="Center" Padding="32">
@@ -86,18 +176,52 @@
                       c:Tilt.Enabled="{Binding IsFront}">
                 <Panel>
                 <DockPanel>
-                  <!-- Three equal-width buttons that always fit the card -->
-                  <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*,*" Margin="0,14,0,0">
-                    <Button Classes="primary compact" Content="Details" Click="OnDetailsClick" Margin="0,0,4,0" />
-                    <Button Grid.Column="1" Classes="ghost compact" Content="Review timer" Click="OnStartReviewClick" Margin="4,0" />
-                    <Button Grid.Column="2" Classes="ghost compact" Content="GitHub ↗" Click="OnOpenClick" Margin="4,0,0,0" />
+                  <!-- One row that always fits the card: details, and the actions menu -->
+                  <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+                    <Button Classes="primary compact" Content="Details" Click="OnDetailsClick" />
+                    <Button Grid.Column="1" Classes="ghost compact" Margin="8,0,0,0" IsVisible="{Binding HasActions}"
+                            ToolTip.Tip="Approve, assign the author or remove yourself as assignee">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Actions" VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource IconChevronDown}" Width="10" Height="10" />
+                      </StackPanel>
+                      <Button.Flyout>
+                        <Flyout Placement="TopEdgeAlignedRight" Opening="OnActionsFlyoutOpening">
+                          <StackPanel Spacing="6" MinWidth="220">
+                            <Button Classes="act approve" Content="{Binding ApproveLabel}" Click="OnApproveClick"
+                                    IsVisible="{Binding CanApprove}" IsEnabled="{Binding !IsBusy}" />
+                            <Button Classes="act assign" Content="{Binding AssignAuthorLabel}" Click="OnAssignAuthorClick"
+                                    IsVisible="{Binding CanAssignAuthor}" IsEnabled="{Binding !IsBusy}"
+                                    ToolTip.Tip="{Binding AssignAuthorTip}" />
+                            <Button Classes="act remove" Content="{Binding RemoveMeLabel}" Click="OnRemoveMeClick"
+                                    IsVisible="{Binding CanRemoveMe}" IsEnabled="{Binding !IsBusy}" />
+                            <Button Classes="ghost compact" Content="Cancel" Click="OnCancelPendingClick"
+                                    IsVisible="{Binding IsConfirming}" />
+                          </StackPanel>
+                        </Flyout>
+                      </Button.Flyout>
+                    </Button>
                   </Grid>
 
                   <StackPanel Spacing="12">
-                    <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
                         <Run Text="{Binding Repository}" />
                         <Run Text="{Binding Number}" Foreground="{StaticResource Accent2Brush}" />
                       </TextBlock>
+                      <!-- Review timer (play + time) and the GitHub link, as icons -->
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Classes="ghost compact" Padding="8,3" Click="OnStartReviewClick" ToolTip.Tip="Start Review timer">
+                          <StackPanel Orientation="Horizontal" Spacing="5">
+                            <PathIcon Data="{StaticResource IconPlay}" Width="11" Height="11" />
+                            <TextBlock Text="{Binding ReviewClock}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                          </StackPanel>
+                        </Button>
+                        <Button Classes="ghost compact" Padding="7,3" Click="OnOpenClick" ToolTip.Tip="Open on GitHub">
+                          <PathIcon Data="{StaticResource IconGitHub}" Width="14" Height="14" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
                     <c:PullRequestTagStrip DataContext="{Binding Tags}" />
 
                     <TextBlock Text="{Binding Title}" FontSize="19" FontWeight="Bold" TextWrapping="Wrap"
@@ -105,19 +229,13 @@
                                Height="52" />
 
                     <StackPanel Orientation="Horizontal" Spacing="10">
-                      <Panel Width="32" Height="32">
-                        <Ellipse Fill="{Binding AuthorAccent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
-                        <TextBlock Text="{Binding AuthorInitials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <Border CornerRadius="16" ClipToBounds="True">
-                          <c:AvatarImage Url="{Binding AuthorAvatarUrl}" Stretch="UniformToFill" />
-                        </Border>
-                      </Panel>
-                      <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Author}" FontSize="13" Foreground="{DynamicResource TextBrush}" />
-                        <TextBlock Text="{Binding Role}" FontSize="11.5" Foreground="{StaticResource AmberBrush}" />
-                      </StackPanel>
+                      <c:UserChip Login="{Binding Author}" AvatarUrl="{Binding AuthorAvatarUrl}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Role}" FontSize="11.5" Foreground="{StaticResource AmberBrush}"
+                                 VerticalAlignment="Center" />
                     </StackPanel>
+                    <!-- The person this pull request is waiting for -->
+                    <TextBlock Text="{Binding WaitingForText}" IsVisible="{Binding HasWaitingFor}" FontSize="12.5"
+                               FontWeight="SemiBold" Foreground="{StaticResource Accent2Brush}" TextTrimming="CharacterEllipsis" />
 
                     <Border Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                       <Grid ColumnDefinitions="*,Auto">
@@ -149,7 +267,7 @@
                       </Grid>
                     </Border>
 
-                    <UniformGrid Columns="4">
+                    <UniformGrid Columns="5">
                       <StackPanel>
                         <TextBlock Text="{Binding TotalComments}" FontSize="20" FontWeight="Bold" Foreground="#22D3EE" />
                         <TextBlock Classes="muted" FontSize="11" Text="Comments" />
@@ -162,24 +280,18 @@
                         <TextBlock Text="{Binding Commits}" FontSize="20" FontWeight="Bold" Foreground="#818CF8" />
                         <TextBlock Classes="muted" FontSize="11" Text="Commits" />
                       </StackPanel>
-                      <StackPanel>
+                      <StackPanel ToolTip.Tip="{Binding Changes}">
                         <TextBlock Text="{Binding Files}" FontSize="20" FontWeight="Bold" Foreground="#FBBF24" />
                         <TextBlock Classes="muted" FontSize="11" Text="Files" />
                       </StackPanel>
+                      <StackPanel ToolTip.Tip="Workflow runs of this pull request among the repository's 100 most recent">
+                        <TextBlock Text="{Binding PipelineRunsText}" FontSize="20" FontWeight="Bold" Foreground="#34D399" />
+                        <TextBlock Classes="muted" FontSize="11" Text="Runs" />
+                      </StackPanel>
                     </UniformGrid>
 
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <Border Classes="badge added"><TextBlock Text="{Binding AdditionsText}" /></Border>
-                      <Border Classes="badge removed"><TextBlock Text="{Binding DeletionsText}" /></Border>
-                      <Border Classes="badge" Classes.ok="{Binding IsApproved}" Classes.changes="{Binding IsChangesRequested}"
-                              Classes.unreviewed="{Binding IsUnreviewed}">
-                        <TextBlock Text="{Binding Verdict}" />
-                      </Border>
-                      <Border Classes="badge open"><TextBlock Text="{Binding OpenText}" /></Border>
-                    </StackPanel>
-
                     <TextBlock Text="{Binding Summary}" Classes="muted" FontSize="12.5" TextWrapping="Wrap"
-                               MaxLines="4" TextTrimming="CharacterEllipsis" LineHeight="18" />
+                               MaxLines="2" TextTrimming="CharacterEllipsis" LineHeight="18" />
                   </StackPanel>
                 </DockPanel>
                 <!-- Glare that follows the mouse (driven by c:Tilt) -->
@@ -219,12 +331,7 @@
             <TextBlock Text="{Binding DetailCard.Title}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap"
                        MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextBrush}" />
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <Border Classes="chip">
-                <TextBlock>
-                  <Run Text="by" />
-                  <Run Text="{Binding DetailCard.Author}" FontWeight="SemiBold" />
-                </TextBlock>
-              </Border>
+              <c:UserChip Login="{Binding DetailCard.Author}" AvatarUrl="{Binding DetailCard.AuthorAvatarUrl}" />
               <Border Classes="chip">
                 <TextBlock Text="{Binding DetailCard.Role}" />
               </Border>
@@ -240,8 +347,39 @@
             </StackPanel>
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
-            <Button Classes="ghost" Content="Start review timer" Click="OnDetailReviewClick" />
-            <Button Classes="ghost" Content="GitHub ↗" Click="OnDetailOpenClick" />
+            <Button Classes="ghost compact" Padding="8,4" Click="OnDetailReviewClick" ToolTip.Tip="Start Review timer"
+                    DataContext="{Binding DetailCard}" x:DataType="vm:PullRequestCardViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <PathIcon Data="{StaticResource IconPlay}" Width="11" Height="11" />
+                <TextBlock Text="{Binding ReviewClock}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="ghost compact" Padding="7,4" Click="OnDetailOpenClick" ToolTip.Tip="Open on GitHub">
+              <PathIcon Data="{StaticResource IconGitHub}" Width="14" Height="14" />
+            </Button>
+            <Button Classes="ghost compact" IsVisible="{Binding HasActions}"
+                    DataContext="{Binding DetailCard}" x:DataType="vm:PullRequestCardViewModel"
+                    ToolTip.Tip="Approve, assign the author or remove yourself as assignee">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Actions" VerticalAlignment="Center" />
+                <PathIcon Data="{StaticResource IconChevronDown}" Width="10" Height="10" />
+              </StackPanel>
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight" Opening="OnActionsFlyoutOpening">
+                  <StackPanel Spacing="6" MinWidth="220">
+                    <Button Classes="act approve" Content="{Binding ApproveLabel}" Click="OnApproveClick"
+                            IsVisible="{Binding CanApprove}" IsEnabled="{Binding !IsBusy}" />
+                    <Button Classes="act assign" Content="{Binding AssignAuthorLabel}" Click="OnAssignAuthorClick"
+                            IsVisible="{Binding CanAssignAuthor}" IsEnabled="{Binding !IsBusy}"
+                            ToolTip.Tip="{Binding AssignAuthorTip}" />
+                    <Button Classes="act remove" Content="{Binding RemoveMeLabel}" Click="OnRemoveMeClick"
+                            IsVisible="{Binding CanRemoveMe}" IsEnabled="{Binding !IsBusy}" />
+                    <Button Classes="ghost compact" Content="Cancel" Click="OnCancelPendingClick"
+                            IsVisible="{Binding IsConfirming}" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
             <Button Classes="round" Command="{Binding CloseDetailsCommand}" ToolTip.Tip="Close (Esc)">
               <PathIcon Data="{StaticResource IconClose}" Width="12" Height="12" />
             </Button>
@@ -294,8 +432,7 @@
                                           Padding="14,9" Margin="6,0,0,10">
                                     <StackPanel Spacing="3">
                                       <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding Actor}" FontSize="13" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource TextBrush}" />
+                                        <c:UserChip Login="{Binding Actor}" />
                                         <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
                                                 IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
                                           <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
@@ -368,18 +505,21 @@
                   <ItemsControl ItemsSource="{Binding Comments}" Margin="0,0,14,0">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:CommentViewModel">
-                        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,12">
-                          <Panel Width="34" Height="34" VerticalAlignment="Top" Margin="0,2,12,0">
+                        <!-- Chat style: other people on the left, you on the right; replies sit closer and indented -->
+                        <Grid Classes="chat" Classes.reply="{Binding IsReply}" ColumnDefinitions="Auto,*,Auto">
+                          <Panel Width="34" Height="34" VerticalAlignment="Top" Margin="0,2,10,0" IsVisible="{Binding !IsMine}">
                             <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
                             <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border CornerRadius="17" ClipToBounds="True">
+                              <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                            </Border>
                           </Panel>
-                          <Border Grid.Column="1" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
-                                  Padding="14,10">
+                          <Border Grid.Column="1" Classes="bubble" Classes.mine="{Binding IsMine}" MaxWidth="620"
+                                  CornerRadius="14" Padding="14,10">
                             <StackPanel Spacing="6">
                               <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                                <TextBlock Text="{Binding Author}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                                <c:UserChip Login="{Binding Author}" VerticalAlignment="Center" />
                                 <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="5"
                                         Padding="6,1" Margin="8,0,0,0" IsVisible="{Binding IsMine}"
                                         VerticalAlignment="Center">
@@ -403,10 +543,28 @@
                                            VerticalAlignment="Center" Margin="8,0,0,0" />
                               </Grid>
                               <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{StaticResource Accent2Brush}"
-                                         TextTrimming="CharacterEllipsis" />
+                                         TextTrimming="CharacterEllipsis" IsVisible="{Binding ShowsSource}" />
                               <c:MarkdownView Blocks="{Binding Blocks}" />
+                              <!-- Likes and other reactions -->
+                              <ItemsControl ItemsSource="{Binding ReactionChips}" IsVisible="{Binding HasReactions}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:ReactionChipViewModel">
+                                    <Border Classes="chip" Margin="0,0,6,0" Padding="8,2" ToolTip.Tip="{Binding Tip}">
+                                      <TextBlock Text="{Binding Label}" FontSize="12" />
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
                             </StackPanel>
                           </Border>
+                          <Panel Grid.Column="2" Width="34" Height="34" VerticalAlignment="Top" Margin="10,2,0,0" IsVisible="{Binding IsMine}">
+                            <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                            <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          </Panel>
                         </Grid>
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -423,22 +581,49 @@
                 <Border Grid.Column="0" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                   <StackPanel Spacing="3">
                     <TextBlock Classes="label" Text="Approved By" Foreground="{StaticResource GreenBrush}" />
-                    <TextBlock Text="{Binding ApprovedBy}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" />
+                    <ItemsControl ItemsSource="{Binding ApprovedBy}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <c:UserChip Login="{Binding}" Margin="0,0,6,4" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="—" Classes="muted" IsVisible="{Binding NobodyApproved}" />
                   </StackPanel>
                 </Border>
                 <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                   <StackPanel Spacing="3">
                     <TextBlock Classes="label" Text="Changes Requested By" Foreground="{StaticResource RedBrush}" />
-                    <TextBlock Text="{Binding ChangesRequestedBy}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" />
+                    <ItemsControl ItemsSource="{Binding ChangesRequestedBy}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <c:UserChip Login="{Binding}" Margin="0,0,6,4" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="—" Classes="muted" IsVisible="{Binding NobodyRequestedChanges}" />
                   </StackPanel>
                 </Border>
                 <Border Grid.Column="4" Background="{DynamicResource Surface2Brush}" CornerRadius="12" Padding="14,10">
                   <StackPanel Spacing="3">
                     <TextBlock Classes="label" Text="Still Waiting On" Foreground="{StaticResource AmberBrush}" />
-                    <TextBlock Text="{Binding WaitingOn}" FontSize="13" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" />
+                    <ItemsControl ItemsSource="{Binding WaitingOn}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <c:UserChip Login="{Binding}" Margin="0,0,6,4" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="—" Classes="muted" IsVisible="{Binding NobodyWaitedOn}" />
                   </StackPanel>
                 </Border>
               </Grid>
@@ -459,8 +644,7 @@
                                 <TextBlock Text="{Binding Verdict}" FontSize="11" FontWeight="Bold" LetterSpacing="0.8"
                                            VerticalAlignment="Center"
                                            Foreground="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Actor}" FontSize="13" FontWeight="SemiBold"
-                                           Margin="10,0,0,0" Foreground="{DynamicResource TextBrush}" />
+                                <c:UserChip Grid.Column="1" Login="{Binding Actor}" Margin="10,0,0,0" />
                                 <TextBlock Grid.Column="3" Text="{Binding When}" Classes="muted" FontSize="11"
                                            VerticalAlignment="Center" />
                               </Grid>
@@ -475,8 +659,65 @@
               </Panel>
             </DockPanel>
           </TabItem>
+
+          <!-- ===== Workflow runs of this pull request ===== -->
+          <TabItem Header="{Binding ActionsHeader}">
+            <Panel Margin="0,12,0,0">
+              <TextBlock Classes="muted" Text="No workflow runs found for this pull request." IsVisible="{Binding !HasDetailRuns}" />
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding DetailRuns}" ItemTemplate="{StaticResource RunTemplate}" Margin="0,0,14,0" />
+              </ScrollViewer>
+            </Panel>
+          </TabItem>
         </TabControl>
       </DockPanel>
+    </Border>
+    <!-- Result of approving or handing over a pull request -->
+    <Border Classes="card" Classes.actionError="{Binding IsActionError}" IsVisible="{Binding HasActionMessage}"
+            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,92,0,0" Padding="16,10" MaxWidth="640">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding ActionMessage}" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Foreground="{DynamicResource TextBrush}" />
+        <Button Grid.Column="1" Classes="ghost compact" Content="OK" Command="{Binding DismissActionMessageCommand}"
+                Margin="14,0,0,0" />
+      </Grid>
+    </Border>
+
+    <!-- ===== GitHub Actions: every recent run with a live progress bar ===== -->
+    <Border Classes="card" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="350" Margin="0,92,28,24"
+            IsVisible="{Binding Actions.IsOpen}">
+      <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+          <TextBlock Classes="h2" Text="{Binding Actions.Header}" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="ghost compact" Content="Close" Command="{Binding Actions.CloseCommand}" />
+        </Grid>
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+          <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap" Text="{Binding Actions.ScopeHint}" />
+          <ToggleButton Classes="filter" HorizontalAlignment="Left" Content="Only the card in front"
+                        IsChecked="{Binding Actions.OnlyCurrentCard}" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="{Binding Actions.Error}" IsVisible="{Binding Actions.HasError}" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Actions.HasRuns}"
+                   Text="No workflow runs for the pull requests on the cards. Actions may be off for these repositories, or the token cannot read them." />
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Actions.Runs}" ItemTemplate="{StaticResource RunTemplate}" />
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- Confirmation before timing a review of a pull request that was already approved -->
+    <Border IsVisible="{Binding IsConfirmingReview}" Background="{DynamicResource ScrimBrush}">
+      <Border Classes="card" MaxWidth="460" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="26">
+        <StackPanel Spacing="16">
+          <TextBlock Classes="h2" Text="Already approved" />
+          <TextBlock Classes="muted" Text="{Binding ConfirmReviewMessage}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Classes="ghost" Content="Cancel" Command="{Binding CancelReviewCommand}" />
+            <Button Classes="primary" Content="Start timer" Command="{Binding ConfirmReviewCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
     </Border>
   </Grid>
 </UserControl>

@@ -5,6 +5,7 @@ public enum TimerKind
     Task,
     Pomodoro,
     PullRequestReview,
+    Countdown,
 }
 
 /// <summary>A finished block of tracked time.</summary>

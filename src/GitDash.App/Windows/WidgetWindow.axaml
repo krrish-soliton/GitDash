@@ -3,6 +3,7 @@
         xmlns:vm="using:GitDash.Presentation.ViewModels"
         xmlns:c="using:GitDash.App.Controls"
         xmlns:w="using:GitDash.App.Windows"
+        xmlns:conv="using:GitDash.App.Converters"
         x:Class="GitDash.App.Windows.WidgetWindow"
         x:DataType="vm:WidgetViewModel"
         Width="92" Height="92"
@@ -150,25 +151,23 @@
             <c:GlassGlaze CornerRadius="20" />
 
             <Grid RowDefinitions="*,Auto,Auto" Margin="8,10,8,8">
-              <Grid ColumnDefinitions="*,1,*,1,*">
-                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
-                  <c:CountUpText Value="{Binding Assigned}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
-                                 Foreground="{StaticResource Accent2Brush}" />
-                  <TextBlock Text="ASSIGNED" Classes="label" FontSize="9.5" HorizontalAlignment="Center" />
-                </StackPanel>
-                <Border Grid.Column="1" Background="{DynamicResource LineBrush}" Margin="0,16" />
-                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="1">
-                  <c:CountUpText Value="{Binding Approval}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
-                                 Foreground="{StaticResource AmberBrush}" />
-                  <TextBlock Text="TO APPROVE" Classes="label" FontSize="9.5" HorizontalAlignment="Center" />
-                </StackPanel>
-                <Border Grid.Column="3" Background="{DynamicResource LineBrush}" Margin="0,16" />
-                <StackPanel Grid.Column="4" VerticalAlignment="Center" Spacing="1">
-                  <c:CountUpText Value="{Binding Total}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"
-                                 Foreground="{DynamicResource TextBrush}" />
-                  <TextBlock Text="TOTAL OPEN" Classes="label" FontSize="9.5" HorizontalAlignment="Center" />
-                </StackPanel>
-              </Grid>
+              <!-- The configured counters, in the configured order -->
+              <ItemsControl ItemsSource="{Binding WidgetItems}" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="{Binding WidgetColumns}" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StatusItemViewModel">
+                    <StackPanel VerticalAlignment="Center" Spacing="1" Margin="0,2">
+                      <c:CountUpText Value="{Binding Count}" FontSize="{Binding ValueSize}" FontWeight="Bold"
+                                     HorizontalAlignment="Center"
+                                     Foreground="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                      <TextBlock Text="{Binding Caption}" Classes="label" FontSize="9" HorizontalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
 
               <!-- Longest waits: a PR assigned to me, and a PR waiting for my approval -->
               <Border Grid.Row="1" CornerRadius="12" Background="{DynamicResource Surface2Brush}" Padding="10,7" Margin="2,4,2,0">

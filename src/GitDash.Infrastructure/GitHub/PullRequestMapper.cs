@@ -209,6 +209,7 @@ public static class PullRequestMapper
                 reviews.Where(r => Login.Same(r.Author, viewerLogin)).Sum(r => r.CommentCount),
             LastCommentAuthor = lastComment?.Author,
             LastCommentAt = lastComment?.At,
+            UnresolvedThreads = node.Nodes("reviewThreads").Count(t => !t.Bool("isResolved")),
             CommitCount = node.Prop("commits").Int("totalCount"),
             LastCommitAt = node.Nodes("commits").Select(n => n.Prop("commit").Date("committedDate")).FirstOrDefault(),
             Additions = node.Int("additions"),
@@ -247,6 +248,32 @@ public static class PullRequestMapper
         };
     }
 
+    /// <summary>The emoji reactions on a comment: only the ones somebody used.</summary>
+    internal static IReadOnlyList<CommentReaction> Reactions(JsonElement comment)
+    {
+        var list = new List<CommentReaction>();
+        foreach (var group in comment.Items("reactionGroups"))
+        {
+            var count = group.Prop("reactors").Int("totalCount");
+            if (count <= 0) continue;
+            var users = group.Nodes("reactors").Select(n => n.Str("login")).Where(l => l.Length > 0).ToList();
+            list.Add(new CommentReaction(group.Str("content") switch
+            {
+                "THUMBS_UP" => "👍",
+                "THUMBS_DOWN" => "👎",
+                "LAUGH" => "😄",
+                "HOORAY" => "🎉",
+                "CONFUSED" => "😕",
+                "HEART" => "❤️",
+                "ROCKET" => "🚀",
+                "EYES" => "👀",
+                _ => "•",
+            }, count, users.Count == 0 ? null : users));
+        }
+
+        return list;
+    }
+
     public static PullRequestDetails MapDetails(JsonElement data)
     {
         var pr = data.Prop("repository").Prop("pullRequest");
@@ -254,13 +281,17 @@ public static class PullRequestMapper
         var comments = new List<PullRequestComment>();
         // Which code comments belong to a conversation that has been resolved (true) or is still open (false).
         var resolution = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var threadOf = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var thread in pr.Nodes("reviewThreads"))
         {
             var resolved = thread.Bool("isResolved");
+            var threadId = thread.Str("id");
             foreach (var c in thread.Nodes("comments"))
             {
                 var id = c.Str("id");
-                if (id.Length > 0) resolution[id] = resolved;
+                if (id.Length == 0) continue;
+                resolution[id] = resolved;
+                if (threadId.Length > 0) threadOf[id] = threadId;
             }
         }
 
@@ -287,7 +318,7 @@ public static class PullRequestMapper
                 case "IssueComment" when at is { } t:
                     var author = e.Prop("author").Str("login", Ghost);
                     entry = new(t, TimelineEntryKind.Comment, author, Shorten(e.Str("bodyText"), MaxTimelineTextLength));
-                    comments.Add(new(t, author, Limit(e.Str("body")), CommentSource.Conversation));
+                    comments.Add(new(t, author, Limit(e.Str("body")), CommentSource.Conversation, Reactions: Reactions(e)));
                     break;
 
                 case "PullRequestReview" when e.Date("submittedAt") is { } t:
@@ -306,7 +337,9 @@ public static class PullRequestMapper
                             Limit(inline.Str("body")),
                             CommentSource.Inline,
                             ((JsonElement?)inline).StrOrNull("path"),
-                            resolution.TryGetValue(inline.Str("id"), out var isResolved) ? isResolved : null));
+                            resolution.TryGetValue(inline.Str("id"), out var isResolved) ? isResolved : null,
+                            Reactions(inline),
+                            threadOf.GetValueOrDefault(inline.Str("id"))));
                     }
 
                     break;

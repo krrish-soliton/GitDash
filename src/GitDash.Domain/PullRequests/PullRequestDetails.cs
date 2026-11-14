@@ -12,14 +12,22 @@ public enum CommentSource
     Inline,
 }
 
+/// <summary>How many people reacted to a comment with one emoji.</summary>
+public sealed record CommentReaction(string Emoji, int Count, IReadOnlyList<string>? Users = null);
+
 public sealed record PullRequestComment(
     DateTimeOffset At,
     string Author,
     string Body,
     CommentSource Source,
     string? Path = null,
-    bool? IsResolved = null)
+    bool? IsResolved = null,
+    IReadOnlyList<CommentReaction>? Reactions = null,
+    string? ThreadId = null)
 {
+    /// <summary>Reactions (likes, hearts, …); never null.</summary>
+    public IReadOnlyList<CommentReaction> ReactionList => Reactions ?? [];
+
     /// <summary>A code comment whose conversation was marked resolved.</summary>
     public bool IsResolvedThread => IsResolved == true;
 

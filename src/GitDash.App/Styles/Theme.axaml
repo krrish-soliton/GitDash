@@ -70,6 +70,12 @@
     <Setter Property="FontSize" Value="12" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
+  <Style Selector="Border.userchip">
+    <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+    <Setter Property="CornerRadius" Value="999" />
+    <Setter Property="Padding" Value="3,3,9,3" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
   <!-- Glass glaze on the floating windows: shown only when the window has the "glass" class -->
   <Style Selector="Border.glaze">
     <Setter Property="IsVisible" Value="False" />

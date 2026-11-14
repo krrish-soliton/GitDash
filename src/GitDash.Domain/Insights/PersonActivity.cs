@@ -37,6 +37,12 @@ public sealed record PipelineRunCounts(int? Week, int? Month, int? Total)
     public static PipelineRunCounts Unknown { get; } = new(null, null, null);
 }
 
+/// <summary>Commits a person authored in a repository: this week, this month and in total (null when unknown).</summary>
+public sealed record CommitCounts(int? Week, int? Month, int? Total)
+{
+    public static CommitCounts Unknown { get; } = new(null, null, null);
+}
+
 public sealed record PersonPullRequest(
     int Number, string Title, string Url, string State, bool IsDraft, DateTimeOffset CreatedAt, DateTimeOffset? ClosedAt);
 

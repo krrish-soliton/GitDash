@@ -46,6 +46,11 @@ public sealed class HomeViewModel : PageViewModel
         _ui = ui;
         _time = time;
         OpenUrlCommand = new RelayCommand<string>(url => { if (!string.IsNullOrEmpty(url)) _launcher.Open(url); });
+        OpenPullRequestCommand = new RelayCommand<string>(url =>
+        {
+            if (string.IsNullOrEmpty(url)) return;
+            if (PullRequestOpener is { } open) open(url); else _launcher.Open(url);
+        });
         OpenProfileCommand = new RelayCommand(() => { if (ProfileUrl is { } u) _launcher.Open(u); });
         RefreshCommand = new AsyncRelayCommand(LoadAsync, ex => Message = ex.Message);
         _settings.Changed += changed => _ui.Post(() => { if (IsSelected) _ = LoadAsync(); });
@@ -72,6 +77,10 @@ public sealed class HomeViewModel : PageViewModel
     public string OldestReview { get => _oldestReview; private set => Set(ref _oldestReview, value); }
     public ObservableCollection<AssignedPullRequestViewModel> Assigned { get; } = [];
     public ICommand OpenUrlCommand { get; }
+
+    /// <summary>Opens a pull request in the in-app detail screen (set by the shell); the browser is only a fallback.</summary>
+    public ICommand OpenPullRequestCommand { get; }
+    public Action<string>? PullRequestOpener { get; set; }
 
     public int OnMyDesk { get => _onMyDesk; private set => Set(ref _onMyDesk, value); }
     public int RaisedByMe { get => _raisedByMe; private set => Set(ref _raisedByMe, value); }

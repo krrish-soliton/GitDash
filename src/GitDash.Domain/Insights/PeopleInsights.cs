@@ -11,7 +11,13 @@ namespace GitDash.Domain.Insights;
 /// <param name="OldestReviewSince">Since when the longest-waiting PR awaiting their approval has been on their desk.</param>
 public sealed record PersonStats(
     string Login, int Raised, int Assigned, int ToReview, int AssignedUnder,
-    DateTimeOffset? OldestAssignedSince, DateTimeOffset? OldestReviewSince);
+    DateTimeOffset? OldestAssignedSince, DateTimeOffset? OldestReviewSince)
+{
+    /// <summary>The pull request numbers behind the counts, so the desk can label each book.</summary>
+    public IReadOnlyList<int> AssignedNumbers { get; init; } = [];
+    public IReadOnlyList<int> ReviewNumbers { get; init; } = [];
+    public IReadOnlyList<int> RaisedNumbers { get; init; } = [];
+}
 
 /// <summary>Open pull request statistics for one repository.</summary>
 public sealed record RepositoryFloor(
@@ -39,6 +45,7 @@ public static class PeopleInsights
     private sealed class Tally
     {
         public int Raised, Assigned, ToReview, Under;
+        public readonly List<int> RaisedNumbers = [], AssignedNumbers = [], ReviewNumbers = [];
         public DateTimeOffset? OldestAssigned, OldestReview;
     }
 
@@ -50,10 +57,12 @@ public static class PeopleInsights
         foreach (var pr in prs)
         {
             Of(pr.Author).Raised++;
+            Of(pr.Author).RaisedNumbers.Add(pr.Number);
             foreach (var login in pr.Assignees)
             {
                 var tally = Of(login);
                 tally.Assigned++;
+                tally.AssignedNumbers.Add(pr.Number);
                 var since = pr.AssignedSinceFor(login);
                 if (tally.OldestAssigned is null || since < tally.OldestAssigned) tally.OldestAssigned = since;
             }
@@ -62,6 +71,7 @@ public static class PeopleInsights
             {
                 var tally = Of(login);
                 tally.ToReview++;
+                tally.ReviewNumbers.Add(pr.Number);
                 var since = pr.ReviewSinceFor(login);
                 if (tally.OldestReview is null || since < tally.OldestReview) tally.OldestReview = since;
             }
@@ -71,7 +81,10 @@ public static class PeopleInsights
 
         var stats = people
             .Select(p => new PersonStats(
-                p.Key, p.Value.Raised, p.Value.Assigned, p.Value.ToReview, p.Value.Under, p.Value.OldestAssigned, p.Value.OldestReview))
+                p.Key, p.Value.Raised, p.Value.Assigned, p.Value.ToReview, p.Value.Under, p.Value.OldestAssigned, p.Value.OldestReview)
+            {
+                AssignedNumbers = p.Value.AssignedNumbers, ReviewNumbers = p.Value.ReviewNumbers, RaisedNumbers = p.Value.RaisedNumbers,
+            })
             .OrderByDescending(p => p.Raised + p.AssignedUnder)
             .ThenBy(p => p.Login, Login.Comparer)
             .ToList();

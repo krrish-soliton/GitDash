@@ -40,7 +40,7 @@ public static class PullRequestChangeDetector
                 pr.TotalComments > old.TotalComments && !Login.Same(pr.LastCommentAuthor, pr.ViewerLogin))
             {
                 var count = pr.TotalComments - old.TotalComments;
-                var who = pr.LastCommentAuthor ?? "Someone";
+                var who = pr.LastCommentAuthor is null ? "Someone" : Login.FirstName(pr.LastCommentAuthor);
                 var text = count == 1 ? $"{who} commented" : $"{count} new comments, latest by {who}";
                 result.Add(new(NotificationKind.NewComment, pr, $"{text} · {label}", pr.Title, now));
             }
@@ -52,7 +52,7 @@ public static class PullRequestChangeDetector
             foreach (var pr in current.Open)
             {
                 if (!before.TryGetValue(pr.Id, out var old) || !old.IsAssignedToViewer || pr.IsAssignedToViewer) continue;
-                var others = pr.Assignees.Count == 0 ? "no one is assigned now" : $"now assigned to {string.Join(", ", pr.Assignees)}";
+                var others = pr.Assignees.Count == 0 ? "no one is assigned now" : $"now assigned to {string.Join(", ", pr.Assignees.Select(Login.FirstName))}";
                 result.Add(new(NotificationKind.UnassignedFromMe, pr,
                     $"Removed as assignee · {pr.Repository.Name} #{pr.Number}", $"{pr.Title} ({others})", now));
             }
@@ -63,7 +63,7 @@ public static class PullRequestChangeDetector
             foreach (var pr in current.RecentlyMerged)
             {
                 if (!before.ContainsKey(pr.Id)) continue; // was not open last time we looked
-                var by = pr.MergedBy is null ? string.Empty : $" by {pr.MergedBy}";
+                var by = pr.MergedBy is null ? string.Empty : $" by {Login.FirstName(pr.MergedBy)}";
                 result.Add(new(NotificationKind.Merged, pr,
                     $"Merged{by} · {pr.Repository.Name} #{pr.Number}", pr.Title, now));
             }

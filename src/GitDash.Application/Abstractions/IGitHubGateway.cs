@@ -1,3 +1,4 @@
+using GitDash.Domain.Actions;
 using GitDash.Domain.Insights;
 using GitDash.Domain.PullRequests;
 
@@ -28,7 +29,7 @@ public sealed record GitHubProfile
 
 public sealed record RepositoryInfo(RepositoryRef Repository, bool IsPrivate, bool IsOrganization, string? Description);
 
-/// <summary>Read-only port onto GitHub. The token is passed per call and never stored by the gateway.</summary>
+/// <summary>Port onto GitHub: reads, plus the two actions a reviewer takes. The token is passed per call and never stored.</summary>
 public interface IGitHubGateway
 {
     Task<GitHubUser> GetViewerAsync(string token, CancellationToken ct);
@@ -53,6 +54,21 @@ public interface IGitHubGateway
     Task<PipelineRunCounts> GetPipelineRunCountsAsync(
         string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
         CancellationToken ct);
+
+    /// <summary>Commits one person authored in a repository since the two given moments, and in total. Counts only.</summary>
+    Task<CommitCounts> GetCommitCountsAsync(
+        string token, RepositoryRef repository, string login, DateTimeOffset weekStart, DateTimeOffset monthStart,
+        CancellationToken ct);
+
+    /// <summary>The newest workflow runs of a repository; runs in progress carry how many steps are done. Empty when Actions are off.</summary>
+    Task<IReadOnlyList<WorkflowRun>> GetWorkflowRunsAsync(string token, RepositoryRef repository, CancellationToken ct);
+
+    /// <summary>Approves a pull request as the signed-in user (needs write access to the repository).</summary>
+    Task ApproveAsync(string token, RepositoryRef repository, int number, CancellationToken ct);
+
+    /// <summary>Assigns <paramref name="add"/> first and only then removes <paramref name="remove"/>, so the pull request is never left without an assignee.</summary>
+    /// <summary>Removes one assignee and/or adds one; an empty name skips that half.</summary>
+    Task SwapAssigneeAsync(string token, RepositoryRef repository, int number, string remove, string add, CancellationToken ct);
 
     /// <summary>
     /// Cheap "did anything change?" check for one repository. Pass the ETag from the previous probe;
