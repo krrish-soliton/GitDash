@@ -109,8 +109,9 @@ internal static class NativeWindow
     }
 
     // ----- macOS only -----
-    private const long CanJoinAllSpaces = 1 << 0, Stationary = 1 << 4, IgnoresCycle = 1 << 6, FullScreenAuxiliary = 1 << 8;
-    private const long StatusWindowLevel = 25;
+    private const long CanJoinAllSpaces = 1 << 0, Stationary = 1 << 4, IgnoresCycle = 1 << 6, FullScreenAuxiliary = 1 << 8, CanJoinAllApplications = 1 << 18;
+    // Full-screen apps cover everything below the screen-saver level (status-bar level 25 is not enough).
+    private const long StatusWindowLevel = 1000;
 
     /// <summary>
     /// Shows an overlay on every desktop (Space) and above full-screen apps, and keeps it out of Cmd+Tab and Mission Control.
@@ -121,7 +122,7 @@ internal static class NativeWindow
         try
         {
             if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return;
-            MsgSendLong(handle, sel_registerName("setCollectionBehavior:"), (nint)(CanJoinAllSpaces | Stationary | IgnoresCycle | FullScreenAuxiliary));
+            MsgSendLong(handle, sel_registerName("setCollectionBehavior:"), (nint)(CanJoinAllSpaces | Stationary | IgnoresCycle | FullScreenAuxiliary | CanJoinAllApplications));
             MsgSendLong(handle, sel_registerName("setLevel:"), (nint)StatusWindowLevel);
             MsgSendBool(handle, sel_registerName("setHidesOnDeactivate:"), false);
         }
