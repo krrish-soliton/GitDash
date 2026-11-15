@@ -114,6 +114,35 @@ jobs:
           # Ad-hoc signature: required for the app to start on Apple silicon. It is not notarised (see README note).
           codesign --force --deep --sign - "$app"
 
+      # Signing every release with the same certificate gives the app a stable identity, so macOS keeps trusting it with the
+      # Keychain entry that holds the GitHub token (no password prompt after each update). Needs the repository secrets
+      # MACOS_CERT_P12 (base64 of the .p12) and MACOS_CERT_PASSWORD, made by scripts/make-macos-signing-cert.sh. Without
+      # them the app keeps the ad-hoc signature from the previous step.
+      - name: Sign with the release certificate
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then echo "No MACOS_CERT_P12 secret: keeping the ad-hoc signature."; exit 0; fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          pw="$(uuidgen)"
+          security create-keychain -p "$pw" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$pw" "$keychain"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          security import "$RUNNER_TEMP/signing.p12" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/signing.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          # A self-signed certificate is not "valid" to the system, so look it up by hash without the -v filter.
+          identity="$(security find-identity -p codesigning "$keychain" | awk '/[0-9A-F]{40}/ {print $2; exit}')"
+          if [ -z "$identity" ]; then echo "The certificate has no code-signing identity."; exit 1; fi
+          codesign --force --deep --sign "$identity" --keychain "$keychain" build/GitDash.app
+          codesign --verify --deep --strict build/GitDash.app
+          # The designated requirement is what the Keychain remembers; it must be the same for every release.
+          codesign -dr - build/GitDash.app
+          security delete-keychain "$keychain"
+
       - name: Build the disk image
         run: |
           mkdir -p dist dmg
