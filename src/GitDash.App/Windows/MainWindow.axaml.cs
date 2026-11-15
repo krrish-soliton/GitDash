@@ -111,6 +111,11 @@ public partial class MainWindow : Window
     private void ToggleMaximize() =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
+    private void OnNotificationBackdropPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is ShellViewModel shell) shell.NotificationCenter.IsOpen = false;
+    }
+
     private void OnMinimizeClick(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
     private void OnMaximizeClick(object? sender, RoutedEventArgs e) => ToggleMaximize();
