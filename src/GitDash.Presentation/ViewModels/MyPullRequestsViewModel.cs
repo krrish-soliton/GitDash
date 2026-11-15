@@ -527,6 +527,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     // ----- Actions tab of the details popup: the workflow runs of this pull request -----
     public ObservableCollection<RunItemViewModel> DetailRuns { get; } = [];
+    public ObservableCollection<RunDayViewModel> DetailRunDays { get; } = [];
     public bool HasDetailRuns => DetailRuns.Count > 0;
     public string ActionsHeader => DetailRuns.Count == 0 ? "Actions" : $"Actions ({DetailRuns.Count})";
 
@@ -536,6 +537,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             ? Actions.RunsFor(card.PullRequest.Repository, card.PullRequest.Number)
             : [];
         DashboardViewModel.Replace(DetailRuns, runs);
+        RunDayViewModel.Sync(DetailRunDays, runs, _time.GetUtcNow());
         Raise(nameof(HasDetailRuns));
         Raise(nameof(ActionsHeader));
     }

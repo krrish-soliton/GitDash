@@ -32,6 +32,33 @@
                   </StackPanel>
                 </Button>
               </DataTemplate>
+    <!-- A day of workflow runs on the same rail as the timeline: time, dot in the run's status colour, run card -->
+    <DataTemplate x:Key="RunDayTemplate" x:DataType="vm:RunDayViewModel">
+      <StackPanel>
+        <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
+          <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
+            <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
+          </Border>
+          <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
+                  VerticalAlignment="Center" Margin="10,0,0,0" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:RunItemViewModel">
+              <Grid ColumnDefinitions="46,22,*">
+                <TextBlock Text="{Binding Time}" Classes="muted" FontSize="11" Margin="0,9,0,0"
+                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}" HorizontalAlignment="Center" />
+                <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top" Margin="0,11,0,0"
+                         Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                <ContentControl Grid.Column="2" Margin="4,0,0,0" Content="{Binding}"
+                                ContentTemplate="{StaticResource RunTemplate}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
     <!-- One conversation: a card with where it started, then a left/right chat of its messages -->
     <DataTemplate x:Key="ConversationTemplate" x:DataType="vm:CommentThreadViewModel">
       <Border CornerRadius="12" Margin="0,0,0,12" ClipToBounds="True" BorderThickness="1"
@@ -638,7 +665,7 @@
             <Panel Margin="0,12,0,0">
               <TextBlock Classes="muted" Text="No workflow runs found for this pull request." IsVisible="{Binding !HasDetailRuns}" />
               <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding DetailRuns}" ItemTemplate="{StaticResource RunTemplate}" Margin="0,0,14,0" />
+                <ItemsControl ItemsSource="{Binding DetailRunDays}" ItemTemplate="{StaticResource RunDayTemplate}" Margin="0,0,14,0" />
               </ScrollViewer>
             </Panel>
           </TabItem>
@@ -674,7 +701,7 @@
         <TextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Actions.HasRuns}"
                    Text="No workflow runs for the pull requests on the cards. Actions may be off for these repositories, or the token cannot read them." />
         <ScrollViewer>
-          <ItemsControl ItemsSource="{Binding Actions.Runs}" ItemTemplate="{StaticResource RunTemplate}" />
+          <ItemsControl ItemsSource="{Binding Actions.RunDays}" ItemTemplate="{StaticResource RunDayTemplate}" />
         </ScrollViewer>
       </DockPanel>
     </Border>
