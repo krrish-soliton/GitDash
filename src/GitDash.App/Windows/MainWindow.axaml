@@ -126,6 +126,19 @@
     <Style Selector="Border#Sidebar.collapsed :is(Control).hv">
       <Setter Property="IsVisible" Value="False" />
     </Style>
+    <!-- The sync button wears the live status: green when in sync, accent while syncing, red on an error -->
+    <Style Selector="Button.sync">
+      <Setter Property="Background" Value="#2434D399" />
+      <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+    </Style>
+    <Style Selector="Button.sync.busy">
+      <Setter Property="Background" Value="#2A818CF8" />
+      <Setter Property="Foreground" Value="{StaticResource Accent2Brush}" />
+    </Style>
+    <Style Selector="Button.sync.fail">
+      <Setter Property="Background" Value="#2AFB7185" />
+      <Setter Property="Foreground" Value="{StaticResource RedBrush}" />
+    </Style>
     <Style Selector="Border#Sidebar.floating">
       <Setter Property="BoxShadow" Value="0 0 34 0 #80000000" />
     </Style>
@@ -225,15 +238,23 @@
             BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="16,22,16,16"
             PointerEntered="OnSidebarEntered" PointerExited="OnSidebarExited">
       <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="4,0,0,26">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="4,0,0,26">
           <Border Width="36" Height="36" CornerRadius="11" Background="{StaticResource AccentGradient}">
             <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="White" />
           </Border>
-          <StackPanel Classes="hc" VerticalAlignment="Center">
+          <StackPanel Grid.Column="1" Classes="hc" Margin="12,0,0,0" VerticalAlignment="Center">
             <TextBlock Text="GitDash" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextBrush}" />
             <TextBlock Text="Pull request radar" Classes="muted" FontSize="11" />
           </StackPanel>
-        </StackPanel>
+          <!-- Pin / collapse: right of the logo, only there while the sidebar is open -->
+          <Button Grid.Column="2" Classes="round hv" Width="28" Height="28" VerticalAlignment="Center"
+                  Click="OnPinClick" ToolTip.Tip="Collapse or pin the sidebar">
+            <Panel>
+              <PathIcon x:Name="CollapseIcon" Data="{StaticResource IconLeft}" Width="12" Height="12" />
+              <PathIcon x:Name="PinIcon" Data="{StaticResource IconRight}" Width="12" Height="12" IsVisible="False" />
+            </Panel>
+          </Button>
+        </Grid>
 
         <!-- Sync status, refresh and the pin button -->
         <StackPanel DockPanel.Dock="Bottom" Spacing="10">
@@ -244,42 +265,47 @@
                          TextTrimming="CharacterEllipsis" />
             </Border>
           </StackPanel>
-          <Grid Classes="hv" ColumnDefinitions="Auto,*,Auto">
-            <Panel Width="10" Height="10" VerticalAlignment="Center" Margin="6,0,10,0">
-              <Ellipse Fill="{StaticResource GreenBrush}" IsVisible="{Binding !IsSyncing}" />
-              <Ellipse Classes="pulse" Fill="{StaticResource Accent2Brush}" IsVisible="{Binding IsSyncing}" />
-            </Panel>
-            <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="muted" FontSize="11.5"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            <Button Grid.Column="2" Classes="round" Width="32" Height="32" Command="{Binding RefreshCommand}"
-                    ToolTip.Tip="Sync now">
+          <!-- Open: the live status beside a refresh button that wears the status colour -->
+          <Grid Classes="hv" ColumnDefinitions="Auto,*" Margin="6,0,0,0">
+            <Button Classes="round sync" Classes.busy="{Binding IsSyncing}" Classes.fail="{Binding HasError}"
+                    Width="32" Height="32" Command="{Binding RefreshCommand}" ToolTip.Tip="Sync now">
               <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
             </Button>
+            <TextBlock Grid.Column="1" Text="{Binding Status}" Classes="muted" FontSize="11.5" Margin="10,0,0,0"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
           </Grid>
           <!-- Collapsed: only the refresh icon, lined up with the nav icons -->
-          <Button Classes="round sc" Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
+          <Button Classes="round sync sc" Classes.busy="{Binding IsSyncing}" Classes.fail="{Binding HasError}"
+                  Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
                   Command="{Binding RefreshCommand}" ToolTip.Tip="Sync now">
             <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
           </Button>
-          <Button Classes="round" Width="32" Height="32" Margin="6,0,0,0" HorizontalAlignment="Left"
-                  Click="OnPinClick" ToolTip.Tip="Collapse or pin the sidebar">
-            <Panel>
-              <PathIcon x:Name="CollapseIcon" Data="{StaticResource IconLeft}" Width="14" Height="14" />
-              <PathIcon x:Name="PinIcon" Data="{StaticResource IconRight}" Width="14" Height="14" IsVisible="False" />
-            </Panel>
-          </Button>
 
           <!-- Version number, and what the updater is doing -->
-          <StackPanel Classes="hc" Spacing="1" Margin="6,2,0,0" IsVisible="{Binding Updates.HasVersion}">
-            <TextBlock Text="{Binding Updates.VersionText}" FontSize="11.5" FontWeight="SemiBold"
-                       Foreground="{DynamicResource TextBrush}" ToolTip.Tip="The version of GitDash you are running" />
-            <TextBlock Classes="muted" FontSize="10.5" Text="{Binding Updates.SidebarText}"
-                       IsVisible="{Binding Updates.HasSidebarText}" />
-            <Button Classes="ghost compact" Content="Update now" Command="{Binding Updates.PrimaryActionCommand}"
-                    IsVisible="{Binding Updates.SidebarIsAction}" HorizontalAlignment="Left" Margin="0,4,0,0" />
+          <!-- Open: the version once, with an icon button beside it while an update is waiting -->
+          <Grid Classes="hv" ColumnDefinitions="*,Auto" Margin="6,2,0,0">
+            <StackPanel Spacing="1" VerticalAlignment="Center" IsVisible="{Binding Updates.HasVersion}">
+              <TextBlock Text="{Binding Updates.VersionText}" FontSize="11.5" FontWeight="SemiBold"
+                         Foreground="{DynamicResource TextBrush}" ToolTip.Tip="The version of GitDash you are running" />
+              <TextBlock Classes="muted" FontSize="10.5" Text="{Binding Updates.SidebarText}"
+                         IsVisible="{Binding Updates.HasSidebarText}" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="round" Width="28" Height="28" VerticalAlignment="Center"
+                    Command="{Binding Updates.PrimaryActionCommand}" IsVisible="{Binding Updates.SidebarIsAction}"
+                    ToolTip.Tip="Update GitDash">
+              <PathIcon Data="{StaticResource IconDownload}" Width="13" Height="13" />
+            </Button>
+          </Grid>
+          <!-- Collapsed: just the version (the wrapper carries the open/collapsed switch, the content the data bindings) -->
+          <StackPanel Classes="sc" Spacing="4" Margin="2,0,0,0">
+            <TextBlock Classes="muted" FontSize="10" Text="{Binding Updates.VersionText}"
+                       IsVisible="{Binding Updates.HasVersion}" ToolTip.Tip="{Binding Updates.SidebarText}" />
+            <Button Classes="round" Width="26" Height="26" HorizontalAlignment="Left"
+                    Command="{Binding Updates.PrimaryActionCommand}" IsVisible="{Binding Updates.SidebarIsAction}"
+                    ToolTip.Tip="Update GitDash">
+              <PathIcon Data="{StaticResource IconDownload}" Width="12" Height="12" />
+            </Button>
           </StackPanel>
-          <TextBlock Classes="muted sc" FontSize="10" Text="{Binding Updates.VersionText}" Margin="2,0,0,0"
-                     IsVisible="{Binding Updates.HasVersion}" ToolTip.Tip="{Binding Updates.SidebarText}" />
         </StackPanel>
 
         <ListBox Classes="nav" ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}">

@@ -144,3 +144,26 @@ jobs:
           name: GitDash ${{ github.ref_name }}
           generate_release_notes: true
           files: dist/*
+
+  # Keeps the version in the source (what a build from main reports) equal to the release that was just published,
+  # so a local build does not claim to be older than GitHub and offer an update to the version it already is.
+  sync-version:
+    if: github.ref_type == 'tag'
+    needs: [release]
+    runs-on: ubuntu-latest
+    continue-on-error: true   # a protected main branch may refuse the push; the release itself is already out
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Write the release version into Directory.Build.props
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          if [[ "$v" == *-* ]]; then echo "Pre-release $v: nothing to sync"; exit 0; fi
+          sed -i -E "s#<Version>[^<]*</Version>#<Version>${v}</Version>#" Directory.Build.props
+          if git diff --quiet; then echo "Already $v"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Version ${v}"
+          git push origin main
