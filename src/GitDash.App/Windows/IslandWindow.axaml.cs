@@ -138,8 +138,8 @@ public partial class IslandWindow : FloatingWindow
     /// <summary>Raised when the notification ends here (closed, clicked or timed out).</summary>
     public event Action<ToastRequest>? Dismissed;
 
-    /// <summary>Raised when the user presses the close button of a notification.</summary>
-    public event Action<ToastRequest>? ClosedByUser;
+    /// <summary>Raised when the user acted on a notification (pressed its close button): it counts as read.</summary>
+    public event Action<ToastRequest>? Acknowledged;
 
     /// <summary>Closes the notification because the same one was closed somewhere else (the corner toast).</summary>
     public void DismissFromOutside(ToastRequest request)
@@ -444,6 +444,6 @@ public partial class IslandWindow : FloatingWindow
     {
         if ((sender as StyledElement)?.DataContext is not IslandNote note) return;
         Remove(note, fromOutside: false);
-        ClosedByUser?.Invoke(note.Request);
+        Acknowledged?.Invoke(note.Request);
     }
 }
