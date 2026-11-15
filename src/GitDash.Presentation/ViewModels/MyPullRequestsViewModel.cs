@@ -355,6 +355,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     private MonitorState _state = MonitorState.Empty;
     private FilterOptionViewModel _selectedFilter;
+    private bool _filterAutoSwitched;
+    private bool _userPickedFilter;
     private int _selectedIndex;
     private readonly HashSet<string> _selectedAuthors = new(StringComparer.OrdinalIgnoreCase);
     private bool _syncingAuthors;
@@ -563,6 +565,9 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         set
         {
             if (value is null || !Set(ref _selectedFilter!, value)) return;
+            // A filter the user picks themselves is never switched automatically.
+            _filterAutoSwitched = false;
+            _userPickedFilter = true;
             Rebuild(force: true, startAtFirst: true);
         }
     }
@@ -762,6 +767,26 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     {
         var all = _state.Open.GroupBy(p => p.Id).Select(g => g.First()).ToList();
         foreach (var option in Filters) option.Count = all.Count(option.Matches);
+
+        // Nothing assigned to me: show all pull requests instead of an empty list, and go back once something is assigned.
+        var assignedFilter = Filters[0];
+        var allFilter = Filters.First(f => f.Filter == PullRequestFilter.All);
+        if (!_userPickedFilter && ReferenceEquals(_selectedFilter, assignedFilter) && assignedFilter.Count == 0 && allFilter.Count > 0)
+        {
+            _selectedFilter = allFilter;
+            _filterAutoSwitched = true;
+            Raise(nameof(SelectedFilter));
+            force = true;
+            startAtFirst = true;
+        }
+        else if (_filterAutoSwitched && ReferenceEquals(_selectedFilter, allFilter) && assignedFilter.Count > 0)
+        {
+            _selectedFilter = assignedFilter;
+            _filterAutoSwitched = false;
+            Raise(nameof(SelectedFilter));
+            force = true;
+            startAtFirst = true;
+        }
 
         var filter = _selectedFilter;
         SyncAuthorOptions([.. all.Where(filter.Matches)]);
