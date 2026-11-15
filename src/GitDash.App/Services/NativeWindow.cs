@@ -34,6 +34,7 @@ internal static class NativeWindow
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_getClass")] private static extern nint GetClass(string name);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern nint MsgSendHandle(nint receiver, nint selector);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern CgPoint MsgSendPoint(nint receiver, nint selector);
+    [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern byte MsgSendRespondsTo(nint receiver, nint selector, nint arg);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern void MsgSendLong(nint receiver, nint selector, nint value);
 
     /// <summary>
@@ -125,11 +126,28 @@ internal static class NativeWindow
             MsgSendLong(handle, sel_registerName("setCollectionBehavior:"), (nint)(CanJoinAllSpaces | Stationary | IgnoresCycle | FullScreenAuxiliary | CanJoinAllApplications));
             MsgSendLong(handle, sel_registerName("setLevel:"), (nint)StatusWindowLevel);
             MsgSendBool(handle, sel_registerName("setHidesOnDeactivate:"), false);
+            MakeNonActivating(handle);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
         {
             // The overlay stays on the desktop it was opened on.
         }
+    }
+
+    private const long NonactivatingPanelStyle = 1 << 7;
+
+    /// <summary>
+    /// Makes the window behave like a non-activating panel (macOS): showing or clicking it never activates GitDash, which is
+    /// what lets such windows sit on top of other apps' full-screen Spaces. Avalonia's windows are plain NSWindows, so the
+    /// panel style bit is set on the window and, where AppKit has it, its internal "prevents activation" switch is turned on.
+    /// </summary>
+    private static void MakeNonActivating(nint handle)
+    {
+        var style = MsgSendHandle(handle, sel_registerName("styleMask"));
+        MsgSendLong(handle, sel_registerName("setStyleMask:"), style | (nint)NonactivatingPanelStyle);
+        var preventsActivation = sel_registerName("_setPreventsActivation:");
+        if (MsgSendRespondsTo(handle, sel_registerName("respondsToSelector:"), preventsActivation) != 0)
+            MsgSendBool(handle, preventsActivation, true);
     }
 
     /// <summary>What macOS currently says about the window and the app (for the diagnostics log). Empty off macOS.</summary>
@@ -142,7 +160,8 @@ internal static class NativeWindow
             var policy = app == 0 ? -1 : MsgSendHandle(app, sel_registerName("activationPolicy"));
             var behavior = MsgSendHandle(handle, sel_registerName("collectionBehavior"));
             var level = MsgSendHandle(handle, sel_registerName("level"));
-            return $"policy={policy} collectionBehavior={behavior} level={level}";
+            var style = MsgSendHandle(handle, sel_registerName("styleMask"));
+            return $"policy={policy} collectionBehavior={behavior} level={level} styleMask={style}";
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
         {
