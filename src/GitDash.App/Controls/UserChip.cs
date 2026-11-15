@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -84,15 +85,18 @@ public sealed class UserChip : Border
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        AvatarDirectory.Changed += Refresh;
+        AvatarDirectory.Changed += OnDirectoryChanged;
         Refresh();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        AvatarDirectory.Changed -= Refresh;
+        AvatarDirectory.Changed -= OnDirectoryChanged;
         base.OnDetachedFromVisualTree(e);
     }
+
+    /// <summary>The directory is updated from the monitor's background thread; controls may only be touched on the UI thread.</summary>
+    private void OnDirectoryChanged() => Dispatcher.UIThread.Post(Refresh);
 
     private void Refresh()
     {

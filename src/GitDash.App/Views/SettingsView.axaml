@@ -734,6 +734,22 @@
             </StackPanel>
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoUpdate}" OnContent="" OffContent="" />
           </Grid>
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="Check for updates every" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="From 1 minute upward, in minutes or hours. It also checks shortly after start. Applies while automatic updates are on; the button above always checks right away. Without a signed-in GitHub account GitHub allows about 60 requests an hour, so very short intervals can be refused." />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" IsEnabled="{Binding AutoUpdate}">
+              <NumericUpDown Value="{Binding UpdateCheckValue}" Minimum="1" Maximum="129600" Increment="1" FormatString="0.##" Width="130"
+                             VerticalAlignment="Center" />
+              <ComboBox SelectedIndex="{Binding UpdateCheckUnitIndex}" Width="110" Height="32" MinHeight="0" Padding="10,0"
+                        VerticalAlignment="Center" VerticalContentAlignment="Center">
+                <ComboBoxItem Content="minutes" />
+                <ComboBoxItem Content="hours" />
+              </ComboBox>
+            </StackPanel>
+          </Grid>
         </StackPanel>
       </Border>
       <Border Classes="card enter3" IsVisible="{Binding IsWindowSection}">
