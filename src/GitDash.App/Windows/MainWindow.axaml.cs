@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void UseSystemWindowButtons()
     {
-        ExtendClientAreaChromeHints = Avalonia.Controls.ExtendClientAreaChromeHints.PreferSystemChrome;
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.PreferSystemChrome;
         if (this.FindControl<StackPanel>("TrafficLights") is { } lights) lights.IsVisible = false;
         if (this.FindControl<StackPanel>("TitleBrand") is { } brand) brand.Margin = new Thickness(82, 0, 0, 0);
     }
