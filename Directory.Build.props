@@ -7,7 +7,8 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <InvariantGlobalization>false</InvariantGlobalization>
     <Deterministic>true</Deterministic>
-    <!-- Release version. The Release workflow overrides it from the git tag (v1.0.1 -> 1.0.1). -->
-    <Version>1.0.1</Version>
+    <!-- Release version, kept equal to the latest GitHub release. The Release workflow overrides it from the git tag
+         (v1.2.1 -> 1.2.1) and, once a release is published, writes the same number back here on main. -->
+    <Version>1.2.1</Version>
   </PropertyGroup>
 </Project>
