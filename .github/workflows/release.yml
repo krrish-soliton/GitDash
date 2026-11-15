@@ -174,19 +174,24 @@ jobs:
           generate_release_notes: true
           files: dist/*
 
-  # Keeps the version in the source (what a build from main reports) equal to the release that was just published,
-  # so a local build does not claim to be older than GitHub and offer an update to the version it already is.
+  # Proposes the release version for main so local builds do not offer an update to the version they already are.
+  # Requires the repository setting "Allow GitHub Actions to create and approve pull requests".
   sync-version:
     if: github.ref_type == 'tag'
     needs: [release]
     runs-on: ubuntu-latest
-    continue-on-error: true   # a protected main branch may refuse the push; the release itself is already out
+    continue-on-error: true   # the release itself is already out even if syncing fails
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v6
         with:
           ref: main
 
       - name: Write the release version into Directory.Build.props
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           v="${GITHUB_REF_NAME#v}"
           if [[ "$v" == *-* ]]; then echo "Pre-release $v: nothing to sync"; exit 0; fi
@@ -194,5 +199,10 @@ jobs:
           if git diff --quiet; then echo "Already $v"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "Version ${v}"
-          git push origin main
+          branch="sync-version/${GITHUB_REF_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git checkout -b "$branch"
+          git add Directory.Build.props
+          git commit -m "Version ${v}"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "Version ${v}" \
+            --body "Sync the source version with the published ${GITHUB_REF_NAME} release."
