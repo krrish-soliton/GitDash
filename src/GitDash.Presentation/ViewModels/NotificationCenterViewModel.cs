@@ -11,18 +11,30 @@ public sealed class NotificationItemViewModel(
     NotificationEntry entry, string whenText, Action<NotificationItemViewModel> open, Action<Guid> markRead)
     : ObservableObject
 {
-    public Guid Id => entry.Id;
-    public string Title => entry.Title;
-    public string Message => entry.Message;
-    public string Tone => entry.Tone.ToString();
-    public string? Url => entry.Url;
+    private NotificationEntry _entry = entry;
+
+    public Guid Id => _entry.Id;
+    public string Title => _entry.Title;
+    public string Message => _entry.Message;
+    public string Tone => _entry.Tone.ToString();
+    public string? Url => _entry.Url;
     public string WhenText => whenText;
-    public bool IsUnread => !entry.Read;
+    public bool IsUnread => !_entry.Read;
     /// <summary>Picture of the person involved; null when there is none or it is not known yet.</summary>
-    public string? AvatarUrl => AvatarDirectory.UrlFor(entry.Actor);
+    public string? AvatarUrl => AvatarDirectory.UrlFor(_entry.Actor);
     public bool HasAvatar => AvatarUrl is not null;
     public ICommand OpenCommand => _open ??= new RelayCommand(() => open(this));
-    public ICommand MarkReadCommand => _markRead ??= new RelayCommand(() => markRead(entry.Id), () => IsUnread);
+    public ICommand MarkReadCommand => _markRead ??= new RelayCommand(() => markRead(_entry.Id), () => IsUnread);
+
+    /// <summary>Takes the newest state of the same notification (read or not, picture) so the row can stay where it is.</summary>
+    public void Update(NotificationEntry entry)
+    {
+        _entry = entry;
+        Raise(nameof(IsUnread));
+        Raise(nameof(AvatarUrl));
+        Raise(nameof(HasAvatar));
+        _markRead?.RaiseCanExecuteChanged();
+    }
 
     private RelayCommand? _open, _markRead;
 }
@@ -74,10 +86,18 @@ public sealed class NotificationCenterViewModel : ObservableObject
 
     private void Refresh()
     {
-        Items.Clear();
-        if (_history is not null)
-            foreach (var entry in _history.Entries)
+        var entries = _history?.Entries.ToList() ?? [];
+        if (entries.Count == Items.Count && entries.Select(e => e.Id).SequenceEqual(Items.Select(i => i.Id)))
+        {
+            // Same list, only read marks or pictures changed: update the rows in place so the list neither jumps nor resizes.
+            for (var i = 0; i < entries.Count; i++) Items[i].Update(entries[i]);
+        }
+        else
+        {
+            Items.Clear();
+            foreach (var entry in entries)
                 Items.Add(new NotificationItemViewModel(entry, WhenText(entry.At), OnOpen, id => _history?.MarkRead(id)));
+        }
 
         Raise(nameof(UnreadCount));
         Raise(nameof(HasUnread));
