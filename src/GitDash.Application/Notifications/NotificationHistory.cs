@@ -72,6 +72,19 @@ public sealed class NotificationHistory(INotificationStore store, TimeProvider t
         Commit();
     }
 
+    /// <summary>Marks the newest unread entry that was recorded for this notification as read.</summary>
+    public void MarkRead(ToastRequest request)
+    {
+        Guid? id;
+        lock (_gate)
+        {
+            id = _entries.FirstOrDefault(e => !e.Read && e.Title == request.Title && e.Message == request.Message &&
+                                              e.Tone == request.Tone && e.Url == request.Url && e.Actor == request.Actor)?.Id;
+        }
+
+        if (id is { } found) MarkRead(found);
+    }
+
     public void MarkAllRead()
     {
         lock (_gate)

@@ -24,6 +24,9 @@ public partial class ToastWindow : Window
     /// <summary>True when it ended here (close button, click or its own timer) rather than because the island closed the same notification.</summary>
     public bool ClosedLocally { get; private set; }
 
+    /// <summary>True when it ended because the user pressed its close button.</summary>
+    public bool ClosedByUser { get; private set; }
+
     // Required by the XAML loader and the previewer.
     public ToastWindow()
     {
@@ -80,6 +83,7 @@ public partial class ToastWindow : Window
 
     private void OnCloseClick(object? sender, RoutedEventArgs e)
     {
+        ClosedByUser = true;
         Dismiss(activated: false);
     }
 

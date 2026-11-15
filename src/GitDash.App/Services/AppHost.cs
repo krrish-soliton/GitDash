@@ -125,6 +125,9 @@ public sealed class AppHost : IDisposable
         // Closing a notification on one surface closes the same notification on the other.
         toasts.Closed += _island.CloseFor;
         _island.Closed += toasts.CloseFor;
+        // Pressing a notification's close button also marks it as read in the bell.
+        toasts.ClosedByUser += notificationHistory.MarkRead;
+        _island.ClosedByUser += notificationHistory.MarkRead;
         _tray = new TrayController(Shell.Widget, Settings, showMainWindow, quit);
     }
 
