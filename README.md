@@ -195,3 +195,9 @@ Only `GitDash.App` (Avalonia) and the test project use NuGet packages.
 - **Windows installer:** an optional step, "Install GitHub CLI" (shown only when `gh` is not already on the computer), downloads GitHub's own `gh` installer (`gh_<version>_windows_amd64.msi`, version and SHA-256 pinned at the top of `installer/GitDash.iss`), checks the checksum and installs it after GitDash. Windows asks for permission because `gh` installs for all users. If the download or install fails, GitDash is still installed. Silent installs (the auto-updater) never download anything. To move to a newer `gh`, change `GhVersion` and `GhSha256` in the script.
 - **Sign in with GitHub CLI (Settings > Accounts):** one click. If `gh` is installed but not logged in, GitDash runs `gh auth login --web`, shows the one-time code, GitHub CLI opens the browser, and GitDash copies the token into its own store when you finish. If `gh` is missing the message says so and offers "Get GitHub CLI" (on a Mac: `brew install gh`).
 - Untested against a real `gh` login from inside the app (the output of `gh` is read to find the code): please try it once on a computer where `gh auth status` fails.
+
+## macOS island and full-screen apps
+
+- The island keeps its place when it opens and closes near a screen edge (it used to creep to the left on every hover).
+- **Island and widgets over full-screen apps** (Settings > General, macOS): macOS only shows overlays above full-screen apps, and on every desktop, for apps without a Dock icon. With this on (default) GitDash has no Dock icon while the island or a widget is on and lives in the menu bar; reopen the window from the menu-bar icon. Turn it off to keep the Dock icon (the overlays then stay on the desktop they were opened on). Needs the tray icon.
+

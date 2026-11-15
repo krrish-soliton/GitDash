@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GitDash.App.Converters;
+using GitDash.App.Services;
 using GitDash.Application.Abstractions;
 using GitDash.Presentation.Mvvm;
 using GitDash.Presentation.ViewModels;
@@ -49,7 +50,7 @@ public sealed class IslandNote(ToastRequest request, bool autoClose) : Observabl
 public partial class IslandWindow : FloatingWindow
 {
     private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
-    private const double CompactRowHeight = 34, ExpandSlack = 14;
+    private const double CompactRowHeight = 34, ExpandSlack = 14, MinOpenWidth = 300;
     private const int MaxVisibleNotes = 4, MaxWaiting = 20;
     private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 38;
     private int _timerRows;
@@ -187,7 +188,10 @@ public partial class IslandWindow : FloatingWindow
     private PixelPoint _lastPos;
     private bool _hasCenter;
 
-    private double Scale => RenderScaling <= 0 ? 1 : RenderScaling;
+    private double Scale => PositionScale;
+
+    private bool MovedFromWhereWePlacedIt() =>
+        Math.Abs(Position.X - _lastPos.X) > 3 || Math.Abs(Position.Y - _lastPos.Y) > 3;
 
     /// <summary>
     /// The island's own centre. It differs from the window's centre while the window is shifted to stay on screen, and
@@ -195,7 +199,10 @@ public partial class IslandWindow : FloatingWindow
     /// </summary>
     private int CurrentCenterX()
     {
-        if (!_hasCenter || Position != _lastPos)
+        // Only the user dragging it (unlocked) or the very first look may change the centre. Reading it back from the window
+        // every time drifted the island left on macOS: the system rounds the position, so it never matched exactly, and a
+        // window pushed in from the screen edge then passed for the island's own centre.
+        if (!_hasCenter || (OperatingSystem.IsMacOS() ? !IsLocked && MovedFromWhereWePlacedIt() : Position != _lastPos))
         {
             _centerX = Position.X + (int)Math.Round(Width * Scale / 2);
             _hasCenter = true;
@@ -209,6 +216,21 @@ public partial class IslandWindow : FloatingWindow
     /// Resizes around the island's centre but never past the edges of the screen it is on: when the wide form would
     /// stick out, the window slides back in, and the centre is remembered so the compact form returns to the same spot.
     /// </summary>
+    /// <summary>
+    /// Near a screen edge the island opens only as wide as fits around its centre (never less than <see cref="MinOpenWidth"/>),
+    /// so it stays where it is instead of sliding sideways to make room.
+    /// </summary>
+    private double FitWidth(double wanted)
+    {
+        if (!OperatingSystem.IsMacOS()) return wanted; // macOS only: elsewhere the island keeps sliding in from the edge as before.
+        var centre = CurrentCenterX();
+        var screen = Screens.ScreenFromPoint(new PixelPoint(centre, Position.Y)) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+        if (screen is null) return wanted;
+        var area = screen.WorkingArea;
+        var room = 2.0 * Math.Min(centre - area.X, area.Right - centre) / Scale;
+        return Math.Min(wanted, Math.Max(MinOpenWidth, room - WindowPadX));
+    }
+
     private void Fit(double width, double height)
     {
         var centre = CurrentCenterX();
@@ -226,12 +248,15 @@ public partial class IslandWindow : FloatingWindow
         }
 
         var target = new PixelPoint(left, top);
+        OverlayLog.Write($"island Fit {width}x{height} window={Width}x{Height} pos={Position} scale={Scale} centre={centre} " +
+                         $"screen={(screen is null ? "none" : $"{screen.Bounds} work={screen.WorkingArea} scaling={screen.Scaling}")} target={target}");
         // New size first, around where the pill is now (so it grows/shrinks in place), then slide to the on-screen spot.
         var start = new PixelPoint(visualCentre - wpx / 2, Position.Y);
         _slide?.Stop();
         _slide = null;
         Place(start, width, height);
         _lastPos = start;
+        DispatcherTimer.RunOnce(() => OverlayLog.Write($"island after Fit: pos={Position} window={Width}x{Height} bounds={Bounds}"), TimeSpan.FromMilliseconds(600));
         if (start == target) return;
         if (!Classes.Contains("motion"))
         {
@@ -272,7 +297,7 @@ public partial class IslandWindow : FloatingWindow
     /// <summary>Puts the island at a remembered spot (if still on a screen) or at the top centre of the main screen.</summary>
     public void PlaceAt(int? centerX, int? top)
     {
-        var scale = RenderScaling <= 0 ? 1 : RenderScaling;
+        var scale = PositionScale;
         var half = (int)(Width * scale / 2);
         if (centerX is { } cx && top is { } y && Screens.All.Any(s => s.WorkingArea.Contains(new PixelPoint(cx, y + 4))))
         {
@@ -389,6 +414,7 @@ public partial class IslandWindow : FloatingWindow
 
     private void Expand(double width, double height)
     {
+        width = FitWidth(width);
         // A little extra at the bottom so the last row (a timer slider, a note) is never touching the edge.
         height += TimerExtra + ExpandSlack;
         Fit(width + WindowPadX, height + WindowPadY);

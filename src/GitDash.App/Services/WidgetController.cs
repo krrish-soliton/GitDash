@@ -108,7 +108,7 @@ public sealed class WidgetController(
     private void Remember(FloatingWindow window, Func<double, double, AppSettings> change)
     {
         var area = (window.Screens.Primary ?? window.Screens.All.FirstOrDefault())?.WorkingArea ?? new PixelRect(0, 0, 1920, 1080);
-        var scale = window.RenderScaling <= 0 ? 1 : window.RenderScaling;
+        var scale = window.PositionScale;
         static double Pct(int value, int origin, double room) =>
             room <= 0 ? 0 : Math.Round(Math.Clamp((value - origin) * 100.0 / room, 0, 100), 2);
         var p = window.RememberedPosition;

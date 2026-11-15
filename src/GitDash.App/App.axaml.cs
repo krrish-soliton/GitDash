@@ -13,6 +13,7 @@ public partial class App : AvaloniaApplication
 {
     private AppHost? _host;
     private bool _quitting;
+    private bool _lastDockLogged = true;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -53,9 +54,49 @@ public partial class App : AvaloniaApplication
                 Dispatcher.UIThread.Post(window.Hide);
             };
             // macOS: with the option on, the Dock icon goes away while the window is hidden and returns when it is shown.
-            void UpdateDock() => NativeWindow.SetDockIconVisible(window.IsVisible || !host.Settings.Current.HideDockIconWhenHidden);
+            // The Dock icon is also dropped while an overlay is on and "over full-screen apps" is chosen: macOS only lets
+            // apps without a Dock icon put windows on top of full-screen apps.
+            void UpdateDock()
+            {
+                var s = host.Settings.Current;
+                var overlayOn = s.ShowDynamicIsland || s.ShowFloatingWidget || s.ShowTimerWidget;
+                var overFullScreen = s is { OverlaysOverFullScreen: true, ShowTrayIcon: true } && overlayOn;
+                var dockVisible = !overFullScreen && (window.IsVisible || !s.HideDockIconWhenHidden);
+                if (OperatingSystem.IsMacOS() && dockVisible != _lastDockLogged)
+                {
+                    _lastDockLogged = dockVisible;
+                    OverlayLog.Write($"dock icon visible={dockVisible} (overlayOn={overlayOn}, over-full-screen setting={s.OverlaysOverFullScreen}, " +
+                                     $"tray icon={s.ShowTrayIcon}, window visible={window.IsVisible}, hide-while-hidden={s.HideDockIconWhenHidden}) {NativeWindow.Describe(window)}");
+                }
+
+                if (NativeWindow.SetDockIconVisible(dockVisible) && !dockVisible)
+                {
+                    // Windows shown before the Dock icon went away are not yet part of the full-screen Spaces: order them in again.
+                    foreach (var overlay in desktop.Windows.OfType<FloatingWindow>())
+                    {
+                        NativeWindow.ShowOnAllDesktops(overlay);
+                        NativeWindow.OrderAgain(overlay);
+                        OverlayLog.Write($"{overlay.GetType().Name} ordered in again after the Dock icon went away: {NativeWindow.Describe(overlay)}");
+                    }
+                }
+            }
+            // macOS: overlays are hosted in native panels when they are meant to float over full-screen apps (they are
+            // created after this point, so the choice applies to windows opened from now on).
+            NativeWindow.UsePanels = OperatingSystem.IsMacOS() && host.Settings.Current is { OverlaysOverFullScreen: true, ShowTrayIcon: true };
             window.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) UpdateDock(); };
-            host.Settings.Changed += _ => Dispatcher.UIThread.Post(UpdateDock);
+            host.Settings.Changed += s => Dispatcher.UIThread.Post(() =>
+            {
+                NativeWindow.UsePanels = OperatingSystem.IsMacOS() && s is { OverlaysOverFullScreen: true, ShowTrayIcon: true };
+                UpdateDock();
+            });
+            // The framework sets its own activation policy while the first windows open, which undid the call above:
+            // look again once everything is up, and keep an eye on it while an overlay needs the Dock icon gone.
+            if (OperatingSystem.IsMacOS())
+            {
+                window.Opened += (_, _) => Dispatcher.UIThread.Post(UpdateDock);
+                foreach (var seconds in new[] { 1, 3 }) DispatcherTimer.RunOnce(UpdateDock, TimeSpan.FromSeconds(seconds));
+                new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => UpdateDock()).Start();
+            }
             desktop.Exit += (_, _) => host.Dispose();
 
             host.Start();

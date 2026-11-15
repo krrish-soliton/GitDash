@@ -88,13 +88,29 @@ public abstract class FloatingWindow : Window
     private double _placedWidth = double.NaN;
 
     /// <summary>
+    /// How many units <see cref="Window.Position"/> and the screens' areas count per layout unit. Usually this is the
+    /// render scaling, but macOS reports positions in points (screen scaling 1) while rendering at 2x on Retina
+    /// screens, so the screen's own scaling is the one that matches the coordinates we place windows with.
+    /// </summary>
+    internal double PositionScale
+    {
+        get
+        {
+            // Everywhere but macOS the two are the same thing, so the long-standing behaviour is kept as it was.
+            if (!OperatingSystem.IsMacOS()) return RenderScaling <= 0 ? 1 : RenderScaling;
+            var scale = Screens.ScreenFromVisual(this)?.Scaling ?? 1;
+            return scale <= 0 ? 1 : scale;
+        }
+    }
+
+    /// <summary>
     /// Resizes the window while keeping one point fixed on screen: 0 = left edge, 0.5 = centre, 1 = right edge.
     /// The new left edge is computed from the last place we put the window (not from the platform's possibly
     /// rounded or lagging value), and the two roundings cancel out, so going big and back never drifts.
     /// </summary>
     protected void ResizeAnchored(double width, double height, double anchor)
     {
-        var scale = RenderScaling <= 0 ? 1 : RenderScaling;
+        var scale = PositionScale;
         // Something else (the user dragging, PlaceAt) moved the window since our last call: start from there.
         if (double.IsNaN(_placedWidth) || Position != _placed)
         {
@@ -156,13 +172,33 @@ public abstract class FloatingWindow : Window
         base.OnOpened(e);
         // The native window exists only now, so the click-through flag has to be (re)applied here.
         NativeWindow.HideFromSwitcher(this);
+        if (OperatingSystem.IsMacOS() && NativeWindow.AttachPanel(this)) StartPanelSync();
         NativeWindow.ShowOnAllDesktops(this);
+        var kind = GetType().Name;
+        OverlayLog.Write($"{kind} opened: {NativeWindow.Describe(this)} pos={Position} size={Width}x{Height} scale={RenderScaling}");
+        DispatcherTimer.RunOnce(() => OverlayLog.Write($"{kind} 3 s later: {NativeWindow.Describe(this)} pos={Position}"), TimeSpan.FromSeconds(3));
         _applied = false;
         SetLocked(_locked);
     }
 
+    private DispatcherTimer? _panelTimer;
+
+    /// <summary>macOS: the content lives in a native panel (see <see cref="NativeWindow.AttachPanel"/>) that has to follow this window.</summary>
+    private void StartPanelSync()
+    {
+        NativeWindow.SyncPanel(this);
+        _panelTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => NativeWindow.SyncPanel(this));
+        _panelTimer.Start();
+    }
+
+    private PixelPoint _dragStartCursor, _dragStartPosition;
+    private bool _dragging;
+
     protected override void OnClosed(EventArgs e)
     {
+        _panelTimer?.Stop();
+        _panelTimer = null;
+        NativeWindow.DetachPanel(this);
         _hoverTimer?.Stop();
         _hoverTimer = null;
         base.OnClosed(e);
@@ -171,7 +207,33 @@ public abstract class FloatingWindow : Window
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (!_locked && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);
+        if (_locked || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        // The native panel cannot start the system's window drag (the event belongs to the stand-in window), so the move is done by hand.
+        if (NativeWindow.HasPanel(this) && NativeWindow.CursorPosition(1) is { } start)
+        {
+            _dragging = true;
+            _dragStartCursor = start;
+            _dragStartPosition = Position;
+            e.Pointer.Capture(this);
+            return;
+        }
+
+        BeginMoveDrag(e);
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (!_dragging || NativeWindow.CursorPosition(1) is not { } now) return;
+        Position = new PixelPoint(_dragStartPosition.X + now.X - _dragStartCursor.X, _dragStartPosition.Y + now.Y - _dragStartCursor.Y);
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (!_dragging) return;
+        _dragging = false;
+        e.Pointer.Capture(null);
     }
 
     /// <summary>
@@ -182,7 +244,7 @@ public abstract class FloatingWindow : Window
     {
         get
         {
-            var scale = RenderScaling <= 0 ? 1 : RenderScaling;
+            var scale = PositionScale;
             return new PixelRect(Position, new PixelSize((int)Math.Round(Width * scale), (int)Math.Round(Height * scale)));
         }
     }
@@ -199,7 +261,7 @@ public abstract class FloatingWindow : Window
     /// </summary>
     private bool CursorIsOverHitButton(PixelPoint cursor)
     {
-        var scale = RenderScaling <= 0 ? 1 : RenderScaling;
+        var scale = PositionScale;
         foreach (var button in this.GetVisualDescendants().OfType<Button>())
         {
             if (!button.Classes.Contains("hit") || !button.IsVisible || button.Bounds.Width <= 0) continue;

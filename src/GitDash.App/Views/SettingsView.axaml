@@ -784,6 +784,15 @@
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding HideDockIconWhenHidden}" IsEnabled="{Binding ShowTrayIcon}"
                           OnContent="" OffContent="" />
           </Grid>
+          <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsMacOS}">
+            <StackPanel>
+              <TextBlock Text="Island and widgets over full-screen apps" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
+                         Text="macOS only shows an overlay on top of full-screen apps (and on every desktop) for apps without a Dock icon. With this on, GitDash has no Dock icon while the island or a widget is switched on and lives in the menu bar. Needs the tray icon so you can reopen the window." />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OverlaysOverFullScreen}" IsEnabled="{Binding ShowTrayIcon}"
+                          OnContent="" OffContent="" />
+          </Grid>
           </StackPanel>
         </StackPanel>
       </Border>

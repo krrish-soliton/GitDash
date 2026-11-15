@@ -45,7 +45,7 @@ public partial class WidgetWindow : FloatingWindow
     /// <summary>Card place on screen (0–100 %), and the circle's place inside the card (0–100 %).</summary>
     public readonly record struct WidgetLayout(bool Mini, double XPercent, double YPercent, double MiniXPercent, double MiniYPercent);
 
-    private double Scale => RenderScaling <= 0 ? 1 : RenderScaling;
+    private double Scale => PositionScale;
 
     private int Px(double logical) => (int)Math.Round(logical * Scale);
 
