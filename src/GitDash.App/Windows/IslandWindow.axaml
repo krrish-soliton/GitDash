@@ -66,16 +66,20 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-          <!-- Unread notifications: a bell with the count beside it -->
-          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
-                      ToolTip.Tip="Unread notifications">
-            <PathIcon Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#A0A8C0"
-                      IsVisible="{Binding !NotificationCenter.HasUnread}" />
-            <PathIcon Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#FBBF24"
-                      IsVisible="{Binding NotificationCenter.HasUnread}" />
-            <TextBlock Text="{Binding NotificationCenter.BadgeText}" FontSize="12" FontWeight="Bold" Foreground="White"
-                       IsVisible="{Binding NotificationCenter.HasUnread}" VerticalAlignment="Center" />
-          </StackPanel>
+          <!-- No unread notifications: just a dim bell, which lets the mouse pass through when click-through is on -->
+          <PathIcon Grid.Column="2" Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#A0A8C0"
+                    VerticalAlignment="Center" IsVisible="{Binding !NotificationCenter.HasUnread}" />
+          <!-- Unread notifications: bell and count are a button that opens the app (class "hit" keeps it clickable
+               while the island is click-through; it disappears with the last unread notification) -->
+          <Button Grid.Column="2" Classes="hit" Background="Transparent" BorderThickness="0" MinHeight="0" MinWidth="0"
+                  Padding="6,4" VerticalAlignment="Center" Cursor="Hand" Click="OnBellClick"
+                  IsVisible="{Binding NotificationCenter.HasUnread}" ToolTip.Tip="Unread notifications: open GitDash">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <PathIcon Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#FBBF24" />
+              <TextBlock Text="{Binding NotificationCenter.BadgeText}" FontSize="12" FontWeight="Bold" Foreground="White"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
         </Grid>
         <ItemsControl ItemsSource="{Binding Timers.VisibleTimers}" Margin="16,0,16,0">
           <ItemsControl.ItemTemplate>

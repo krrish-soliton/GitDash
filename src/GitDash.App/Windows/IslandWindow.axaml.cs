@@ -440,6 +440,14 @@ public partial class IslandWindow : FloatingWindow
         _activated(null);
     }
 
+    /// <summary>The bell with unread notifications: opens the app on the Notifications page.</summary>
+    private void OnBellClick(object? sender, RoutedEventArgs e)
+    {
+        if (!IsLocked) return; // unlocked: the island is being dragged, not clicked
+        _activated(null);
+        (DataContext as ShellViewModel)?.NotificationCenter.ShowAllCommand.Execute(null);
+    }
+
     private void OnNoteCloseClick(object? sender, RoutedEventArgs e)
     {
         if ((sender as StyledElement)?.DataContext is not IslandNote note) return;
