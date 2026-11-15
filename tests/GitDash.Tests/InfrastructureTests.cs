@@ -324,6 +324,28 @@ public class CommentReactionTests
         Assert.Equal("T1", inline[0].ThreadId);
         Assert.Equal("T1", inline[1].ThreadId);
     }
+
+    [Fact]
+    public void Takes_replies_from_the_thread_even_when_their_review_is_not_in_the_timeline()
+    {
+        // The timeline is capped, so the reviews that hold the replies may be missing from it; the thread still has them.
+        const string json = """
+            {"repository":{"pullRequest":{"createdAt":"2026-11-10T08:00:00Z","body":"x","author":{"login":"maya"},
+              "reviewThreads":{"nodes":[{"id":"T1","isResolved":true,"comments":{"nodes":[
+                {"id":"c1","createdAt":"2026-11-11T07:50:00Z","path":"src/A.cs","body":"Rename this","author":{"login":"krish"}},
+                {"id":"c2","createdAt":"2026-11-11T08:10:00Z","path":"src/A.cs","body":"Renamed","author":{"login":"maya"}},
+                {"id":"c3","createdAt":"2026-11-11T09:00:00Z","path":"src/A.cs","body":"Thanks","author":{"login":"krish"}}]}}]},
+              "timelineItems":{"nodes":[
+                {"__typename":"PullRequestReview","submittedAt":"2026-11-11T08:00:00Z","author":{"login":"krish"},"state":"COMMENTED","bodyText":"","body":"","comments":{"totalCount":1,"nodes":[
+                  {"id":"c1","createdAt":"2026-11-11T07:50:00Z","path":"src/A.cs","body":"Rename this","author":{"login":"krish"}}]}}]}}}}
+            """;
+        using var doc = JsonDocument.Parse(json);
+        var thread = PullRequestMapper.MapDetails(doc.RootElement).Comments.Where(c => c.ThreadId == "T1").OrderBy(c => c.At).ToList();
+
+        Assert.Equal(["Rename this", "Renamed", "Thanks"], thread.Select(c => c.Body));   // no duplicate of c1
+        Assert.All(thread, c => Assert.True(c.IsResolvedThread));
+        Assert.All(thread, c => Assert.Equal("src/A.cs", c.Path));
+    }
 }
 
 public class WorkflowRunMapperTests

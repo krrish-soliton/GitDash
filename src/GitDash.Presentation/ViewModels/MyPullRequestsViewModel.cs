@@ -122,6 +122,15 @@ public sealed record CommentViewModel(
         GitDash.Presentation.Markdown.MarkdownParser.Parse(Body);
 }
 
+/// <summary>One conversation as GitHub shows it: where it was started, the first message and the replies under it.</summary>
+public sealed record CommentThreadViewModel(
+    string Source, bool IsResolved, bool IsUnresolved, IReadOnlyList<CommentViewModel> Comments)
+{
+    public int ReplyCount => Math.Max(0, Comments.Count - 1);
+    public bool HasReplies => ReplyCount > 0;
+    public string ReplyText => ReplyCount == 1 ? "1 reply" : $"{ReplyCount} replies";
+}
+
 public sealed record ReviewEventViewModel(string When, string Actor, string Verdict, string Text, string Kind);
 
 /// <summary>One cover-flow card.</summary>
@@ -693,6 +702,8 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     }
 
     public ObservableCollection<CommentViewModel> Comments { get; } = [];
+    /// <summary>The same comments grouped into conversations (a first message with its replies), as the Comments tab shows them.</summary>
+    public ObservableCollection<CommentThreadViewModel> Threads { get; } = [];
     public bool HasComments { get => _hasComments; private set => Set(ref _hasComments, value); }
     public bool CommentsByMe { get => _commentsByMe; set { if (Set(ref _commentsByMe, value)) RebuildComments(); } }
     public bool CommentsByOthers { get => _commentsByOthers; set { if (Set(ref _commentsByOthers, value)) RebuildComments(); } }
@@ -954,37 +965,49 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         var all = _details?.Comments ?? [];
 
         // A chat: oldest first, and a code conversation stays together with its replies right under the first message.
-        var ordered = all
+        var groups = all
             .Select((c, i) => (Comment: c, Key: c.ThreadId ?? "single:" + i))
             .GroupBy(x => x.Key)
             .Select(g => g.OrderBy(x => x.Comment.At).Select((x, n) => (x.Comment, IsReply: n > 0)).ToList())
             .OrderBy(g => g[0].Comment.At)
-            .SelectMany(g => g)
             .ToList();
 
-        Comments.Clear();
-        foreach (var (c, isReply) in ordered)
+        static string SourceLabel(PullRequestComment c) => c.Source switch
         {
-            var mine = Login.Same(c.Author, viewer);
-            var ai = !mine && c.IsAi;
-            var mentions = !mine && c.Mentions(viewer);
-            // A comment is shown when it belongs to at least one ticked group. AI comments have their own switch
-            // and are not counted as "other people".
-            var others = !mine && !ai && CommentsByOthers;
-            if (c.IsResolvedThread && !ShowResolvedComments) continue;
-            if (c.IsUnresolvedThread && !ShowUnresolvedComments) continue;
-            if (!((mine && CommentsByMe) || others || (ai && CommentsFromAi) || (mentions && CommentsMentioningMe))) continue;
+            CommentSource.Inline => c.Path is null ? "On code" : $"On {c.Path}",
+            CommentSource.Review => "Review summary",
+            _ => "Conversation",
+        };
 
-            Comments.Add(new CommentViewModel(
-                c.Author, Humanize.Initials(c.Author), Humanize.Accent(c.Author), Humanize.Stamp(c.At),
-                c.Source switch
-                {
-                    CommentSource.Inline => c.Path is null ? "On code" : $"On {c.Path}",
-                    CommentSource.Review => "Review summary",
-                    _ => "Conversation",
-                },
-                c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread,
-                [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count, r.Users))], isReply));
+        Comments.Clear();
+        Threads.Clear();
+        foreach (var group in groups)
+        {
+            var shown = new List<CommentViewModel>();
+            foreach (var (c, isReply) in group)
+            {
+                var mine = Login.Same(c.Author, viewer);
+                var ai = !mine && c.IsAi;
+                var mentions = !mine && c.Mentions(viewer);
+                // A comment is shown when it belongs to at least one ticked group. AI comments have their own switch
+                // and are not counted as "other people".
+                var others = !mine && !ai && CommentsByOthers;
+                if (c.IsResolvedThread && !ShowResolvedComments) continue;
+                if (c.IsUnresolvedThread && !ShowUnresolvedComments) continue;
+                if (!((mine && CommentsByMe) || others || (ai && CommentsFromAi) || (mentions && CommentsMentioningMe))) continue;
+
+                var vm = new CommentViewModel(
+                    c.Author, Humanize.Initials(c.Author), Humanize.Accent(c.Author), Humanize.Stamp(c.At),
+                    SourceLabel(c),
+                    c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread,
+                    [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count, r.Users))], isReply);
+                Comments.Add(vm);
+                shown.Add(vm);
+            }
+
+            if (shown.Count == 0) continue;
+            var root = group[0].Comment;
+            Threads.Add(new CommentThreadViewModel(SourceLabel(root), root.IsResolvedThread, root.IsUnresolvedThread, shown));
         }
 
         HasComments = Comments.Count > 0;

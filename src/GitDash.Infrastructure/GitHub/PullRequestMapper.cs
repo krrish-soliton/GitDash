@@ -282,6 +282,9 @@ public static class PullRequestMapper
         // Which code comments belong to a conversation that has been resolved (true) or is still open (false).
         var resolution = new Dictionary<string, bool>(StringComparer.Ordinal);
         var threadOf = new Dictionary<string, string>(StringComparer.Ordinal);
+        // Code comments are read from their threads: that is where every reply is, however old the review it was written in
+        // (the timeline is capped, so a reply in an older review would otherwise be missing).
+        var fromThreads = new HashSet<string>(StringComparer.Ordinal);
         foreach (var thread in pr.Nodes("reviewThreads"))
         {
             var resolved = thread.Bool("isResolved");
@@ -292,6 +295,18 @@ public static class PullRequestMapper
                 if (id.Length == 0) continue;
                 resolution[id] = resolved;
                 if (threadId.Length > 0) threadOf[id] = threadId;
+                if (c.Date("createdAt") is { } at && c.Str("body").Length > 0 && fromThreads.Add(id))
+                {
+                    comments.Add(new(
+                        at,
+                        c.Prop("author").Str("login", Ghost),
+                        Limit(c.Str("body")),
+                        CommentSource.Inline,
+                        ((JsonElement?)c).StrOrNull("path"),
+                        resolved,
+                        Reactions(c),
+                        threadId.Length > 0 ? threadId : null));
+                }
             }
         }
 
@@ -331,6 +346,7 @@ public static class PullRequestMapper
 
                     foreach (var inline in e.Nodes("comments"))
                     {
+                        if (fromThreads.Contains(inline.Str("id"))) continue; // already taken from its thread
                         comments.Add(new(
                             inline.Date("createdAt") ?? t,
                             inline.Prop("author").Str("login", reviewer),
