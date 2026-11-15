@@ -32,6 +32,142 @@
                   </StackPanel>
                 </Button>
               </DataTemplate>
+    <!-- A day of workflow runs on the same rail as the timeline: time, dot in the run's status colour, run card -->
+    <DataTemplate x:Key="RunDayTemplate" x:DataType="vm:RunDayViewModel">
+      <StackPanel>
+        <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
+          <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
+            <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
+          </Border>
+          <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
+                  VerticalAlignment="Center" Margin="10,0,0,0" />
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:RunItemViewModel">
+              <Grid ColumnDefinitions="46,22,*">
+                <TextBlock Text="{Binding Time}" Classes="muted" FontSize="11" Margin="0,9,0,0"
+                           HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}" HorizontalAlignment="Center" />
+                <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top" Margin="0,11,0,0"
+                         Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
+                <ContentControl Grid.Column="2" Margin="4,0,0,0" Content="{Binding}"
+                                ContentTemplate="{StaticResource RunTemplate}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </DataTemplate>
+    <!-- One conversation: a card with where it started, then a left/right chat of its messages -->
+    <DataTemplate x:Key="ConversationTemplate" x:DataType="vm:CommentThreadViewModel">
+      <Border CornerRadius="12" Margin="0,0,0,12" ClipToBounds="True" BorderThickness="1"
+              BorderBrush="{DynamicResource LineBrush}">
+        <StackPanel>
+          <Border Background="{DynamicResource Surface2Brush}" Padding="14,8">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <TextBlock Text="{Binding Source}" FontSize="11.5" FontWeight="SemiBold"
+                         Foreground="{StaticResource Accent2Brush}" TextTrimming="CharacterEllipsis"
+                         VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0" VerticalAlignment="Center">
+                <Border Classes="badge ok" IsVisible="{Binding IsResolved}"><TextBlock Text="Resolved" /></Border>
+                <Border Classes="badge unresolved" IsVisible="{Binding IsUnresolved}"><TextBlock Text="Unresolved" /></Border>
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding ReplyText}" Classes="muted" FontSize="11"
+                         IsVisible="{Binding HasReplies}" VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Comments}" Margin="12,12,12,4">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CommentViewModel">
+                <Border Classes="msg" Classes.right="{Binding IsRight}" CornerRadius="14" Padding="12,9"
+                        Margin="0,0,0,8" MaxWidth="560">
+                  <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <c:UserChip Login="{Binding Author}" VerticalAlignment="Center" />
+                      <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
+                              IsVisible="{Binding IsMine}" VerticalAlignment="Center">
+                        <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
+                      </Border>
+                      <Border Classes="badge" IsVisible="{Binding MentionsMe}" VerticalAlignment="Center">
+                        <TextBlock Text="Mentions You" />
+                      </Border>
+                      <Border Background="{DynamicResource ChipBrush}" CornerRadius="5" Padding="6,1"
+                              IsVisible="{Binding IsAi}" VerticalAlignment="Center">
+                        <TextBlock Text="AI" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource ChipTextBrush}" />
+                      </Border>
+                      <TextBlock Text="{Binding When}" Classes="muted" FontSize="11" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <c:MarkdownView Blocks="{Binding Blocks}" />
+                    <ItemsControl ItemsSource="{Binding ReactionChips}" IsVisible="{Binding HasReactions}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ReactionChipViewModel">
+                          <Border Classes="chip" Margin="0,0,6,0" Padding="8,2" ToolTip.Tip="{Binding Tip}">
+                            <TextBlock Text="{Binding Label}" FontSize="12" />
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+    <!-- A day of the rail layout (day heading, time, dot, card), shared by the Timeline, Comments and Approvals tabs -->
+                      <DataTemplate x:Key="TimelineDayTemplate" x:DataType="vm:TimelineDayViewModel">
+                        <StackPanel>
+                          <!-- Day heading -->
+                          <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
+                            <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
+                              <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
+                            </Border>
+                            <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
+                                    VerticalAlignment="Center" Margin="10,0,0,0" />
+                          </Grid>
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:TimelineItemViewModel">
+                                <Grid ColumnDefinitions="50,26,*">
+                                  <TextBlock Text="{Binding Time}" Classes="muted" FontSize="12" Margin="0,9,0,0"
+                                             HorizontalAlignment="Right" />
+                                  <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}"
+                                          HorizontalAlignment="Center" />
+                                  <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top"
+                                           Margin="0,11,0,0"
+                                           Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                                  <ContentControl Grid.Column="2" Margin="6,0,0,0" Content="{Binding Thread}"
+                                                  ContentTemplate="{StaticResource ConversationTemplate}"
+                                                  IsVisible="{Binding IsConversation}" />
+                                  <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
+                                          Padding="14,9" Margin="6,0,0,10" IsVisible="{Binding IsEvent}">
+                                    <StackPanel Spacing="3">
+                                      <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <c:UserChip Login="{Binding Actor}" />
+                                        <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
+                                                IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
+                                          <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+                                        <Border CornerRadius="5" Padding="6,1" VerticalAlignment="Center"
+                                                Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                                          <TextBlock Text="{Binding Label}" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
+                                        </Border>
+                                      </StackPanel>
+                                      <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5"
+                                                 TextWrapping="Wrap" />
+                                    </StackPanel>
+                                  </Border>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
   </UserControl.Resources>
   <UserControl.Styles>
     <Style Selector="Border.card.actionError"><Setter Property="BorderBrush" Value="#F87171" /><Setter Property="BorderThickness" Value="1" /></Style>
@@ -40,13 +176,11 @@
     <Style Selector="Button.act.assign /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#A78BFA" /><Setter Property="Foreground" Value="#0B0D14" /></Style>
     <Style Selector="Button.act.remove /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#F472B6" /><Setter Property="Foreground" Value="#0B0D14" /></Style>
     <Style Selector="Button.act:pointerover"><Setter Property="Opacity" Value="0.88" /></Style>
-    <Style Selector="Grid.chat"><Setter Property="Margin" Value="0,0,0,10" /></Style>
-    <Style Selector="Grid.chat.reply"><Setter Property="Margin" Value="30,-4,0,10" /></Style>
-    <Style Selector="Border.bubble">
+    <Style Selector="Border.msg">
       <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
     </Style>
-    <Style Selector="Border.bubble.mine">
+    <Style Selector="Border.msg.right">
       <Setter Property="HorizontalAlignment" Value="Right" />
       <Setter Property="Background" Value="{DynamicResource ChipBrush}" />
     </Style>
@@ -405,55 +539,8 @@
               <Panel>
                 <TextBlock Classes="muted" Text="Nothing to show with these filters." IsVisible="{Binding !HasTimeline}" />
                 <ScrollViewer>
-                  <ItemsControl ItemsSource="{Binding TimelineDays}" Margin="0,0,14,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:TimelineDayViewModel">
-                        <StackPanel>
-                          <!-- Day heading -->
-                          <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
-                            <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
-                              <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
-                            </Border>
-                            <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
-                                    VerticalAlignment="Center" Margin="10,0,0,0" />
-                          </Grid>
-                          <ItemsControl ItemsSource="{Binding Items}">
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:TimelineItemViewModel">
-                                <Grid ColumnDefinitions="50,26,*">
-                                  <TextBlock Text="{Binding Time}" Classes="muted" FontSize="12" Margin="0,9,0,0"
-                                             HorizontalAlignment="Right" />
-                                  <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}"
-                                          HorizontalAlignment="Center" />
-                                  <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top"
-                                           Margin="0,11,0,0"
-                                           Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                                  <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
-                                          Padding="14,9" Margin="6,0,0,10">
-                                    <StackPanel Spacing="3">
-                                      <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <c:UserChip Login="{Binding Actor}" />
-                                        <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
-                                                IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
-                                          <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
-                                        </Border>
-                                        <Border CornerRadius="5" Padding="6,1" VerticalAlignment="Center"
-                                                Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
-                                          <TextBlock Text="{Binding Label}" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
-                                        </Border>
-                                      </StackPanel>
-                                      <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5"
-                                                 TextWrapping="Wrap" />
-                                    </StackPanel>
-                                  </Border>
-                                </Grid>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </StackPanel>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding TimelineDays}" Margin="0,0,14,0"
+                                ItemTemplate="{StaticResource TimelineDayTemplate}" />
                 </ScrollViewer>
               </Panel>
             </DockPanel>
@@ -502,73 +589,9 @@
               <Panel>
                 <TextBlock Classes="muted" Text="No comments match these filters." IsVisible="{Binding !HasComments}" />
                 <ScrollViewer>
-                  <ItemsControl ItemsSource="{Binding Comments}" Margin="0,0,14,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:CommentViewModel">
-                        <!-- Chat style: other people on the left, you on the right; replies sit closer and indented -->
-                        <Grid Classes="chat" Classes.reply="{Binding IsReply}" ColumnDefinitions="Auto,*,Auto">
-                          <Panel Width="34" Height="34" VerticalAlignment="Top" Margin="0,2,10,0" IsVisible="{Binding !IsMine}">
-                            <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
-                            <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <Border CornerRadius="17" ClipToBounds="True">
-                              <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
-                            </Border>
-                          </Panel>
-                          <Border Grid.Column="1" Classes="bubble" Classes.mine="{Binding IsMine}" MaxWidth="620"
-                                  CornerRadius="14" Padding="14,10">
-                            <StackPanel Spacing="6">
-                              <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                                <c:UserChip Login="{Binding Author}" VerticalAlignment="Center" />
-                                <Border Grid.Column="1" Background="{StaticResource AccentBrush}" CornerRadius="5"
-                                        Padding="6,1" Margin="8,0,0,0" IsVisible="{Binding IsMine}"
-                                        VerticalAlignment="Center">
-                                  <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
-                                </Border>
-                                <Border Grid.Column="2" Classes="badge" Margin="8,0,0,0"
-                                        IsVisible="{Binding MentionsMe}" VerticalAlignment="Center">
-                                  <TextBlock Text="Mentions You" />
-                                </Border>
-                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0" VerticalAlignment="Center">
-                                  <Border Classes="badge ok" IsVisible="{Binding IsResolved}"><TextBlock Text="Resolved" /></Border>
-                                  <Border Classes="badge unresolved" IsVisible="{Binding IsUnresolved}"><TextBlock Text="Unresolved" /></Border>
-                                </StackPanel>
-                                <Border Grid.Column="4" Background="{DynamicResource ChipBrush}" CornerRadius="5" Padding="6,1"
-                                        Margin="8,0,0,0" IsVisible="{Binding IsAi}" HorizontalAlignment="Left"
-                                        VerticalAlignment="Center">
-                                  <TextBlock Text="AI" FontSize="9.5" FontWeight="Bold"
-                                             Foreground="{DynamicResource ChipTextBrush}" />
-                                </Border>
-                                <TextBlock Grid.Column="5" Text="{Binding When}" Classes="muted" FontSize="11"
-                                           VerticalAlignment="Center" Margin="8,0,0,0" />
-                              </Grid>
-                              <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{StaticResource Accent2Brush}"
-                                         TextTrimming="CharacterEllipsis" IsVisible="{Binding ShowsSource}" />
-                              <c:MarkdownView Blocks="{Binding Blocks}" />
-                              <!-- Likes and other reactions -->
-                              <ItemsControl ItemsSource="{Binding ReactionChips}" IsVisible="{Binding HasReactions}">
-                                <ItemsControl.ItemsPanel>
-                                  <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                  <DataTemplate x:DataType="vm:ReactionChipViewModel">
-                                    <Border Classes="chip" Margin="0,0,6,0" Padding="8,2" ToolTip.Tip="{Binding Tip}">
-                                      <TextBlock Text="{Binding Label}" FontSize="12" />
-                                    </Border>
-                                  </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                              </ItemsControl>
-                            </StackPanel>
-                          </Border>
-                          <Panel Grid.Column="2" Width="34" Height="34" VerticalAlignment="Top" Margin="10,2,0,0" IsVisible="{Binding IsMine}">
-                            <Ellipse Fill="{Binding Accent, Converter={x:Static conv:HexBrushConverter.Instance}}" />
-                            <TextBlock Text="{Binding Initials}" FontSize="11" FontWeight="Bold" Foreground="#0B0D14"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                          </Panel>
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  <!-- Conversations as chat cards: whoever started it on the left, the replies on the right -->
+                  <ItemsControl ItemsSource="{Binding CommentDays}" Margin="0,0,14,0"
+                                ItemTemplate="{StaticResource TimelineDayTemplate}" />
                 </ScrollViewer>
               </Panel>
             </DockPanel>
@@ -630,31 +653,8 @@
               <Panel>
                 <TextBlock Classes="muted" Text="No review activity yet." IsVisible="{Binding !HasReviews}" />
                 <ScrollViewer>
-                  <ItemsControl ItemsSource="{Binding ReviewEvents}" Margin="0,0,14,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ReviewEventViewModel">
-                        <Grid ColumnDefinitions="26,*">
-                          <Border Width="2" Background="{DynamicResource LineBrush}" HorizontalAlignment="Center" />
-                          <Ellipse Width="12" Height="12" VerticalAlignment="Top" Margin="0,11,0,0"
-                                   Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                          <Border Grid.Column="1" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
-                                  Padding="14,9" Margin="6,0,0,10">
-                            <StackPanel Spacing="3">
-                              <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                                <TextBlock Text="{Binding Verdict}" FontSize="11" FontWeight="Bold" LetterSpacing="0.8"
-                                           VerticalAlignment="Center"
-                                           Foreground="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                                <c:UserChip Grid.Column="1" Login="{Binding Actor}" Margin="10,0,0,0" />
-                                <TextBlock Grid.Column="3" Text="{Binding When}" Classes="muted" FontSize="11"
-                                           VerticalAlignment="Center" />
-                              </Grid>
-                              <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </Border>
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding ReviewDays}" Margin="0,0,14,0"
+                                ItemTemplate="{StaticResource TimelineDayTemplate}" />
                 </ScrollViewer>
               </Panel>
             </DockPanel>
@@ -665,7 +665,7 @@
             <Panel Margin="0,12,0,0">
               <TextBlock Classes="muted" Text="No workflow runs found for this pull request." IsVisible="{Binding !HasDetailRuns}" />
               <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding DetailRuns}" ItemTemplate="{StaticResource RunTemplate}" Margin="0,0,14,0" />
+                <ItemsControl ItemsSource="{Binding DetailRunDays}" ItemTemplate="{StaticResource RunDayTemplate}" Margin="0,0,14,0" />
               </ScrollViewer>
             </Panel>
           </TabItem>
@@ -701,7 +701,7 @@
         <TextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding !Actions.HasRuns}"
                    Text="No workflow runs for the pull requests on the cards. Actions may be off for these repositories, or the token cannot read them." />
         <ScrollViewer>
-          <ItemsControl ItemsSource="{Binding Actions.Runs}" ItemTemplate="{StaticResource RunTemplate}" />
+          <ItemsControl ItemsSource="{Binding Actions.RunDays}" ItemTemplate="{StaticResource RunDayTemplate}" />
         </ScrollViewer>
       </DockPanel>
     </Border>

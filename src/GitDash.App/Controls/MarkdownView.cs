@@ -77,15 +77,10 @@ public sealed class MarkdownView : StackPanel
                     });
                     break;
                 case BlockKind.Code:
-                    Children.Add(new Border
-                    {
-                        Background = surface, CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 9),
-                        Child = new SelectableTextBlock
-                        {
-                            Text = block.PlainText, FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"),
-                            FontSize = 12, Foreground = text, TextWrapping = TextWrapping.NoWrap,
-                        },
-                    });
+                    Children.Add(CodeBlock(block, text, muted, surface, accent));
+                    break;
+                case BlockKind.Table:
+                    Children.Add(Table(block, text, muted, surface, accent));
                     break;
                 case BlockKind.Rule:
                     Children.Add(new Border { Height = 1, Background = Brush("LineBrush", Brushes.Gray), Margin = new Thickness(0, 6) });
@@ -95,6 +90,67 @@ public sealed class MarkdownView : StackPanel
                     break;
             }
         }
+    }
+
+    private Control CodeBlock(MarkdownBlock block, IBrush text, IBrush muted, IBrush surface, IBrush accent)
+    {
+        var panel = new StackPanel { Spacing = 4 };
+        var suggestion = block.Marker == "suggestion";
+        if (suggestion)
+            panel.Children.Add(new TextBlock { Text = "Suggested change", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = accent });
+        else if (!string.IsNullOrEmpty(block.Marker))
+            panel.Children.Add(new TextBlock { Text = block.Marker, FontSize = 11, Foreground = muted });
+        panel.Children.Add(new ScrollViewer
+        {
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            Content = new SelectableTextBlock
+            {
+                Text = block.PlainText, FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"),
+                FontSize = 12, Foreground = text, TextWrapping = TextWrapping.NoWrap,
+            },
+        });
+        return new Border
+        {
+            Background = surface, CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 9), Child = panel,
+            BorderBrush = suggestion ? accent : null, BorderThickness = suggestion ? new Thickness(1) : default,
+        };
+    }
+
+    private Control Table(MarkdownBlock block, IBrush text, IBrush muted, IBrush surface, IBrush accent)
+    {
+        var rows = block.Rows ?? [];
+        var columns = rows.Count == 0 ? 0 : rows.Max(r => r.Count);
+        var grid = new Grid();
+        for (var c = 0; c < columns; c++) grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        for (var r = 0; r < rows.Count; r++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            for (var c = 0; c < columns; c++)
+            {
+                var cell = new MarkdownBlock(BlockKind.Paragraph, c < rows[r].Count ? rows[r][c] : []);
+                var box = new Border
+                {
+                    BorderBrush = Brush("LineBrush", Brushes.Gray), BorderThickness = new Thickness(0, 0, c < columns - 1 ? 1 : 0, 1),
+                    Padding = new Thickness(10, 5), Background = r == 0 ? surface : null,
+                    Child = Text(cell, text, accent, 13, r == 0 ? FontWeight.SemiBold : FontWeight.Normal, default),
+                };
+                Grid.SetRow(box, r);
+                Grid.SetColumn(box, c);
+                grid.Children.Add(box);
+            }
+        }
+
+        return new Border
+        {
+            BorderBrush = Brush("LineBrush", Brushes.Gray), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6),
+            ClipToBounds = true, HorizontalAlignment = HorizontalAlignment.Left,
+            Child = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = grid,
+            },
+        };
     }
 
     private Control Row(
@@ -135,6 +191,15 @@ public sealed class MarkdownView : StackPanel
                         FontFamily = new FontFamily("Cascadia Mono, Consolas, Menlo, monospace"),
                         Background = Brush("Surface2Brush", Brushes.DimGray),
                     });
+                    break;
+                case InlineKind.Strike:
+                    tb.Inlines!.Add(new Run(part.Text) { TextDecorations = TextDecorations.Strikethrough });
+                    break;
+                case InlineKind.LineBreak:
+                    tb.Inlines!.Add(new LineBreak());
+                    break;
+                case InlineKind.Mention:
+                    tb.Inlines!.Add(new Run(part.Text) { FontWeight = FontWeight.SemiBold, Foreground = linkBrush });
                     break;
                 case InlineKind.Link:
                     tb.Inlines!.Add(Link(part, linkBrush));

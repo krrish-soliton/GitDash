@@ -370,6 +370,25 @@ public class MarkdownTests
     }
 
     [Fact]
+    public void Parses_comment_style_markdown()
+    {
+        var blocks = MarkdownParser.Parse("line one\nline two ~~old~~ cc @octocat\n\n| a | b |\n|---|---|\n| 1 | **2** |\n\n<details><summary>More</summary>\n\nhidden <!-- x --> text<br>next\n</details>\n\n```suggestion\nvar x = 1;\n```");
+        Assert.Contains(blocks[0].Inlines, i => i.Kind == InlineKind.LineBreak);
+        Assert.Contains(blocks[0].Inlines, i => i.Kind == InlineKind.Strike && i.Text == "old");
+        Assert.Contains(blocks[0].Inlines, i => i.Kind == InlineKind.Mention && i.Text == "@octocat");
+        var table = blocks.Single(b => b.Kind == BlockKind.Table);
+        Assert.Equal(2, table.Rows!.Count);
+        Assert.Equal(2, table.Rows[1].Count);
+        Assert.Contains(table.Rows[1][1], i => i.Kind == InlineKind.Bold);
+        Assert.DoesNotContain(blocks, b => b.PlainText.Contains('<') || b.PlainText.Contains("<!--"));
+        Assert.Contains(blocks, b => b.Kind == BlockKind.Paragraph && b.PlainText.Contains("More"));
+        var code = blocks.Last();
+        Assert.Equal(BlockKind.Code, code.Kind);
+        Assert.Equal("suggestion", code.Marker);
+        Assert.Equal("var x = 1;", code.PlainText);
+    }
+
+    [Fact]
     public void Empty_input_gives_no_blocks() =>
         Assert.Empty(GitDash.Presentation.Markdown.MarkdownParser.Parse("  "));
 }

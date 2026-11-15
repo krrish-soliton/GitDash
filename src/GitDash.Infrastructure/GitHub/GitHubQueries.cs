@@ -101,7 +101,7 @@ internal static class GitHubQueries
               createdAt
               body
               author { login }
-              reviewThreads(first: 100) { nodes { id isResolved comments(first: 50) { nodes { id } } } }
+              reviewThreads(first: 100) { nodes { id isResolved comments(first: 100) { nodes { id createdAt path body author { login } reactionGroups { content reactors(first: 12) { totalCount nodes { ... on User { login } ... on Bot { login } ... on Mannequin { login } } } } } } } }
               timelineItems(last: 150, itemTypes: [PULL_REQUEST_COMMIT, ISSUE_COMMENT, PULL_REQUEST_REVIEW,
                 ASSIGNED_EVENT, UNASSIGNED_EVENT, REVIEW_REQUESTED_EVENT, REVIEW_REQUEST_REMOVED_EVENT,
                 REVIEW_DISMISSED_EVENT, READY_FOR_REVIEW_EVENT, CONVERT_TO_DRAFT_EVENT,

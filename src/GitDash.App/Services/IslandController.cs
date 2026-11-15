@@ -20,6 +20,9 @@ public sealed class IslandController(
     /// <summary>Raised when a notification on the island ends (closed, clicked or timed out).</summary>
     public event Action<ToastRequest>? Closed;
 
+    /// <summary>Raised when the user acted on an island notification (closed it or clicked it to open): it counts as read.</summary>
+    public event Action<ToastRequest>? Acknowledged;
+
     /// <summary>Closes the notification because it was closed as a corner toast.</summary>
     public void CloseFor(ToastRequest request) => Dispatcher.UIThread.Post(() => _window?.DismissFromOutside(request));
 
@@ -37,6 +40,7 @@ public sealed class IslandController(
         {
             _window = new IslandWindow(OnActivated) { DataContext = shell };
             _window.Dismissed += request => Closed?.Invoke(request);
+            _window.Acknowledged += request => Acknowledged?.Invoke(request);
             _window.Show();
             // Older settings saved pixels: use them once; the next time the island is moved the percentages take over.
             if (s.IslandXPercent is null && s.IslandX is not null && s.IslandY is not null) _window.PlaceAt(s.IslandX, s.IslandY);
@@ -85,6 +89,7 @@ public sealed class IslandController(
     private void OnActivated(ToastRequest? request)
     {
         showMainWindow();
+        if (request is not null) Acknowledged?.Invoke(request);
         if (request?.Url is { } url) shell.OpenPullRequest(url);
     }
 

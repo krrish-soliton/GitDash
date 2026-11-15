@@ -10,7 +10,40 @@ namespace GitDash.Presentation.ViewModels;
 /// <summary>One workflow run in the Actions panel.</summary>
 public sealed record RunItemViewModel(
     long Id, string Name, string Where, string Who, string PullRequest, string Status, string Tone,
-    double Progress, bool IsActive, bool IsWaiting, string Elapsed, string Url, string Accent);
+    double Progress, bool IsActive, bool IsWaiting, string Elapsed, string Url, string Accent,
+    string Time = "", DateTimeOffset At = default);
+
+/// <summary>One day of runs in the timeline-style list, newest first.</summary>
+public sealed record RunDayViewModel(string Header, ObservableCollection<RunItemViewModel> Items)
+{
+    /// <summary>
+    /// Brings <paramref name="target"/> in line with <paramref name="runs"/>, grouped by day, newest first. When the same runs
+    /// are there it only swaps the rows whose numbers moved, so a live list neither flashes nor jumps back to the top.
+    /// </summary>
+    public static void Sync(ObservableCollection<RunDayViewModel> target, IEnumerable<RunItemViewModel> runs, DateTimeOffset now)
+    {
+        var groups = runs.OrderByDescending(r => r.At).GroupBy(r => Humanize.DayOf(r.At))
+            .Select(g => (Header: Humanize.Day(g.First().At, now), Items: g.ToList())).ToList();
+
+        var same = target.Count == groups.Count && target.Zip(groups).All(p =>
+            p.First.Header == p.Second.Header && p.First.Items.Select(i => i.Id).SequenceEqual(p.Second.Items.Select(i => i.Id)));
+        if (same)
+        {
+            foreach (var (day, group) in target.Zip(groups))
+            {
+                for (var i = 0; i < group.Items.Count; i++)
+                {
+                    if (day.Items[i] != group.Items[i]) day.Items[i] = group.Items[i];
+                }
+            }
+
+            return;
+        }
+
+        target.Clear();
+        foreach (var group in groups) target.Add(new RunDayViewModel(group.Header, new ObservableCollection<RunItemViewModel>(group.Items)));
+    }
+}
 
 /// <summary>
 /// The Actions panel of the My PRs page: every recent workflow run, running ones first, each with a progress bar.
@@ -43,6 +76,9 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
     }
 
     public ObservableCollection<RunItemViewModel> Runs { get; } = [];
+
+    /// <summary>The same runs grouped by day for the timeline-style list.</summary>
+    public ObservableCollection<RunDayViewModel> RunDays { get; } = [];
 
     /// <summary>
     /// Which pull requests the panel is about: the ones on the cards (keys from <see cref="ActionsState.KeyOf"/>) and the one
@@ -131,6 +167,7 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
             foreach (var run in fresh) Runs.Add(run);
         }
 
+        RunDayViewModel.Sync(RunDays, Runs, now);
         HasRuns = Runs.Count > 0;
         ActiveCount = inScope.Count(r => r.IsActive);
         Header = ActiveCount > 0 ? $"Actions · {ActiveCount} running" : "Actions";
@@ -173,7 +210,9 @@ public sealed class ActionsViewModel : ObservableObject, IDisposable
             _ when run.Succeeded => "#34D399",
             _ when run.Failed => "#F87171",
             _ => "#94A3B8",
-        });
+        },
+        Humanize.Time(run.UpdatedAt),
+        run.UpdatedAt);
 
     public void Dispose()
     {

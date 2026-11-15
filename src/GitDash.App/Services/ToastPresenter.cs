@@ -23,6 +23,9 @@ public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow,
     /// <summary>Raised when a toast ends (closed, clicked or timed out), so the same notification closes on the island too.</summary>
     public event Action<ToastRequest>? Closed;
 
+    /// <summary>Raised when the user acted on a toast (pressed its close button or clicked it to open): it counts as read.</summary>
+    public event Action<ToastRequest>? Acknowledged;
+
     /// <summary>Closes the toast (or drops it from the queue) for a notification that was closed on the island.</summary>
     public void CloseFor(ToastRequest request) => Dispatcher.UIThread.Post(() =>
     {
@@ -60,6 +63,7 @@ public sealed class ToastPresenter(IUrlLauncher launcher, Action showMainWindow,
     {
         _open.Remove(window);
         if (window.ClosedLocally) Closed?.Invoke(window.Request);
+        if (window.ClosedByUser || activated) Acknowledged?.Invoke(window.Request);
         if (activated)
         {
             if (window.Request.Url is { } url)
