@@ -16,25 +16,19 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        if (OperatingSystem.IsMacOS()) MoveTrafficLightsLeft();
+        if (OperatingSystem.IsMacOS()) UseSystemWindowButtons();
         DataContextChanged += (_, _) => Attach(DataContext as ShellViewModel);
     }
 
-    /// <summary>macOS puts the window buttons on the left, close first (Windows keeps them on the right).</summary>
-    private void MoveTrafficLightsLeft()
+    /// <summary>
+    /// macOS: the system's own close / minimise / zoom buttons are used (drawn over the top-left corner of the window),
+    /// so our dots are hidden and the logo moves right to make room for them.
+    /// </summary>
+    private void UseSystemWindowButtons()
     {
-        if (this.FindControl<StackPanel>("TrafficLights") is not { } lights
-            || this.FindControl<StackPanel>("TitleRight") is not { } right
-            || this.FindControl<Grid>("TitleGrid") is not { } grid) return;
-        var buttons = lights.Children.ToList();
-        lights.Children.Clear();
-        foreach (var name in new[] { "CloseDot", "MinimizeDot", "MaximizeDot" })
-            if (buttons.FirstOrDefault(b => b.Name == name) is { } button) lights.Children.Add(button);
-
-        right.Children.Remove(lights);
-        lights.Margin = new Thickness(16, 0, 0, 0);
-        Grid.SetColumn(lights, 0);
-        grid.Children.Add(lights);
+        ExtendClientAreaChromeHints = ExtendClientAreaChromeHints.PreferSystemChrome;
+        if (this.FindControl<StackPanel>("TrafficLights") is { } lights) lights.IsVisible = false;
+        if (this.FindControl<StackPanel>("TitleBrand") is { } brand) brand.Margin = new Thickness(82, 0, 0, 0);
     }
 
     private void Attach(ShellViewModel? shell)

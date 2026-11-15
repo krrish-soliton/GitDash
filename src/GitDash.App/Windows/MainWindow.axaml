@@ -181,7 +181,7 @@
       <Border x:Name="TitleBar" DockPanel.Dock="Top" Height="40" Background="Transparent"
               PointerPressed="OnTitlePressed" DoubleTapped="OnTitleDoubleTapped">
         <Grid x:Name="TitleGrid" ColumnDefinitions="Auto,Auto,*,Auto">
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+          <StackPanel x:Name="TitleBrand" Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
             <Border Width="20" Height="20" CornerRadius="6" Background="{StaticResource AccentGradient}">
               <PathIcon Data="{StaticResource IconPullRequest}" Width="11" Height="11" Foreground="White" />
             </Border>
@@ -216,7 +216,7 @@
                 </RadioButton>
               </StackPanel>
             </Border>
-            <!-- Window buttons. On macOS the code moves them to the left and puts the close dot first. -->
+            <!-- Window buttons (Windows). macOS hides these and shows the system's own traffic lights instead. -->
             <StackPanel x:Name="TrafficLights" Classes="traffic" Orientation="Horizontal" Spacing="8" Margin="4,0,16,0"
                         VerticalAlignment="Center">
               <Button x:Name="MinimizeDot" Classes="dotMin" Click="OnMinimizeClick" ToolTip.Tip="Minimise">
