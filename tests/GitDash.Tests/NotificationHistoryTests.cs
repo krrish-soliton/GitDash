@@ -143,6 +143,13 @@ public class NotificationHistoryTests
         Assert.Equal(new NotificationDetailRow("Pull request", "#7 Fix: the thing"), rows[1]);
         Assert.Equal(string.Empty, rows[2].Label);
 
+        var shown = new NotificationItemViewModel(
+            new GitDash.Application.Notifications.NotificationEntry(
+                Guid.NewGuid(), DateTimeOffset.UtcNow, "t", "m", ToastTone.Review, null, null, false, "A: b"), "now", _ => { }, _ => { });
+        Assert.False(shown.ShowDetails);
+        shown.ToggleDetailsCommand.Execute(null);
+        Assert.True(shown.ShowDetails);
+
         var history = new NotificationHistory(new InMemoryNotificationStore(), TimeProvider.System);
         var page = new NotificationsViewModel(history, new Inline(), TimeProvider.System, _ => { });
         history.Record(Request(1));

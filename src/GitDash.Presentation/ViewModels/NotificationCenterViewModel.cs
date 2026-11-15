@@ -29,6 +29,15 @@ public sealed class NotificationItemViewModel(
     public bool HasDetail => DetailRows.Count > 0;
     public DateTimeOffset At => _entry.At;
 
+    /// <summary>The clock time on the timeline rail.</summary>
+    public string Time => Humanize.Time(_entry.At);
+
+    /// <summary>The details table is folded away by default so the cards stay small.</summary>
+    public bool IsExpanded { get => _expanded; private set { if (Set(ref _expanded, value)) { Raise(nameof(ShowDetails)); Raise(nameof(DetailsText)); } } }
+    public bool ShowDetails => _expanded && HasDetail;
+    public string DetailsText => _expanded ? "Hide details" : "Details";
+    public ICommand ToggleDetailsCommand => _toggle ??= new RelayCommand(() => IsExpanded = !IsExpanded);
+
     /// <summary>The detail lines split at the first colon ("Repository: o/r"); a line without a label keeps just its text.</summary>
     public IReadOnlyList<NotificationDetailRow> DetailRows { get; } = ParseDetail(entry.Detail);
 
@@ -81,7 +90,8 @@ public sealed class NotificationItemViewModel(
         _markRead?.RaiseCanExecuteChanged();
     }
 
-    private RelayCommand? _open, _markRead;
+    private RelayCommand? _open, _markRead, _toggle;
+    private bool _expanded;
 }
 
 /// <summary>The bell in the title bar: unread count and the latest unread notifications (the full history has its own page).</summary>
