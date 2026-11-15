@@ -69,7 +69,16 @@ public partial class App : AvaloniaApplication
                                      $"tray icon={s.ShowTrayIcon}, window visible={window.IsVisible}, hide-while-hidden={s.HideDockIconWhenHidden}) {NativeWindow.Describe(window)}");
                 }
 
-                NativeWindow.SetDockIconVisible(dockVisible);
+                if (NativeWindow.SetDockIconVisible(dockVisible) && !dockVisible)
+                {
+                    // Windows shown before the Dock icon went away are not yet part of the full-screen Spaces: order them in again.
+                    foreach (var overlay in desktop.Windows.OfType<FloatingWindow>())
+                    {
+                        NativeWindow.ShowOnAllDesktops(overlay);
+                        NativeWindow.OrderAgain(overlay);
+                        OverlayLog.Write($"{overlay.GetType().Name} ordered in again after the Dock icon went away: {NativeWindow.Describe(overlay)}");
+                    }
+                }
             }
             window.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) UpdateDock(); };
             host.Settings.Changed += _ => Dispatcher.UIThread.Post(UpdateDock);

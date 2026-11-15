@@ -172,22 +172,43 @@ internal static class NativeWindow
     /// Shows or hides the Dock icon (and Cmd+Tab entry) of the whole app (macOS): "accessory" apps live only in the menu bar.
     /// Coming back brings the app to the front so the window that was just opened is not left behind other apps.
     /// </summary>
-    public static void SetDockIconVisible(bool visible)
+    public static bool SetDockIconVisible(bool visible)
     {
         try
         {
-            if (!OperatingSystem.IsMacOS()) return;
+            if (!OperatingSystem.IsMacOS()) return false;
             var app = MsgSendHandle(GetClass("NSApplication"), sel_registerName("sharedApplication"));
-            if (app == 0) return;
+            if (app == 0) return false;
             var wanted = visible ? 0 : 1; // regular : accessory
             // Asking first keeps repeated calls harmless (no focus stealing) and tells whether the framework changed it back.
-            if (MsgSendHandle(app, sel_registerName("activationPolicy")) == wanted) return;
+            if (MsgSendHandle(app, sel_registerName("activationPolicy")) == wanted) return false;
             MsgSendLong(app, sel_registerName("setActivationPolicy:"), (nint)wanted);
             if (visible) MsgSendBool(app, sel_registerName("activateIgnoringOtherApps:"), true);
+            return true;
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
         {
             // The Dock icon stays as it is.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Takes the window off the screen and puts it straight back in front, without activating the app (macOS). The window
+    /// server decides which Spaces a window belongs to when it is ordered in, so a window shown while the app still had a
+    /// Dock icon has to be ordered in again after the app became an "accessory" before it follows full-screen apps.
+    /// </summary>
+    public static void OrderAgain(Window window)
+    {
+        try
+        {
+            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return;
+            MsgSendLong(handle, sel_registerName("orderOut:"), 0);
+            MsgSendHandle(handle, sel_registerName("orderFrontRegardless"));
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
+        {
+            // The window stays where it is.
         }
     }
 }
