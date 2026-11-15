@@ -39,7 +39,7 @@ dotnet publish src/GitDash.App -c Release -r osx-arm64 --self-contained
 Download the installer for your system from the [Releases](../../releases) page.
 
 - **Windows** (`GitDash-Setup-<version>.exe`): the installer asks whether to install **for all users** (needs administrator rights, installs under Program Files) or **only for me** (no administrator rights, installs under your own profile). The same choice can be made from a script: `GitDash-Setup-<version>.exe /CURRENTUSER` or `/ALLUSERS`, plus `/VERYSILENT` for an unattended install. A portable zip is also provided.
-- **macOS** (`GitDash-<version>-osx-arm64.dmg` for Apple silicon, `-osx-x64.dmg` for Intel): open the disk image and drag GitDash to Applications. Drag it to `~/Applications` instead to install for your own account only. The app is not notarised, so open it the first time with right-click, then Open.
+- **macOS** (`GitDash-<version>-osx-arm64.dmg` for Apple silicon, `-osx-x64.dmg` for Intel): open the disk image and drag GitDash to Applications. Drag it to `~/Applications` instead to install for your own account only. The app is not notarised, so open it the first time with right-click, then Open. Releases are signed with a self-signed certificate (see `scripts/make-macos-signing-cert.sh`), so the Keychain keeps trusting GitDash with your token across updates; the first update after this change asks for your password once more, choose Always Allow.
 
 ## Signing in
 
