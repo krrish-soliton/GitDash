@@ -188,7 +188,7 @@ public partial class IslandWindow : FloatingWindow
     private PixelPoint _lastPos;
     private bool _hasCenter;
 
-    private double Scale => RenderScaling <= 0 ? 1 : RenderScaling;
+    private double Scale => PositionScale;
 
     private bool MovedFromWhereWePlacedIt() =>
         Math.Abs(Position.X - _lastPos.X) > 3 || Math.Abs(Position.Y - _lastPos.Y) > 3;
@@ -296,7 +296,7 @@ public partial class IslandWindow : FloatingWindow
     /// <summary>Puts the island at a remembered spot (if still on a screen) or at the top centre of the main screen.</summary>
     public void PlaceAt(int? centerX, int? top)
     {
-        var scale = RenderScaling <= 0 ? 1 : RenderScaling;
+        var scale = PositionScale;
         var half = (int)(Width * scale / 2);
         if (centerX is { } cx && top is { } y && Screens.All.Any(s => s.WorkingArea.Contains(new PixelPoint(cx, y + 4))))
         {
