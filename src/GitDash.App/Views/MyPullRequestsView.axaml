@@ -92,6 +92,55 @@
         </StackPanel>
       </Border>
     </DataTemplate>
+    <!-- A day of the rail layout (day heading, time, dot, card), shared by the Timeline, Comments and Approvals tabs -->
+                      <DataTemplate x:Key="TimelineDayTemplate" x:DataType="vm:TimelineDayViewModel">
+                        <StackPanel>
+                          <!-- Day heading -->
+                          <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
+                            <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
+                              <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
+                            </Border>
+                            <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
+                                    VerticalAlignment="Center" Margin="10,0,0,0" />
+                          </Grid>
+                          <ItemsControl ItemsSource="{Binding Items}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:TimelineItemViewModel">
+                                <Grid ColumnDefinitions="50,26,*">
+                                  <TextBlock Text="{Binding Time}" Classes="muted" FontSize="12" Margin="0,9,0,0"
+                                             HorizontalAlignment="Right" />
+                                  <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}"
+                                          HorizontalAlignment="Center" />
+                                  <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top"
+                                           Margin="0,11,0,0"
+                                           Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                                  <ContentControl Grid.Column="2" Margin="6,0,0,0" Content="{Binding Thread}"
+                                                  ContentTemplate="{StaticResource ConversationTemplate}"
+                                                  IsVisible="{Binding IsConversation}" />
+                                  <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
+                                          Padding="14,9" Margin="6,0,0,10" IsVisible="{Binding IsEvent}">
+                                    <StackPanel Spacing="3">
+                                      <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <c:UserChip Login="{Binding Actor}" />
+                                        <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
+                                                IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
+                                          <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
+                                        </Border>
+                                        <Border CornerRadius="5" Padding="6,1" VerticalAlignment="Center"
+                                                Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                                          <TextBlock Text="{Binding Label}" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
+                                        </Border>
+                                      </StackPanel>
+                                      <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5"
+                                                 TextWrapping="Wrap" />
+                                    </StackPanel>
+                                  </Border>
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
   </UserControl.Resources>
   <UserControl.Styles>
     <Style Selector="Border.card.actionError"><Setter Property="BorderBrush" Value="#F87171" /><Setter Property="BorderThickness" Value="1" /></Style>
@@ -463,58 +512,8 @@
               <Panel>
                 <TextBlock Classes="muted" Text="Nothing to show with these filters." IsVisible="{Binding !HasTimeline}" />
                 <ScrollViewer>
-                  <ItemsControl ItemsSource="{Binding TimelineDays}" Margin="0,0,14,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:TimelineDayViewModel">
-                        <StackPanel>
-                          <!-- Day heading -->
-                          <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,10">
-                            <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
-                              <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
-                            </Border>
-                            <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}"
-                                    VerticalAlignment="Center" Margin="10,0,0,0" />
-                          </Grid>
-                          <ItemsControl ItemsSource="{Binding Items}">
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate x:DataType="vm:TimelineItemViewModel">
-                                <Grid ColumnDefinitions="50,26,*">
-                                  <TextBlock Text="{Binding Time}" Classes="muted" FontSize="12" Margin="0,9,0,0"
-                                             HorizontalAlignment="Right" />
-                                  <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}"
-                                          HorizontalAlignment="Center" />
-                                  <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top"
-                                           Margin="0,11,0,0"
-                                           Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                                  <ContentControl Grid.Column="2" Margin="6,0,0,0" Content="{Binding Thread}"
-                                                  ContentTemplate="{StaticResource ConversationTemplate}"
-                                                  IsVisible="{Binding IsConversation}" />
-                                  <Border Grid.Column="2" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
-                                          Padding="14,9" Margin="6,0,0,10" IsVisible="{Binding IsEvent}">
-                                    <StackPanel Spacing="3">
-                                      <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <c:UserChip Login="{Binding Actor}" />
-                                        <Border Background="{StaticResource AccentBrush}" CornerRadius="5" Padding="6,1"
-                                                IsVisible="{Binding IsViewer}" VerticalAlignment="Center">
-                                          <TextBlock Text="You" FontSize="9.5" FontWeight="Bold" Foreground="White" />
-                                        </Border>
-                                        <Border CornerRadius="5" Padding="6,1" VerticalAlignment="Center"
-                                                Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
-                                          <TextBlock Text="{Binding Label}" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
-                                        </Border>
-                                      </StackPanel>
-                                      <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5"
-                                                 TextWrapping="Wrap" />
-                                    </StackPanel>
-                                  </Border>
-                                </Grid>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
-                        </StackPanel>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding TimelineDays}" Margin="0,0,14,0"
+                                ItemTemplate="{StaticResource TimelineDayTemplate}" />
                 </ScrollViewer>
               </Panel>
             </DockPanel>
@@ -564,8 +563,8 @@
                 <TextBlock Classes="muted" Text="No comments match these filters." IsVisible="{Binding !HasComments}" />
                 <ScrollViewer>
                   <!-- Conversations as chat cards: whoever started it on the left, the replies on the right -->
-                  <ItemsControl ItemsSource="{Binding Threads}" Margin="0,0,14,0"
-                                ItemTemplate="{StaticResource ConversationTemplate}" />
+                  <ItemsControl ItemsSource="{Binding CommentDays}" Margin="0,0,14,0"
+                                ItemTemplate="{StaticResource TimelineDayTemplate}" />
                 </ScrollViewer>
               </Panel>
             </DockPanel>
@@ -627,31 +626,8 @@
               <Panel>
                 <TextBlock Classes="muted" Text="No review activity yet." IsVisible="{Binding !HasReviews}" />
                 <ScrollViewer>
-                  <ItemsControl ItemsSource="{Binding ReviewEvents}" Margin="0,0,14,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ReviewEventViewModel">
-                        <Grid ColumnDefinitions="26,*">
-                          <Border Width="2" Background="{DynamicResource LineBrush}" HorizontalAlignment="Center" />
-                          <Ellipse Width="12" Height="12" VerticalAlignment="Top" Margin="0,11,0,0"
-                                   Fill="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                          <Border Grid.Column="1" Background="{DynamicResource Surface2Brush}" CornerRadius="12"
-                                  Padding="14,9" Margin="6,0,0,10">
-                            <StackPanel Spacing="3">
-                              <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                                <TextBlock Text="{Binding Verdict}" FontSize="11" FontWeight="Bold" LetterSpacing="0.8"
-                                           VerticalAlignment="Center"
-                                           Foreground="{Binding Kind, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
-                                <c:UserChip Grid.Column="1" Login="{Binding Actor}" Margin="10,0,0,0" />
-                                <TextBlock Grid.Column="3" Text="{Binding When}" Classes="muted" FontSize="11"
-                                           VerticalAlignment="Center" />
-                              </Grid>
-                              <TextBlock Text="{Binding Text}" Classes="muted" FontSize="12.5" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </Border>
-                        </Grid>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  <ItemsControl ItemsSource="{Binding ReviewDays}" Margin="0,0,14,0"
+                                ItemTemplate="{StaticResource TimelineDayTemplate}" />
                 </ScrollViewer>
               </Panel>
             </DockPanel>

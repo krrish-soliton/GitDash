@@ -713,6 +713,10 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     public ObservableCollection<CommentViewModel> Comments { get; } = [];
     /// <summary>The same comments grouped into conversations (a first message with its replies), as the Comments tab shows them.</summary>
     public ObservableCollection<CommentThreadViewModel> Threads { get; } = [];
+    /// <summary>The conversations on the day rail of the Comments tab (newest day first, like the timeline).</summary>
+    public ObservableCollection<TimelineDayViewModel> CommentDays { get; } = [];
+    /// <summary>Review decisions on the day rail of the Approvals tab.</summary>
+    public ObservableCollection<TimelineDayViewModel> ReviewDays { get; } = [];
     public bool HasComments { get => _hasComments; private set => Set(ref _hasComments, value); }
     public bool CommentsByMe { get => _commentsByMe; set { if (Set(ref _commentsByMe, value)) RebuildComments(); } }
     public bool CommentsByOthers { get => _commentsByOthers; set { if (Set(ref _commentsByOthers, value)) RebuildComments(); } }
@@ -986,6 +990,17 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         Threads.Clear();
         foreach (var (_, thread) in threads) Threads.Add(thread);
 
+        var now = _time.GetUtcNow();
+        var days = threads
+            .OrderByDescending(t => t.At)
+            .GroupBy(t => Humanize.DayOf(t.At))
+            .Select(g => new TimelineDayViewModel(
+                Humanize.Day(g.First().At, now),
+                [.. g.Select(t => new TimelineItemViewModel(
+                    Humanize.Time(t.At), t.Thread.Comments[0].Author, string.Empty, "Comment", false, "Comment", "Comment", t.Thread))]));
+        CommentDays.Clear();
+        foreach (var day in days) CommentDays.Add(day);
+
         HasComments = Comments.Count > 0;
         CommentsHeader = all.Count == 0 ? "Comments" : $"Comments ({all.Count})";
     }
@@ -1049,6 +1064,16 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         return result;
     }
 
+    private static string VerdictOf(TimelineEntryKind kind) => kind switch
+    {
+        TimelineEntryKind.Approved => "Approved",
+        TimelineEntryKind.ChangesRequested => "Changes Requested",
+        TimelineEntryKind.ReviewDismissed => "Review Dismissed",
+        TimelineEntryKind.ReviewRequested => "Review Requested",
+        TimelineEntryKind.ReviewRequestRemoved => "Request Removed",
+        _ => "Commented",
+    };
+
     private void RebuildReviews()
     {
         var events = (_details?.Timeline ?? []).Where(e => e.IsReviewDecision).OrderByDescending(e => e.At).ToList();
@@ -1057,17 +1082,21 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         {
             ReviewEvents.Add(new ReviewEventViewModel(
                 Humanize.Stamp(e.At), e.Actor,
-                e.Kind switch
-                {
-                    TimelineEntryKind.Approved => "Approved",
-                    TimelineEntryKind.ChangesRequested => "Changes Requested",
-                    TimelineEntryKind.ReviewDismissed => "Review Dismissed",
-                    TimelineEntryKind.ReviewRequested => "Review Requested",
-                    TimelineEntryKind.ReviewRequestRemoved => "Request Removed",
-                    _ => "Commented",
-                },
-                e.Text, e.Kind.ToString()));
+                VerdictOf(e.Kind), e.Text, e.Kind.ToString()));
         }
+
+        var viewer = DetailCard?.PullRequest.ViewerLogin;
+        var now = _time.GetUtcNow();
+        var reviewDays = events
+            .GroupBy(e => Humanize.DayOf(e.At))
+            .Select(g => new TimelineDayViewModel(
+                Humanize.Day(g.First().At, now),
+                [.. g.Select(e => new TimelineItemViewModel(
+                    Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer),
+                    VerdictOf(e.Kind),
+                    TimelineTags.ToneOf(e.Kind)))]));
+        ReviewDays.Clear();
+        foreach (var day in reviewDays) ReviewDays.Add(day);
 
         HasReviews = ReviewEvents.Count > 0;
         var decisions = events.Count(e => e.Kind is TimelineEntryKind.Approved or TimelineEntryKind.ChangesRequested);
