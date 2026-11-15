@@ -190,14 +190,38 @@ public sealed class SettingsViewModel : PageViewModel
     /// <summary>The auto-updater's state, shown in the Updates section.</summary>
     public UpdateViewModel? Updates { get; init; }
 
-    public decimal? UpdateCheckHours
+    // The interval is stored in minutes; it is shown as a number plus a unit (minutes or hours).
+    private int? _updateUnit;
+
+    /// <summary>0 = minutes, 1 = hours. Starts as hours when the stored interval is a whole number of hours.</summary>
+    public int UpdateCheckUnitIndex
     {
-        get => _settings.Current.UpdateCheckHours;
-        set => Save(s => s with
+        get => _updateUnit ??= _settings.Current.UpdateCheckMinutes % 60 == 0 && _settings.Current.UpdateCheckMinutes >= 60 ? 1 : 0;
+        set
         {
-            UpdateCheckHours = (int)Math.Clamp(
-                value ?? s.UpdateCheckHours, AppSettings.MinUpdateCheckHours, AppSettings.MaxUpdateCheckHours),
-        });
+            var number = UpdateCheckValue;
+            _updateUnit = value == 1 ? 1 : 0;
+            Raise(nameof(UpdateCheckUnitIndex));
+            UpdateCheckValue = number; // same number, new unit
+        }
+    }
+
+    public decimal? UpdateCheckValue
+    {
+        get => UpdateCheckUnitIndex == 1
+            ? Math.Round(_settings.Current.UpdateCheckMinutes / 60m, 2)
+            : _settings.Current.UpdateCheckMinutes;
+        set
+        {
+            var perUnit = UpdateCheckUnitIndex == 1 ? 60m : 1m;
+            Save(s => s with
+            {
+                UpdateCheckMinutes = (int)Math.Clamp(
+                    Math.Round((value ?? s.UpdateCheckMinutes / perUnit) * perUnit),
+                    AppSettings.MinUpdateCheckMinutes, AppSettings.MaxUpdateCheckMinutes),
+            });
+            Raise(nameof(UpdateCheckValue));
+        }
     }
 
     public bool AutoUpdate
@@ -259,7 +283,7 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden), nameof(OverlaysOverFullScreen),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(AutoUpdate), nameof(UpdateCheckHours), nameof(ReduceMotion),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(AutoUpdate), nameof(UpdateCheckValue), nameof(ReduceMotion),
                          nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
                          nameof(CustomSoundName), nameof(HasCustomSound),
                      })

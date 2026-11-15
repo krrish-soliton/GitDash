@@ -736,12 +736,17 @@
           </Grid>
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
-              <TextBlock Text="Check for updates every (hours)" Foreground="{DynamicResource TextBrush}" />
+              <TextBlock Text="Check for updates every" Foreground="{DynamicResource TextBrush}" />
               <TextBlock Classes="muted" FontSize="12" TextWrapping="Wrap"
-                         Text="How often GitDash looks for a new release while it runs (1 – 168 hours). It also checks shortly after start. Applies while automatic updates are on; the button above always checks right away." />
+                         Text="From 1 minute upward, in minutes or hours. It also checks shortly after start. Applies while automatic updates are on; the button above always checks right away. Without a signed-in GitHub account GitHub allows about 60 requests an hour, so very short intervals can be refused." />
             </StackPanel>
-            <NumericUpDown Grid.Column="1" Value="{Binding UpdateCheckHours}" Minimum="1" Maximum="168"
-                           Increment="1" FormatString="0" Width="150" IsEnabled="{Binding AutoUpdate}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" IsEnabled="{Binding AutoUpdate}">
+              <NumericUpDown Value="{Binding UpdateCheckValue}" Minimum="1" Maximum="129600" Increment="1" FormatString="0.##" Width="130" />
+              <ComboBox SelectedIndex="{Binding UpdateCheckUnitIndex}" Width="110">
+                <ComboBoxItem Content="minutes" />
+                <ComboBoxItem Content="hours" />
+              </ComboBox>
+            </StackPanel>
           </Grid>
         </StackPanel>
       </Border>

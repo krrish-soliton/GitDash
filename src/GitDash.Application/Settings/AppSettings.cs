@@ -162,14 +162,15 @@ public sealed record AppSettings
     /// <summary>Download and install new releases by itself (the user is told and gets a short countdown before the restart).</summary>
     public bool AutoUpdate { get; init; } = true;
 
-    public const int MinUpdateCheckHours = 1;
-    public const int MaxUpdateCheckHours = 168;
+    public const int MinUpdateCheckMinutes = 1;
+    /// <summary>Ninety days: effectively "any number of hours" while still keeping the value sane.</summary>
+    public const int MaxUpdateCheckMinutes = 90 * 24 * 60;
 
-    /// <summary>How often GitDash looks for a new release while it runs (hours).</summary>
-    public int UpdateCheckHours { get; init; } = 6;
+    /// <summary>How often GitDash looks for a new release while it runs (minutes).</summary>
+    public int UpdateCheckMinutes { get; init; } = 360;
 
     public TimeSpan UpdateCheckInterval =>
-        TimeSpan.FromHours(Math.Clamp(UpdateCheckHours, MinUpdateCheckHours, MaxUpdateCheckHours));
+        TimeSpan.FromMinutes(Math.Clamp(UpdateCheckMinutes, MinUpdateCheckMinutes, MaxUpdateCheckMinutes));
     public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();

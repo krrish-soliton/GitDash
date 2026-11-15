@@ -35,7 +35,7 @@ public sealed class UpdateService(
     Action exitApp)
 {
     public static readonly TimeSpan FirstCheckAfter = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan WaitSlice = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan WaitSlice = TimeSpan.FromSeconds(5);
 
     private readonly object _gate = new();
     private CancellationTokenSource? _countdown;
