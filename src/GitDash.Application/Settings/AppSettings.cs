@@ -161,6 +161,15 @@ public sealed record AppSettings
     public bool OverlaysOverFullScreen { get; init; } = true;
     /// <summary>Download and install new releases by itself (the user is told and gets a short countdown before the restart).</summary>
     public bool AutoUpdate { get; init; } = true;
+
+    public const int MinUpdateCheckHours = 1;
+    public const int MaxUpdateCheckHours = 168;
+
+    /// <summary>How often GitDash looks for a new release while it runs (hours).</summary>
+    public int UpdateCheckHours { get; init; } = 6;
+
+    public TimeSpan UpdateCheckInterval =>
+        TimeSpan.FromHours(Math.Clamp(UpdateCheckHours, MinUpdateCheckHours, MaxUpdateCheckHours));
     public TimeFormat TimeFormat { get; init; } = TimeFormat.System;
     public string OAuthClientId { get; init; } = string.Empty;
     public PomodoroSettings Pomodoro { get; init; } = new();

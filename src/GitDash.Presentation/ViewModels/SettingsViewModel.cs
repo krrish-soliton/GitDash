@@ -190,6 +190,16 @@ public sealed class SettingsViewModel : PageViewModel
     /// <summary>The auto-updater's state, shown in the Updates section.</summary>
     public UpdateViewModel? Updates { get; init; }
 
+    public decimal? UpdateCheckHours
+    {
+        get => _settings.Current.UpdateCheckHours;
+        set => Save(s => s with
+        {
+            UpdateCheckHours = (int)Math.Clamp(
+                value ?? s.UpdateCheckHours, AppSettings.MinUpdateCheckHours, AppSettings.MaxUpdateCheckHours),
+        });
+    }
+
     public bool AutoUpdate
     {
         get => _settings.Current.AutoUpdate;
@@ -249,7 +259,7 @@ public sealed class SettingsViewModel : PageViewModel
                          nameof(IsDark), nameof(IsLight), nameof(FollowsSystemTheme), nameof(AutoCloseAssigned), nameof(AutoCloseReview), nameof(AutoCloseComment),
                          nameof(AutoCloseMerged), nameof(AutoCloseTimer), nameof(AutoCloseRemoved), nameof(ShowToastWithIsland),
                          nameof(WidgetOpacityPercent), nameof(IslandOpacityPercent), nameof(ClickThroughOverlays), nameof(HideDockIconWhenHidden), nameof(OverlaysOverFullScreen),
-                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(AutoUpdate), nameof(ReduceMotion),
+                         nameof(WidgetUnlocked), nameof(MiniWidget), nameof(GlassEffect), nameof(WidgetXPercent), nameof(WidgetYPercent), nameof(MiniXPercent), nameof(MiniYPercent), nameof(ShowTimerWidget), nameof(ShowMultipleTimers), nameof(HideToTrayOnMinimize), nameof(HideToTrayOnClose), nameof(TimeFormatIndex), nameof(ShowDynamicIsland), nameof(ShowFloatingWidget), nameof(StatusRotateSeconds), nameof(AutoUpdate), nameof(UpdateCheckHours), nameof(ReduceMotion),
                          nameof(SoundEnabled), nameof(SoundOnNotifications), nameof(SoundOptions), nameof(SelectedSound),
                          nameof(CustomSoundName), nameof(HasCustomSound),
                      })

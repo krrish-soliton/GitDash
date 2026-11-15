@@ -34,8 +34,8 @@ public sealed class UpdateService(
     Func<ToastRequest, Task> notify,
     Action exitApp)
 {
-    public static readonly TimeSpan CheckEvery = TimeSpan.FromHours(6);
     public static readonly TimeSpan FirstCheckAfter = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan WaitSlice = TimeSpan.FromSeconds(30);
 
     private readonly object _gate = new();
     private CancellationTokenSource? _countdown;
@@ -69,7 +69,11 @@ public sealed class UpdateService(
             while (!ct.IsCancellationRequested)
             {
                 if (settings.Current.AutoUpdate) await CheckAsync(manual: false, ct).ConfigureAwait(false);
-                await Task.Delay(CheckEvery, time, ct).ConfigureAwait(false);
+                var checkedAt = time.GetUtcNow();
+                // The interval is the user's choice and can change while the app runs, so wait in short slices and
+                // compare with the current setting each time instead of sleeping for the whole span.
+                while (!ct.IsCancellationRequested && time.GetUtcNow() - checkedAt < settings.Current.UpdateCheckInterval)
+                    await Task.Delay(WaitSlice, time, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
