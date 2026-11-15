@@ -16,7 +16,25 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (OperatingSystem.IsMacOS()) MoveTrafficLightsLeft();
         DataContextChanged += (_, _) => Attach(DataContext as ShellViewModel);
+    }
+
+    /// <summary>macOS puts the window buttons on the left, close first (Windows keeps them on the right).</summary>
+    private void MoveTrafficLightsLeft()
+    {
+        if (this.FindControl<StackPanel>("TrafficLights") is not { } lights
+            || this.FindControl<StackPanel>("TitleRight") is not { } right
+            || this.FindControl<Grid>("TitleGrid") is not { } grid) return;
+        var buttons = lights.Children.ToList();
+        lights.Children.Clear();
+        foreach (var name in new[] { "CloseDot", "MinimizeDot", "MaximizeDot" })
+            if (buttons.FirstOrDefault(b => b.Name == name) is { } button) lights.Children.Add(button);
+
+        right.Children.Remove(lights);
+        lights.Margin = new Thickness(16, 0, 0, 0);
+        Grid.SetColumn(lights, 0);
+        grid.Children.Add(lights);
     }
 
     private void Attach(ShellViewModel? shell)
