@@ -146,8 +146,10 @@ internal static class NativeWindow
         var style = MsgSendHandle(handle, sel_registerName("styleMask"));
         MsgSendLong(handle, sel_registerName("setStyleMask:"), style | (nint)NonactivatingPanelStyle);
         var preventsActivation = sel_registerName("_setPreventsActivation:");
-        if (MsgSendRespondsTo(handle, sel_registerName("respondsToSelector:"), preventsActivation) != 0)
-            MsgSendBool(handle, preventsActivation, true);
+        var available = MsgSendRespondsTo(handle, sel_registerName("respondsToSelector:"), preventsActivation) != 0;
+        if (available) MsgSendBool(handle, preventsActivation, true);
+        OverlayLog.Write($"non-activating panel style: bit kept={(MsgSendHandle(handle, sel_registerName("styleMask")) & NonactivatingPanelStyle) != 0}, " +
+                         $"_setPreventsActivation available={available}");
     }
 
     /// <summary>What macOS currently says about the window and the app (for the diagnostics log). Empty off macOS.</summary>
