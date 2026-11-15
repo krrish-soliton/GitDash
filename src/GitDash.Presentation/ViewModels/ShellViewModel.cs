@@ -216,8 +216,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Humanize.Format = settings.Current.TimeFormat;
 
         Updates = new UpdateViewModel(updates, launcher, ui);
-        NotificationCenter = new NotificationCenterViewModel(notificationHistory, ui, time, OpenTarget, () => Navigate(Notifications));
         Notifications = new NotificationsViewModel(notificationHistory, ui, time, OpenTarget);
+        NotificationCenter = new NotificationCenterViewModel(notificationHistory, ui, time, OpenTarget, () => Navigate(Notifications));
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
         Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm, Updates = Updates };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
