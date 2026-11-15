@@ -36,6 +36,12 @@ internal static class NativeWindow
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern CgPoint MsgSendPoint(nint receiver, nint selector);
     [StructLayout(LayoutKind.Sequential)] private struct CgRect { public double X, Y, Width, Height; }
 
+    [DllImport("/usr/lib/libobjc.dylib")] private static extern nint objc_allocateClassPair(nint superclass, string name, nint extraBytes);
+    [DllImport("/usr/lib/libobjc.dylib")] private static extern void objc_registerClassPair(nint cls);
+    [DllImport("/usr/lib/libobjc.dylib")] private static extern byte class_addMethod(nint cls, nint name, nint imp, string types);
+
+    private delegate nint ForwardingTargetDelegate(nint self, nint cmd, nint selector);
+
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern nint MsgSendInitPanel(nint receiver, nint selector, CgRect rect, nint style, nint backing, byte defer);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern void MsgSendFrame(nint receiver, nint selector, CgRect rect, byte display);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern byte MsgSendByte(nint receiver, nint selector);
@@ -151,6 +157,24 @@ internal static class NativeWindow
     }
 
     private static readonly Dictionary<Window, PanelState> _panels = new();
+    private static readonly Dictionary<nint, nint> _standIns = new();
+    private static readonly ForwardingTargetDelegate _forwardingTarget = ForwardingTarget; // kept alive for the native side
+    private static nint _panelClass;
+
+    /// <summary>Avalonia's views ask their window for things only its own window class has; hand those questions to the stand-in.</summary>
+    private static nint ForwardingTarget(nint self, nint cmd, nint selector) => _standIns.TryGetValue(self, out var standIn) ? standIn : 0;
+
+    /// <summary>An NSPanel subclass that passes every message it does not know to the Avalonia window it stands in for.</summary>
+    private static nint PanelClass()
+    {
+        if (_panelClass != 0) return _panelClass;
+        var cls = objc_allocateClassPair(GetClass("NSPanel"), "GitDashOverlayPanel", 0);
+        if (cls == 0) return GetClass("GitDashOverlayPanel"); // already registered
+        class_addMethod(cls, sel_registerName("forwardingTargetForSelector:"),
+            Marshal.GetFunctionPointerForDelegate(_forwardingTarget), "@@::");
+        objc_registerClassPair(cls);
+        return _panelClass = cls;
+    }
 
     /// <summary>When on, overlay windows opened afterwards are hosted in a native non-activating panel (macOS only).</summary>
     public static bool UsePanels { get; set; }
@@ -179,11 +203,12 @@ internal static class NativeWindow
             if (view == 0) return false;
             var width = double.IsNaN(window.Width) ? Math.Max(window.Bounds.Width, 1) : window.Width;
             var height = double.IsNaN(window.Height) ? Math.Max(window.Bounds.Height, 1) : window.Height;
-            var panel = MsgSendInitPanel(MsgSendHandle(GetClass("NSPanel"), sel_registerName("alloc")),
+            var panel = MsgSendInitPanel(MsgSendHandle(PanelClass(), sel_registerName("alloc")),
                 sel_registerName("initWithContentRect:styleMask:backing:defer:"),
                 new CgRect { X = 0, Y = 0, Width = width, Height = height }, (nint)NonactivatingPanelStyle, 2, 0);
             if (panel == 0) return false;
 
+            _standIns[panel] = handle;
             MsgSendHandle(view, sel_registerName("retain"));
             var stand = MsgSendHandle(MsgSendHandle(GetClass("NSView"), sel_registerName("alloc")), sel_registerName("init"));
             MsgSendLong(handle, sel_registerName("setContentView:"), stand);
@@ -243,6 +268,7 @@ internal static class NativeWindow
         try
         {
             if (!_panels.Remove(window, out var state)) return;
+            _standIns.Remove(state.Handle);
             MsgSendLong(state.Handle, sel_registerName("orderOut:"), 0);
             MsgSendLong(state.Handle, sel_registerName("setContentView:"), 0);
         }
