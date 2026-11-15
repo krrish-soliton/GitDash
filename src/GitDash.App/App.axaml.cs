@@ -80,8 +80,15 @@ public partial class App : AvaloniaApplication
                     }
                 }
             }
+            // macOS: overlays are hosted in native panels when they are meant to float over full-screen apps (they are
+            // created after this point, so the choice applies to windows opened from now on).
+            NativeWindow.UsePanels = OperatingSystem.IsMacOS() && host.Settings.Current is { OverlaysOverFullScreen: true, ShowTrayIcon: true };
             window.PropertyChanged += (_, e) => { if (e.Property == Avalonia.Visual.IsVisibleProperty) UpdateDock(); };
-            host.Settings.Changed += _ => Dispatcher.UIThread.Post(UpdateDock);
+            host.Settings.Changed += s => Dispatcher.UIThread.Post(() =>
+            {
+                NativeWindow.UsePanels = OperatingSystem.IsMacOS() && s is { OverlaysOverFullScreen: true, ShowTrayIcon: true };
+                UpdateDock();
+            });
             // The framework sets its own activation policy while the first windows open, which undid the call above:
             // look again once everything is up, and keep an eye on it while an overlay needs the Dock icon gone.
             window.Opened += (_, _) => Dispatcher.UIThread.Post(UpdateDock);

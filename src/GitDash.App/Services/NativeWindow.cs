@@ -34,6 +34,11 @@ internal static class NativeWindow
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_getClass")] private static extern nint GetClass(string name);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern nint MsgSendHandle(nint receiver, nint selector);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern CgPoint MsgSendPoint(nint receiver, nint selector);
+    [StructLayout(LayoutKind.Sequential)] private struct CgRect { public double X, Y, Width, Height; }
+
+    [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern nint MsgSendInitPanel(nint receiver, nint selector, CgRect rect, nint style, nint backing, byte defer);
+    [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern void MsgSendFrame(nint receiver, nint selector, CgRect rect, byte display);
+    [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern byte MsgSendByte(nint receiver, nint selector);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern byte MsgSendRespondsTo(nint receiver, nint selector, nint arg);
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")] private static extern void MsgSendLong(nint receiver, nint selector, nint value);
 
@@ -66,6 +71,7 @@ internal static class NativeWindow
         try
         {
             if (window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return;
+            if (OperatingSystem.IsMacOS()) handle = MacHandle(window, handle);
 
             if (OperatingSystem.IsWindows())
             {
@@ -122,11 +128,12 @@ internal static class NativeWindow
     {
         try
         {
-            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return;
+            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } native || native == 0) return;
+            var handle = MacHandle(window, native);
             MsgSendLong(handle, sel_registerName("setCollectionBehavior:"), (nint)(CanJoinAllSpaces | Stationary | IgnoresCycle | FullScreenAuxiliary | CanJoinAllApplications));
             MsgSendLong(handle, sel_registerName("setLevel:"), (nint)StatusWindowLevel);
             MsgSendBool(handle, sel_registerName("setHidesOnDeactivate:"), false);
-            MakeNonActivating(handle);
+            if (!_panels.ContainsKey(window)) MakeNonActivating(handle);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
         {
@@ -135,6 +142,115 @@ internal static class NativeWindow
     }
 
     private const long NonactivatingPanelStyle = 1 << 7;
+
+    private sealed class PanelState
+    {
+        public nint Handle;
+        public double X = double.NaN, Y, Width, Height;
+        public bool Shown;
+    }
+
+    private static readonly Dictionary<Window, PanelState> _panels = new();
+
+    /// <summary>When on, overlay windows opened afterwards are hosted in a native non-activating panel (macOS only).</summary>
+    public static bool UsePanels { get; set; }
+
+    /// <summary>The panel that hosts the window's content, or the window itself.</summary>
+    private static nint MacHandle(Window window, nint native) => _panels.TryGetValue(window, out var panel) ? panel.Handle : native;
+
+    public static bool HasPanel(Window window) => _panels.ContainsKey(window);
+
+    /// <summary>
+    /// Moves the window's content into a real NSPanel (macOS only). Full-screen apps only let non-activating panels, not
+    /// ordinary windows, float over their Space. The Avalonia window stays as an empty, invisible stand-in that keeps
+    /// the layout and position logic running; <see cref="SyncPanel"/> keeps the panel on top of it. Returns whether the
+    /// panel is in use; on any failure the window is left exactly as it was.
+    /// </summary>
+    public static bool AttachPanel(Window window)
+    {
+        try
+        {
+            if (!OperatingSystem.IsMacOS() || !UsePanels) return false;
+            if (_panels.ContainsKey(window)) return true;
+            if (Environment.GetEnvironmentVariable("GITDASH_NO_PANEL") == "1") return false;
+            if (window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return false;
+
+            var view = MsgSendHandle(handle, sel_registerName("contentView"));
+            if (view == 0) return false;
+            var width = double.IsNaN(window.Width) ? Math.Max(window.Bounds.Width, 1) : window.Width;
+            var height = double.IsNaN(window.Height) ? Math.Max(window.Bounds.Height, 1) : window.Height;
+            var panel = MsgSendInitPanel(MsgSendHandle(GetClass("NSPanel"), sel_registerName("alloc")),
+                sel_registerName("initWithContentRect:styleMask:backing:defer:"),
+                new CgRect { X = 0, Y = 0, Width = width, Height = height }, (nint)NonactivatingPanelStyle, 2, 0);
+            if (panel == 0) return false;
+
+            MsgSendHandle(view, sel_registerName("retain"));
+            var stand = MsgSendHandle(MsgSendHandle(GetClass("NSView"), sel_registerName("alloc")), sel_registerName("init"));
+            MsgSendLong(handle, sel_registerName("setContentView:"), stand);
+            MsgSendLong(panel, sel_registerName("setContentView:"), view);
+            MsgSendHandle(view, sel_registerName("release"));
+
+            MsgSendBool(panel, sel_registerName("setOpaque:"), false);
+            MsgSendLong(panel, sel_registerName("setBackgroundColor:"), MsgSendHandle(GetClass("NSColor"), sel_registerName("clearColor")));
+            MsgSendBool(panel, sel_registerName("setHasShadow:"), false);
+            MsgSendBool(panel, sel_registerName("setFloatingPanel:"), true);
+            MsgSendBool(panel, sel_registerName("setBecomesKeyOnlyIfNeeded:"), true);
+            MsgSendBool(panel, sel_registerName("setReleasedWhenClosed:"), false);
+            _panels[window] = new PanelState { Handle = panel };
+            OverlayLog.Write($"panel attached to {window.GetType().Name}: {Describe(window)}");
+            return true;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Makes the panel follow the stand-in window's place, size and visibility. Cheap when nothing changed.</summary>
+    public static void SyncPanel(Window window)
+    {
+        try
+        {
+            if (!_panels.TryGetValue(window, out var state)) return;
+            var screen = window.Screens.Primary ?? window.Screens.All.FirstOrDefault();
+            var scale = screen is null || screen.Scaling <= 0 ? 1 : screen.Scaling;
+            var screenHeight = screen?.Bounds.Height ?? 0;
+            var width = double.IsNaN(window.Width) ? window.Bounds.Width : window.Width;
+            var height = double.IsNaN(window.Height) ? window.Bounds.Height : window.Height;
+            var x = window.Position.X / scale;
+            var y = (screenHeight - window.Position.Y) / scale - height; // Cocoa counts up from the bottom of the main screen.
+            if (width > 0 && height > 0 && (x != state.X || y != state.Y || width != state.Width || height != state.Height))
+            {
+                state.X = x; state.Y = y; state.Width = width; state.Height = height;
+                MsgSendFrame(state.Handle, sel_registerName("setFrame:display:"), new CgRect { X = x, Y = y, Width = width, Height = height }, 1);
+            }
+
+            var wantShown = window.IsVisible;
+            if (wantShown == state.Shown) return;
+            state.Shown = wantShown;
+            if (wantShown) MsgSendHandle(state.Handle, sel_registerName("orderFrontRegardless"));
+            else MsgSendLong(state.Handle, sel_registerName("orderOut:"), 0);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
+        {
+            // The panel stays where it was.
+        }
+    }
+
+    /// <summary>Takes the panel off the screen when its window closes.</summary>
+    public static void DetachPanel(Window window)
+    {
+        try
+        {
+            if (!_panels.Remove(window, out var state)) return;
+            MsgSendLong(state.Handle, sel_registerName("orderOut:"), 0);
+            MsgSendLong(state.Handle, sel_registerName("setContentView:"), 0);
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or SEHException)
+        {
+            // Nothing more to release.
+        }
+    }
 
     /// <summary>
     /// Makes the window behave like a non-activating panel (macOS): showing or clicking it never activates GitDash, which is
@@ -157,7 +273,8 @@ internal static class NativeWindow
     {
         try
         {
-            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return string.Empty;
+            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } native || native == 0) return string.Empty;
+            var handle = MacHandle(window, native);
             var app = MsgSendHandle(GetClass("NSApplication"), sel_registerName("sharedApplication"));
             var policy = app == 0 ? -1 : MsgSendHandle(app, sel_registerName("activationPolicy"));
             var behavior = MsgSendHandle(handle, sel_registerName("collectionBehavior"));
@@ -179,7 +296,8 @@ internal static class NativeWindow
     {
         try
         {
-            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return null;
+            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } native || native == 0) return null;
+            var handle = MacHandle(window, native);
             var at = MsgSendPoint(handle, sel_registerName("mouseLocationOutsideOfEventStream")); // origin bottom-left, in points
             var height = double.IsNaN(window.Height) ? window.Bounds.Height : window.Height;
             return new Avalonia.Point(at.X, height - at.Y);
@@ -224,7 +342,8 @@ internal static class NativeWindow
     {
         try
         {
-            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } handle || handle == 0) return;
+            if (!OperatingSystem.IsMacOS() || window.TryGetPlatformHandle()?.Handle is not { } native || native == 0) return;
+            var handle = MacHandle(window, native);
             MsgSendLong(handle, sel_registerName("orderOut:"), 0);
             MsgSendHandle(handle, sel_registerName("orderFrontRegardless"));
         }

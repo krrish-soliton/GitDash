@@ -170,6 +170,7 @@ public abstract class FloatingWindow : Window
         base.OnOpened(e);
         // The native window exists only now, so the click-through flag has to be (re)applied here.
         NativeWindow.HideFromSwitcher(this);
+        if (OperatingSystem.IsMacOS() && NativeWindow.AttachPanel(this)) StartPanelSync();
         NativeWindow.ShowOnAllDesktops(this);
         var kind = GetType().Name;
         OverlayLog.Write($"{kind} opened: {NativeWindow.Describe(this)} pos={Position} size={Width}x{Height} scale={RenderScaling}");
@@ -178,8 +179,24 @@ public abstract class FloatingWindow : Window
         SetLocked(_locked);
     }
 
+    private DispatcherTimer? _panelTimer;
+
+    /// <summary>macOS: the content lives in a native panel (see <see cref="NativeWindow.AttachPanel"/>) that has to follow this window.</summary>
+    private void StartPanelSync()
+    {
+        NativeWindow.SyncPanel(this);
+        _panelTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => NativeWindow.SyncPanel(this));
+        _panelTimer.Start();
+    }
+
+    private PixelPoint _dragStartCursor, _dragStartPosition;
+    private bool _dragging;
+
     protected override void OnClosed(EventArgs e)
     {
+        _panelTimer?.Stop();
+        _panelTimer = null;
+        NativeWindow.DetachPanel(this);
         _hoverTimer?.Stop();
         _hoverTimer = null;
         base.OnClosed(e);
@@ -188,7 +205,33 @@ public abstract class FloatingWindow : Window
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (!_locked && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);
+        if (_locked || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        // The native panel cannot start the system's window drag (the event belongs to the stand-in window), so the move is done by hand.
+        if (NativeWindow.HasPanel(this) && NativeWindow.CursorPosition(1) is { } start)
+        {
+            _dragging = true;
+            _dragStartCursor = start;
+            _dragStartPosition = Position;
+            e.Pointer.Capture(this);
+            return;
+        }
+
+        BeginMoveDrag(e);
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (!_dragging || NativeWindow.CursorPosition(1) is not { } now) return;
+        Position = new PixelPoint(_dragStartPosition.X + now.X - _dragStartCursor.X, _dragStartPosition.Y + now.Y - _dragStartCursor.Y);
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (!_dragging) return;
+        _dragging = false;
+        e.Pointer.Capture(null);
     }
 
     /// <summary>
