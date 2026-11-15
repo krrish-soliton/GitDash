@@ -27,16 +27,22 @@ public sealed class NotificationRouter(SettingsService settings, IToastPresenter
     private static string DetailOf(PullRequestNotification n)
     {
         var pr = n.PullRequest;
+        // One "Label: value" per line; the notification history shows them as a small table.
         var lines = new List<string>
         {
-            $"{pr.Repository.FullName} #{pr.Number}: {pr.Title}",
-            $"Opened by {pr.Author} on {pr.CreatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
+            $"Repository: {pr.Repository.FullName}",
+            $"Pull request: #{pr.Number} {pr.Title}",
+            $"Author: {pr.Author}",
+            $"Opened: {pr.CreatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
+            $"State: {(pr.State == PullRequestState.Open ? (pr.IsDraft ? "Draft" : "Open") : pr.State.ToString())}",
         };
-        if (pr.Assignees.Count > 0) lines.Add("Assigned to " + string.Join(", ", pr.Assignees));
-        if (pr.RequestedReviewers.Count > 0) lines.Add("Review requested from " + string.Join(", ", pr.RequestedReviewers));
-        lines.Add($"{pr.TotalComments} comments, {pr.UnresolvedThreads} unresolved · {pr.CommitCount} commits · +{pr.Additions} -{pr.Deletions} in {pr.ChangedFiles} files");
-        if (pr.HasMergeConflict) lines.Add("Has a merge conflict");
-        if (pr.PipelineFailed) lines.Add("Its pipeline is failing");
+        if (pr.Assignees.Count > 0) lines.Add("Assigned to: " + string.Join(", ", pr.Assignees));
+        if (pr.RequestedReviewers.Count > 0) lines.Add("Review requested from: " + string.Join(", ", pr.RequestedReviewers));
+        if (pr.MergedBy is not null) lines.Add("Merged by: " + pr.MergedBy);
+        lines.Add($"Conversation: {pr.TotalComments} comments, {pr.UnresolvedThreads} unresolved");
+        lines.Add($"Changes: {pr.CommitCount} commits, {pr.ChangedFiles} files, +{pr.Additions} -{pr.Deletions}");
+        if (pr.HasMergeConflict || pr.PipelineFailed)
+            lines.Add("Needs attention: " + string.Join(" and ", new[] { pr.HasMergeConflict ? "merge conflict" : null, pr.PipelineFailed ? "failing pipeline" : null }.OfType<string>()));
         return string.Join('\n', lines);
     }
 

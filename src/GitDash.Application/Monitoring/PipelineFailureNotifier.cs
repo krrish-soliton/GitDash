@@ -35,11 +35,13 @@ public sealed class PipelineFailureNotifier
 
         var detail = string.Join('\n',
             $"Workflow: {run.Name}",
-            $"Pull request: {pr.Repository.FullName} #{pr.Number}: {pr.Title}",
+            $"Repository: {pr.Repository.FullName}",
+            $"Pull request: #{pr.Number} {pr.Title}",
             $"Branch: {run.Branch}",
-            $"Started by {run.Actor}, finished {run.UpdatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
+            $"Run by: {run.Actor}",
+            $"Finished: {run.UpdatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
             $"Result: {(string.IsNullOrEmpty(run.Conclusion) ? "failed" : run.Conclusion.Replace('_', ' '))}",
-            run.Url);
+            $"Run: {run.Url}");
         return new ToastRequest(
             $"Pipeline failed: {run.Name}", $"{pr.Title} (#{pr.Number}) in {pr.Repository.Name}", ToastTone.Failed,
             pr.Url, run.Actor, detail, ToastTarget.PullRequestActions);

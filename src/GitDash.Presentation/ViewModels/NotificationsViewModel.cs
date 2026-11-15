@@ -7,6 +7,9 @@ using GitDash.Presentation.Mvvm;
 
 namespace GitDash.Presentation.ViewModels;
 
+/// <summary>The notifications of one day under a heading.</summary>
+public sealed record NotificationDayViewModel(string Header, IReadOnlyList<NotificationItemViewModel> Items);
+
 /// <summary>
 /// The Notifications page: every notification that was kept (the last 50), read or not, with its full text and details,
 /// even after the bell's popup was cleared of them.
@@ -34,6 +37,9 @@ public sealed class NotificationsViewModel : PageViewModel
     }
 
     public ObservableCollection<NotificationItemViewModel> Items { get; } = [];
+
+    /// <summary>The same notifications grouped by day (newest first), which is what the page lists.</summary>
+    public ObservableCollection<NotificationDayViewModel> Days { get; } = [];
 
     /// <summary>Show only the notifications that were not read yet.</summary>
     public bool OnlyUnread
@@ -81,6 +87,17 @@ public sealed class NotificationsViewModel : PageViewModel
                 Items.Add(new NotificationItemViewModel(
                     entry, NotificationCenterViewModel.WhenText(entry.At, today), OnOpen, id => _history?.MarkRead(id)));
             }
+        }
+
+        var now = _time.GetUtcNow();
+        var groups = Items.GroupBy(i => Humanize.DayOf(i.At))
+            .Select(g => new NotificationDayViewModel(Humanize.Day(g.First().At, now), [.. g])).ToList();
+        var sameDays = groups.Count == Days.Count && groups.Zip(Days).All(p =>
+            p.First.Header == p.Second.Header && p.First.Items.SequenceEqual(p.Second.Items));
+        if (!sameDays)
+        {
+            Days.Clear();
+            foreach (var day in groups) Days.Add(day);
         }
 
         Raise(nameof(UnreadCount));

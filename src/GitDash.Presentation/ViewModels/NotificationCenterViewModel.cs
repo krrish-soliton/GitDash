@@ -6,6 +6,9 @@ using GitDash.Presentation.Mvvm;
 
 namespace GitDash.Presentation.ViewModels;
 
+/// <summary>One "Label: value" line of a notification's details.</summary>
+public sealed record NotificationDetailRow(string Label, string Value);
+
 /// <summary>One line of the notification list.</summary>
 public sealed class NotificationItemViewModel(
     NotificationEntry entry, string whenText, Action<NotificationItemViewModel> open, Action<Guid> markRead)
@@ -23,7 +26,22 @@ public sealed class NotificationItemViewModel(
 
     // ----- What the notification history page shows on top of the short popup row -----
     public string Detail => _entry.Detail ?? string.Empty;
-    public bool HasDetail => !string.IsNullOrWhiteSpace(_entry.Detail);
+    public bool HasDetail => DetailRows.Count > 0;
+    public DateTimeOffset At => _entry.At;
+
+    /// <summary>The detail lines split at the first colon ("Repository: o/r"); a line without a label keeps just its text.</summary>
+    public IReadOnlyList<NotificationDetailRow> DetailRows { get; } = ParseDetail(entry.Detail);
+
+    public static IReadOnlyList<NotificationDetailRow> ParseDetail(string? detail) =>
+        string.IsNullOrWhiteSpace(detail)
+            ? []
+            : [.. detail.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(line =>
+            {
+                var colon = line.IndexOf(": ", StringComparison.Ordinal);
+                return colon is > 0 and <= 28
+                    ? new NotificationDetailRow(line[..colon], line[(colon + 2)..])
+                    : new NotificationDetailRow(string.Empty, line);
+            })];
     /// <summary>The full date and time it arrived.</summary>
     public string Stamp => Humanize.Stamp(_entry.At);
     public string Category => _entry.Tone switch

@@ -136,6 +136,24 @@ public class NotificationHistoryTests
     }
 
     [Fact]
+    public void Details_are_split_into_label_and_value_rows_and_grouped_by_day()
+    {
+        var rows = NotificationItemViewModel.ParseDetail("Repository: o/r\nPull request: #7 Fix: the thing\nhttps://github.com/o/r/actions/runs/1");
+        Assert.Equal(new NotificationDetailRow("Repository", "o/r"), rows[0]);
+        Assert.Equal(new NotificationDetailRow("Pull request", "#7 Fix: the thing"), rows[1]);
+        Assert.Equal(string.Empty, rows[2].Label);
+
+        var history = new NotificationHistory(new InMemoryNotificationStore(), TimeProvider.System);
+        var page = new NotificationsViewModel(history, new Inline(), TimeProvider.System, _ => { });
+        history.Record(Request(1));
+        history.Record(Request(2));
+
+        Assert.Single(page.Days);
+        Assert.Equal("Today", page.Days[0].Header);
+        Assert.Equal(2, page.Days[0].Items.Count);
+    }
+
+    [Fact]
     public void Time_text_is_friendly()
     {
         var now = new DateTimeOffset(2026, 11, 14, 15, 0, 0, TimeSpan.Zero);
