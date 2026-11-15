@@ -96,7 +96,9 @@ public abstract class FloatingWindow : Window
     {
         get
         {
-            var scale = Screens.ScreenFromVisual(this)?.Scaling ?? (OperatingSystem.IsMacOS() ? 1 : RenderScaling);
+            // Everywhere but macOS the two are the same thing, so the long-standing behaviour is kept as it was.
+            if (!OperatingSystem.IsMacOS()) return RenderScaling <= 0 ? 1 : RenderScaling;
+            var scale = Screens.ScreenFromVisual(this)?.Scaling ?? 1;
             return scale <= 0 ? 1 : scale;
         }
     }

@@ -20,6 +20,7 @@ internal static class OverlayLog
 
     public static void Write(string message)
     {
+        if (!OperatingSystem.IsMacOS()) return; // diagnostics for the macOS overlay work only
         try
         {
             lock (Gate)

@@ -91,9 +91,9 @@ public partial class App : AvaloniaApplication
             });
             // The framework sets its own activation policy while the first windows open, which undid the call above:
             // look again once everything is up, and keep an eye on it while an overlay needs the Dock icon gone.
-            window.Opened += (_, _) => Dispatcher.UIThread.Post(UpdateDock);
             if (OperatingSystem.IsMacOS())
             {
+                window.Opened += (_, _) => Dispatcher.UIThread.Post(UpdateDock);
                 foreach (var seconds in new[] { 1, 3 }) DispatcherTimer.RunOnce(UpdateDock, TimeSpan.FromSeconds(seconds));
                 new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => UpdateDock()).Start();
             }

@@ -202,7 +202,7 @@ public partial class IslandWindow : FloatingWindow
         // Only the user dragging it (unlocked) or the very first look may change the centre. Reading it back from the window
         // every time drifted the island left on macOS: the system rounds the position, so it never matched exactly, and a
         // window pushed in from the screen edge then passed for the island's own centre.
-        if (!_hasCenter || (!IsLocked && MovedFromWhereWePlacedIt()))
+        if (!_hasCenter || (OperatingSystem.IsMacOS() ? !IsLocked && MovedFromWhereWePlacedIt() : Position != _lastPos))
         {
             _centerX = Position.X + (int)Math.Round(Width * Scale / 2);
             _hasCenter = true;
@@ -222,6 +222,7 @@ public partial class IslandWindow : FloatingWindow
     /// </summary>
     private double FitWidth(double wanted)
     {
+        if (!OperatingSystem.IsMacOS()) return wanted; // macOS only: elsewhere the island keeps sliding in from the edge as before.
         var centre = CurrentCenterX();
         var screen = Screens.ScreenFromPoint(new PixelPoint(centre, Position.Y)) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
         if (screen is null) return wanted;
