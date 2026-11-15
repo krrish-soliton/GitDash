@@ -16,7 +16,19 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if (OperatingSystem.IsMacOS()) UseSystemWindowButtons();
         DataContextChanged += (_, _) => Attach(DataContext as ShellViewModel);
+    }
+
+    /// <summary>
+    /// macOS: the system's own close / minimise / zoom buttons are used (drawn over the top-left corner of the window),
+    /// so our dots are hidden and the logo moves right to make room for them.
+    /// </summary>
+    private void UseSystemWindowButtons()
+    {
+        ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.PreferSystemChrome;
+        if (this.FindControl<StackPanel>("TrafficLights") is { } lights) lights.IsVisible = false;
+        if (this.FindControl<StackPanel>("TitleBrand") is { } brand) brand.Margin = new Thickness(82, 0, 0, 0);
     }
 
     private void Attach(ShellViewModel? shell)
