@@ -34,7 +34,7 @@ public sealed class NotificationRouter(SettingsService settings, IToastPresenter
             $"Pull request: #{pr.Number} {pr.Title}",
             $"Author: {pr.Author}",
             $"Opened: {pr.CreatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
-            $"State: {(pr.State == PullRequestState.Open ? (pr.IsDraft ? "Draft" : "Open") : pr.State.ToString())}",
+            $"State: {(pr.State == GitDash.Domain.PullRequests.PullRequestState.Open ? (pr.IsDraft ? "Draft" : "Open") : pr.State.ToString())}",
         };
         if (pr.Assignees.Count > 0) lines.Add("Assigned to: " + string.Join(", ", pr.Assignees));
         if (pr.RequestedReviewers.Count > 0) lines.Add("Review requested from: " + string.Join(", ", pr.RequestedReviewers));
