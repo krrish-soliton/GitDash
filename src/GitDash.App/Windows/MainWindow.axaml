@@ -381,9 +381,10 @@
           <ItemsControl ItemsSource="{Binding NotificationCenter.Items}" Margin="8,0,8,10">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:NotificationItemViewModel">
-                <Border Classes="noteRow" Classes.unread="{Binding IsUnread}" CornerRadius="12" Margin="0,2" Padding="4">
+                <Border Classes="noteRow" Classes.unread="{Binding IsUnread}" CornerRadius="12" Margin="0,2" Padding="4"
+                        Background="{DynamicResource Surface2Brush}">
                   <Grid ColumnDefinitions="*,34">
-                    <Button Classes="ghost" HorizontalContentAlignment="Stretch" Padding="8,8" Command="{Binding OpenCommand}">
+                    <Button Classes="ghost" Background="Transparent" HorizontalContentAlignment="Stretch" Padding="8,8" Command="{Binding OpenCommand}">
                       <Grid ColumnDefinitions="Auto,*">
                         <!-- Colour tile with the person's picture on its corner -->
                         <Panel Width="44" Height="42" VerticalAlignment="Top">
