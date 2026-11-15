@@ -55,7 +55,14 @@ public sealed class FilterOptionViewModel(PullRequestFilter filter, string label
     };
 }
 
-public sealed record TimelineItemViewModel(string Time, string Actor, string Text, string Kind, bool IsViewer, string Label, string Tone);
+public sealed record TimelineItemViewModel(
+    string Time, string Actor, string Text, string Kind, bool IsViewer, string Label, string Tone,
+    CommentThreadViewModel? Thread = null)
+{
+    /// <summary>A plain event (commit, review decision, assignment…); a conversation is shown as its own chat card.</summary>
+    public bool IsEvent => Thread is null;
+    public bool IsConversation => Thread is not null;
+}
 
 /// <summary>The tag text and colour key of a timeline entry: people and reviewers added or removed, states, decisions.</summary>
 public static class TimelineTags
@@ -109,13 +116,15 @@ public sealed record ReactionChipViewModel(string Emoji, int Count, IReadOnlyLis
 public sealed record CommentViewModel(
     string Author, string Initials, string Accent, string When, string Source, string Body,
     bool IsMine, bool MentionsMe, bool IsAi = false, bool IsResolved = false, bool IsUnresolved = false,
-    IReadOnlyList<ReactionChipViewModel>? Reactions = null, bool IsReply = false)
+    IReadOnlyList<ReactionChipViewModel>? Reactions = null, bool IsReply = false, bool IsRight = false)
 {
     public string? AvatarUrl => AvatarDirectory.UrlFor(Author);
     public IReadOnlyList<ReactionChipViewModel> ReactionChips => Reactions ?? [];
     public bool HasReactions => ReactionChips.Count > 0;
     /// <summary>The first message of a conversation shows where it was said; replies only follow it.</summary>
     public bool ShowsSource => !IsReply;
+    /// <summary>In a conversation the person who started it speaks on the left and everyone who answers on the right.</summary>
+    public bool IsLeft => !IsRight;
 
     /// <summary>Body rendered as Markdown blocks.</summary>
     public IReadOnlyList<GitDash.Presentation.Markdown.MarkdownBlock> Blocks { get; } =
@@ -935,36 +944,60 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         var viewer = DetailCard?.PullRequest.ViewerLogin;
         var now = _time.GetUtcNow();
         var all = _details?.Timeline ?? [];
-        var visible = all.Where(e => e.Category switch
+        // Comments are not shown as one-line events: each conversation appears as a chat card where it started.
+        var visible = all.Where(e => e.Kind != TimelineEntryKind.Comment && e.Category switch
         {
             TimelineCategory.Commits => ShowCommits,
-            TimelineCategory.Comments => ShowComments,
             TimelineCategory.Reviews => ShowReviews,
             _ => ShowEvents,
         }).ToList();
 
+        var items = visible
+            .Select(e => (e.At, Item: new TimelineItemViewModel(
+                Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer),
+                TimelineTags.LabelOf(e.Kind), TimelineTags.ToneOf(e.Kind))))
+            .ToList();
+        if (ShowComments)
+        {
+            items.AddRange(BuildThreads(applyTabFilters: false, flat: null).Select(t => (t.At, Item: new TimelineItemViewModel(
+                Humanize.Time(t.At), t.Thread.Comments[0].Author, string.Empty, "Comment", false, "Comment", "Comment", t.Thread))));
+        }
+
         // Newest day first, and newest entry first within a day: what just happened is at the top.
-        var days = visible
-            .OrderByDescending(e => e.At)
-            .GroupBy(e => Humanize.DayOf(e.At))
-            .Select(g => new TimelineDayViewModel(
-                Humanize.Day(g.First().At, now),
-                [.. g.Select(e => new TimelineItemViewModel(
-                    Humanize.Time(e.At), e.Actor, e.Text, e.Kind.ToString(), Login.Same(e.Actor, viewer),
-                    TimelineTags.LabelOf(e.Kind), TimelineTags.ToneOf(e.Kind)))]));
+        var days = items
+            .OrderByDescending(x => x.At)
+            .GroupBy(x => Humanize.DayOf(x.At))
+            .Select(g => new TimelineDayViewModel(Humanize.Day(g.First().At, now), [.. g.Select(x => x.Item)]));
 
         TimelineDays.Clear();
         foreach (var day in days) TimelineDays.Add(day);
         HasTimeline = TimelineDays.Count > 0;
-        TimelineHeader = all.Count == 0 ? "Timeline" : $"Timeline ({all.Count})";
+        TimelineHeader = all.Count == 0 && items.Count == 0 ? "Timeline" : $"Timeline ({all.Count(e => e.Kind != TimelineEntryKind.Comment) + (_details?.Comments.Count ?? 0)})";
     }
 
     private void RebuildComments()
     {
+        var all = _details?.Comments ?? [];
+        var flat = new List<CommentViewModel>();
+        var threads = BuildThreads(applyTabFilters: true, flat);
+
+        Comments.Clear();
+        foreach (var comment in flat) Comments.Add(comment);
+        Threads.Clear();
+        foreach (var (_, thread) in threads) Threads.Add(thread);
+
+        HasComments = Comments.Count > 0;
+        CommentsHeader = all.Count == 0 ? "Comments" : $"Comments ({all.Count})";
+    }
+
+    /// <summary>
+    /// Groups the comments into conversations: a code conversation stays together with its replies, oldest message first.
+    /// The Comments tab applies its own filters; the timeline shows every conversation.
+    /// </summary>
+    private List<(DateTimeOffset At, CommentThreadViewModel Thread)> BuildThreads(bool applyTabFilters, List<CommentViewModel>? flat)
+    {
         var viewer = DetailCard?.PullRequest.ViewerLogin ?? string.Empty;
         var all = _details?.Comments ?? [];
-
-        // A chat: oldest first, and a code conversation stays together with its replies right under the first message.
         var groups = all
             .Select((c, i) => (Comment: c, Key: c.ThreadId ?? "single:" + i))
             .GroupBy(x => x.Key)
@@ -979,39 +1012,41 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             _ => "Conversation",
         };
 
-        Comments.Clear();
-        Threads.Clear();
+        var result = new List<(DateTimeOffset, CommentThreadViewModel)>();
         foreach (var group in groups)
         {
+            var root = group[0].Comment;
             var shown = new List<CommentViewModel>();
             foreach (var (c, isReply) in group)
             {
                 var mine = Login.Same(c.Author, viewer);
                 var ai = !mine && c.IsAi;
                 var mentions = !mine && c.Mentions(viewer);
-                // A comment is shown when it belongs to at least one ticked group. AI comments have their own switch
-                // and are not counted as "other people".
-                var others = !mine && !ai && CommentsByOthers;
-                if (c.IsResolvedThread && !ShowResolvedComments) continue;
-                if (c.IsUnresolvedThread && !ShowUnresolvedComments) continue;
-                if (!((mine && CommentsByMe) || others || (ai && CommentsFromAi) || (mentions && CommentsMentioningMe))) continue;
+                if (applyTabFilters)
+                {
+                    // A comment is shown when it belongs to at least one ticked group. AI comments have their own switch
+                    // and are not counted as "other people".
+                    var others = !mine && !ai && CommentsByOthers;
+                    if (c.IsResolvedThread && !ShowResolvedComments) continue;
+                    if (c.IsUnresolvedThread && !ShowUnresolvedComments) continue;
+                    if (!((mine && CommentsByMe) || others || (ai && CommentsFromAi) || (mentions && CommentsMentioningMe))) continue;
+                }
 
                 var vm = new CommentViewModel(
                     c.Author, Humanize.Initials(c.Author), Humanize.Accent(c.Author), Humanize.Stamp(c.At),
                     SourceLabel(c),
                     c.Body, mine, mentions, ai, c.IsResolvedThread, c.IsUnresolvedThread,
-                    [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count, r.Users))], isReply);
-                Comments.Add(vm);
+                    [.. c.ReactionList.Select(r => new ReactionChipViewModel(r.Emoji, r.Count, r.Users))],
+                    isReply, !Login.Same(c.Author, root.Author));
+                flat?.Add(vm);
                 shown.Add(vm);
             }
 
             if (shown.Count == 0) continue;
-            var root = group[0].Comment;
-            Threads.Add(new CommentThreadViewModel(SourceLabel(root), root.IsResolvedThread, root.IsUnresolvedThread, shown));
+            result.Add((root.At, new CommentThreadViewModel(SourceLabel(root), root.IsResolvedThread, root.IsUnresolvedThread, shown)));
         }
 
-        HasComments = Comments.Count > 0;
-        CommentsHeader = all.Count == 0 ? "Comments" : $"Comments ({all.Count})";
+        return result;
     }
 
     private void RebuildReviews()
