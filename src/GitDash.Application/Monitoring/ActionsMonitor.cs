@@ -31,7 +31,8 @@ public sealed record ActionsState(
 /// </summary>
 public sealed class ActionsMonitor : IAsyncDisposable
 {
-    private static readonly TimeSpan LiveInterval = TimeSpan.FromSeconds(8), IdleInterval = TimeSpan.FromSeconds(90);
+    private static readonly TimeSpan LiveInterval = TimeSpan.FromSeconds(8), ActiveInterval = TimeSpan.FromSeconds(15),
+        IdleInterval = TimeSpan.FromSeconds(60), RecentFailure = TimeSpan.FromMinutes(30);
     private const int KeepRuns = 40, MaxParallel = 3;
 
     private readonly SettingsService _settings;
@@ -41,7 +42,9 @@ public sealed class ActionsMonitor : IAsyncDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Dictionary<Guid, string?> _tokens = [];
     private CancellationTokenSource _wake = new();
+    private readonly HashSet<long> _failedSeen = [];
     private volatile bool _live;
+    private bool _baselined;
     private Task? _loop;
 
     public ActionsMonitor(SettingsService settings, AccountService accounts, IGitHubGateway gitHub, TimeProvider time)
@@ -61,6 +64,9 @@ public sealed class ActionsMonitor : IAsyncDisposable
 
     /// <summary>Raised on a background thread whenever <see cref="State"/> is replaced.</summary>
     public event Action<ActionsState>? Changed;
+
+    /// <summary>Raised on a background thread once for every run of a pull request that has just failed.</summary>
+    public event Action<WorkflowRun>? RunFailed;
 
     public void Start() => _loop ??= Task.Run(() => RunAsync(_shutdown.Token));
 
@@ -97,15 +103,19 @@ public sealed class ActionsMonitor : IAsyncDisposable
                 {
                     await RefreshAsync(shutdown).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                catch (Exception ex) when (!shutdown.IsCancellationRequested)
                 {
+                    // Any failure, a request timing out included (that arrives as a cancellation), must not end the polling:
+                    // it used to stop the live updates until the app was restarted.
                     Publish(State with { Error = ex.Message });
                 }
 
                 using var wait = CancellationTokenSource.CreateLinkedTokenSource(shutdown, wake.Token);
                 try
                 {
-                    await Task.Delay(_live ? LiveInterval : IdleInterval, _time, wait.Token).ConfigureAwait(false);
+                    await Task.Delay(
+                        _live ? LiveInterval : State.Runs.Any(r => r.IsActive) ? ActiveInterval : IdleInterval,
+                        _time, wait.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -152,6 +162,10 @@ public sealed class ActionsMonitor : IAsyncDisposable
                 {
                     error = ex.Message;
                 }
+                catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                {
+                    error = "GitHub did not answer in time";
+                }
             }).ConfigureAwait(false);
 
         var perPr = new Dictionary<string, int>();
@@ -171,8 +185,22 @@ public sealed class ActionsMonitor : IAsyncDisposable
             .Take(KeepRuns)
             .ToList();
 
+        AnnounceFailures(all);
         var fresh = new ActionsState(shown, perPr, _time.GetUtcNow(), error);
         if (!SameContent(State, fresh)) Publish(fresh);
+    }
+
+    /// <summary>Tells about runs that failed since the last poll. The first poll only learns what already failed.</summary>
+    private void AnnounceFailures(IReadOnlyList<WorkflowRun> runs)
+    {
+        var now = _time.GetUtcNow();
+        foreach (var run in runs.Where(r => r.Failed))
+        {
+            var isNew = _failedSeen.Add(run.Id);
+            if (isNew && _baselined && run.PullRequests.Count > 0 && now - run.UpdatedAt <= RecentFailure) RunFailed?.Invoke(run);
+        }
+
+        _baselined = true;
     }
 
     private static bool SameContent(ActionsState a, ActionsState b) =>

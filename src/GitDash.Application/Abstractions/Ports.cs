@@ -39,11 +39,29 @@ public enum ToastTone
     Merged,
     Timer,
     Removed,
+    Failed,
+}
+
+/// <summary>Where clicking a notification should take the user inside the app.</summary>
+public enum ToastTarget
+{
+    /// <summary>The pull request in <see cref="ToastRequest.Url"/> when there is one, otherwise just the app.</summary>
+    Auto,
+    PullRequest,
+    /// <summary>The pull request, on its Actions tab.</summary>
+    PullRequestActions,
+    Timers,
+    /// <summary>The settings page, where updates and AI tool limits are handled.</summary>
+    Settings,
 }
 
 /// <summary>Something to tell the user, independent of how it will be displayed.</summary>
 /// <param name="Actor">GitHub login of the person the notification is about (commenter, author, merger), if any.</param>
-public sealed record ToastRequest(string Title, string Message, ToastTone Tone, string? Url = null, string? Actor = null);
+/// <param name="Detail">Longer, multi-line explanation shown in the notification history.</param>
+/// <param name="Target">Where in the app a click leads.</param>
+public sealed record ToastRequest(
+    string Title, string Message, ToastTone Tone, string? Url = null, string? Actor = null,
+    string? Detail = null, ToastTarget Target = ToastTarget.Auto);
 
 /// <summary>The app's own animated toast windows.</summary>
 public interface IToastPresenter

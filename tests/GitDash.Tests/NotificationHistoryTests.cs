@@ -75,7 +75,7 @@ public class NotificationHistoryTests
     {
         var history = new NotificationHistory(new InMemoryNotificationStore(), TimeProvider.System);
         string? opened = null;
-        var center = new NotificationCenterViewModel(history, new Inline(), TimeProvider.System, url => opened = url);
+        var center = new NotificationCenterViewModel(history, new Inline(), TimeProvider.System, request => opened = request.Url, () => { });
 
         Assert.True(center.IsEmpty);
         history.Record(Request(1));
@@ -90,16 +90,81 @@ public class NotificationHistoryTests
         Assert.False(center.IsOpen);
         Assert.Equal(1, center.UnreadCount);
 
+        // The popup lists unread notifications only; read ones live on in the history page.
+        Assert.Single(center.Items);
+
         center.MarkAllReadCommand.Execute(null);
         Assert.False(center.HasUnread);
-        foreach (var item in center.Items) Assert.False(item.IsUnread);
+        Assert.Empty(center.Items);
+        Assert.Equal(2, history.Entries.Count);
+    }
+
+    [Fact]
+    public void Popup_shows_the_latest_ten_unread_and_the_history_page_keeps_everything()
+    {
+        var history = new NotificationHistory(new InMemoryNotificationStore(), TimeProvider.System);
+        var center = new NotificationCenterViewModel(history, new Inline(), TimeProvider.System, _ => { }, () => { });
+        var page = new NotificationsViewModel(history, new Inline(), TimeProvider.System, _ => { });
+
+        for (var i = 1; i <= 14; i++) history.Record(Request(i));
+        history.MarkRead(history.Entries[^1].Id);
+
+        Assert.Equal(NotificationCenterViewModel.PopupLimit, center.Items.Count);
+        Assert.Equal("Title 14", center.Items[0].Title);
+        Assert.Equal(14, page.Items.Count);
+
+        page.OnlyUnread = true;
+        Assert.Equal(13, page.Items.Count);
+    }
+
+    [Fact]
+    public void Opening_a_history_item_marks_it_read_and_passes_its_target()
+    {
+        var history = new NotificationHistory(new InMemoryNotificationStore(), TimeProvider.System);
+        ToastRequest? opened = null;
+        var page = new NotificationsViewModel(history, new Inline(), TimeProvider.System, r => opened = r);
+        history.Record(new ToastRequest("Pipeline failed: CI", "Fix it (#7) in repo", ToastTone.Failed, "https://github.com/o/r/pull/7",
+            "maya", "Workflow: CI\nBranch: main", ToastTarget.PullRequestActions));
+
+        var item = page.Items.Single();
+        Assert.True(item.HasDetail);
+        Assert.Equal("Open its runs", item.ActionText);
+        item.OpenCommand.Execute(null);
+
+        Assert.Equal(ToastTarget.PullRequestActions, opened?.Target);
+        Assert.False(page.Items.Single().IsUnread);
+    }
+
+    [Fact]
+    public void Details_are_split_into_label_and_value_rows_and_grouped_by_day()
+    {
+        var rows = NotificationItemViewModel.ParseDetail("Repository: o/r\nPull request: #7 Fix: the thing\nhttps://github.com/o/r/actions/runs/1");
+        Assert.Equal(new NotificationDetailRow("Repository", "o/r"), rows[0]);
+        Assert.Equal(new NotificationDetailRow("Pull request", "#7 Fix: the thing"), rows[1]);
+        Assert.Equal(string.Empty, rows[2].Label);
+
+        var shown = new NotificationItemViewModel(
+            new GitDash.Application.Notifications.NotificationEntry(
+                Guid.NewGuid(), DateTimeOffset.UtcNow, "t", "m", ToastTone.Review, null, null, false, "A: b"), "now", _ => { }, _ => { });
+        Assert.False(shown.ShowDetails);
+        shown.ToggleDetailsCommand.Execute(null);
+        Assert.True(shown.ShowDetails);
+
+        var history = new NotificationHistory(new InMemoryNotificationStore(), TimeProvider.System);
+        var page = new NotificationsViewModel(history, new Inline(), TimeProvider.System, _ => { });
+        history.Record(Request(1));
+        history.Record(Request(2));
+
+        Assert.Single(page.Days);
+        Assert.Equal("Today", page.Days[0].Header);
+        Assert.Equal(2, page.Days[0].Items.Count);
     }
 
     [Fact]
     public void Time_text_is_friendly()
     {
         var now = new DateTimeOffset(2026, 11, 14, 15, 0, 0, TimeSpan.Zero);
-        var center = new NotificationCenterViewModel(null, new Inline(), new Clock(now), _ => { });
+        var center = new NotificationCenterViewModel(null, new Inline(), new Clock(now), _ => { }, () => { });
         var local = now.ToLocalTime();
 
         Assert.True(center.WhenText(now).StartsWith("Today ", StringComparison.Ordinal));

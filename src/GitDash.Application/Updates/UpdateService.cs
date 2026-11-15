@@ -183,7 +183,7 @@ public sealed class UpdateService(
             await SafeNotifyAsync(new ToastRequest(
                 $"Updating GitDash to {release.Version}",
                 $"Version {release.Version} was found on GitHub. It downloads in the background; GitDash restarts when it is ready.",
-                ToastTone.Merged)).ConfigureAwait(false);
+                ToastTone.Merged, Target: ToastTarget.Settings)).ConfigureAwait(false);
         }
 
         var progress = new Progress<double>(p =>
@@ -218,7 +218,7 @@ public sealed class UpdateService(
         await SafeNotifyAsync(new ToastRequest(
             $"GitDash {release.Version} is ready",
             $"Restarting in {SecondsToRestart} seconds to finish the update. Open GitDash to restart now or postpone.",
-            ToastTone.Merged)).ConfigureAwait(false);
+            ToastTone.Merged, Target: ToastTarget.Settings)).ConfigureAwait(false);
 
         try
         {
@@ -257,7 +257,7 @@ public sealed class UpdateService(
         if (_notifiedAvailable == release.Version) return;
         _notifiedAvailable = release.Version;
         await SafeNotifyAsync(new ToastRequest(
-            $"GitDash {release.Version} is available", how, ToastTone.Merged, release.PageUrl)).ConfigureAwait(false);
+            $"GitDash {release.Version} is available", how, ToastTone.Merged, release.PageUrl, Target: ToastTarget.Settings)).ConfigureAwait(false);
     }
 
     private async Task SafeNotifyAsync(ToastRequest request)

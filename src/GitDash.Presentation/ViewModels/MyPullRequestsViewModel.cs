@@ -17,6 +17,23 @@ public enum PullRequestFilter
     PipelineFailed,
 }
 
+/// <summary>How the cards are ordered.</summary>
+public enum PullRequestSort
+{
+    /// <summary>The default: mine first, then what waits for my review, then the rest; oldest waiting first in the personal views.</summary>
+    Priority,
+    CreatedNewest,
+    CreatedOldest,
+    AssignedNewest,
+    AssignedOldest,
+    Author,
+    Type,
+    Updated,
+}
+
+/// <summary>One entry of the sort menu.</summary>
+public sealed record SortOptionViewModel(PullRequestSort Sort, string Label);
+
 /// <summary>One author in the multi-select author filter.</summary>
 public sealed class AuthorOptionViewModel(string login, string? avatarUrl, Action<AuthorOptionViewModel> changed) : ObservableObject
 {
@@ -355,6 +372,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
 
     private MonitorState _state = MonitorState.Empty;
     private FilterOptionViewModel _selectedFilter;
+    private SortOptionViewModel _selectedSort;
     private bool _filterAutoSwitched;
     private bool _userPickedFilter;
     private int _selectedIndex;
@@ -411,6 +429,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             new(PullRequestFilter.PipelineFailed, "Pipeline failed"),
         ];
         _selectedFilter = Filters[0];
+        _selectedSort = SortOptions[0];
 
         NextCommand = new RelayCommand(() => SelectedIndex++);
         PreviousCommand = new RelayCommand(() => SelectedIndex--);
@@ -573,6 +592,56 @@ public sealed class MyPullRequestsViewModel : PageViewModel
             Rebuild(force: true, startAtFirst: true);
         }
     }
+
+    // ----- Sorting -----
+    public IReadOnlyList<SortOptionViewModel> SortOptions { get; } =
+    [
+        new(PullRequestSort.Priority, "Default order"),
+        new(PullRequestSort.CreatedNewest, "Created: newest first"),
+        new(PullRequestSort.CreatedOldest, "Created: oldest first"),
+        new(PullRequestSort.AssignedNewest, "Assigned: newest first"),
+        new(PullRequestSort.AssignedOldest, "Assigned: oldest first"),
+        new(PullRequestSort.Author, "Author (A to Z)"),
+        new(PullRequestSort.Type, "Type (assigned, review, own, other)"),
+        new(PullRequestSort.Updated, "Last updated"),
+    ];
+
+    public SortOptionViewModel SelectedSort
+    {
+        get => _selectedSort;
+        set
+        {
+            if (value is null || !Set(ref _selectedSort!, value)) return;
+            Raise(nameof(SortSummary));
+            Rebuild(force: true, startAtFirst: true);
+        }
+    }
+
+    public string SortSummary => _selectedSort.Sort == PullRequestSort.Priority ? "Sort" : "Sort: " + _selectedSort.Label;
+
+    /// <summary>Orders pull requests for the cover flow. <see cref="PullRequestSort.Priority"/> keeps the long-standing default.</summary>
+    public static List<PullRequest> Sorted(IEnumerable<PullRequest> prs, PullRequestFilter filter, PullRequestSort sort)
+    {
+        var never = DateTimeOffset.MinValue;
+        return sort switch
+        {
+            PullRequestSort.CreatedNewest => [.. prs.OrderByDescending(p => p.CreatedAt)],
+            PullRequestSort.CreatedOldest => [.. prs.OrderBy(p => p.CreatedAt)],
+            // Pull requests that were never assigned to me go last in both directions.
+            PullRequestSort.AssignedNewest => [.. prs.OrderByDescending(p => p.AssignedToViewerAt ?? never).ThenByDescending(p => p.UpdatedAt)],
+            PullRequestSort.AssignedOldest => [.. prs.OrderBy(p => p.AssignedToViewerAt is null ? 1 : 0)
+                .ThenBy(p => p.AssignedToViewerAt ?? never).ThenByDescending(p => p.UpdatedAt)],
+            PullRequestSort.Author => [.. prs.OrderBy(p => p.Author, StringComparer.OrdinalIgnoreCase).ThenByDescending(p => p.UpdatedAt)],
+            PullRequestSort.Type => [.. prs.OrderBy(TypeRank).ThenByDescending(p => p.UpdatedAt)],
+            PullRequestSort.Updated => [.. prs.OrderByDescending(p => p.UpdatedAt)],
+            _ when filter is PullRequestFilter.AssignedToMe or PullRequestFilter.ReviewRequested =>
+                [.. prs.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt)],
+            _ => [.. prs.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.UpdatedAt)],
+        };
+    }
+
+    private static int TypeRank(PullRequest p) =>
+        p.IsAssignedToViewer ? 0 : p.NeedsViewerApproval ? 1 : p.IsAuthoredByViewer ? 2 : 3;
 
     public ObservableCollection<PullRequestCardViewModel> Cards { get; } = [];
 
@@ -794,12 +863,10 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         SyncAuthorOptions([.. all.Where(filter.Matches)]);
         var matching = all.Where(filter.Matches).Where(p => _selectedAuthors.Count == 0 || _selectedAuthors.Contains(p.Author));
         // Assigned to me first, then review requested from me, then everything else.
-        var ordered = filter.Filter is PullRequestFilter.AssignedToMe or PullRequestFilter.ReviewRequested
-            ? matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.IsReapproval).ThenBy(p => p.ArrivedAt ?? p.CreatedAt).ToList()
-            : matching.OrderBy(p => p.ViewerRank).ThenByDescending(p => p.UpdatedAt).ToList();
+        var ordered = Sorted(matching, filter.Filter, _selectedSort.Sort);
 
         // Rebuild only when something visible changed; otherwise the cover flow would restart its animation.
-        var signature = filter.Filter + "|" + string.Join(',', _selectedAuthors.Order()) + "|" + string.Join('|', ordered.Select(PullRequestCardViewModel.KeyOf));
+        var signature = filter.Filter + "|" + _selectedSort.Sort + "|" + string.Join(',', _selectedAuthors.Order()) + "|" + string.Join('|', ordered.Select(PullRequestCardViewModel.KeyOf));
         if (!force && signature == _signature) return;
         _signature = signature;
 
@@ -892,7 +959,10 @@ public sealed class MyPullRequestsViewModel : PageViewModel
     /// Opens the detail screen for the pull request with this URL, clearing filters that would hide it.
     /// Returns false when the pull request is not in the loaded list.
     /// </summary>
-    public bool ShowPullRequest(string url)
+    /// <summary>Index of the Actions tab in the details popup.</summary>
+    public const int ActionsTab = 4;
+
+    public bool ShowPullRequest(string url, int tab = 0)
     {
         PullRequestCardViewModel? Find() => Cards.FirstOrDefault(c => string.Equals(c.Url, url, StringComparison.OrdinalIgnoreCase));
 
@@ -907,6 +977,7 @@ public sealed class MyPullRequestsViewModel : PageViewModel
         if (card is null) return false;
         SelectedIndex = Cards.IndexOf(card);
         OpenDetails(card);
+        DetailTab = tab;
         return true;
     }
 

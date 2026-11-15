@@ -1,0 +1,109 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitDash.Presentation.ViewModels"
+             xmlns:c="using:GitDash.App.Controls"
+             xmlns:conv="using:GitDash.App.Converters"
+             x:Class="GitDash.App.Views.NotificationsView"
+             x:DataType="vm:NotificationsViewModel">
+  <!-- One centred column: header, filters, then the notifications grouped by day -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel MaxWidth="860" HorizontalAlignment="Center" Margin="36,30,36,40" Spacing="14">
+      <StackPanel Classes="enter" Spacing="4">
+        <TextBlock Classes="h1" Text="Notifications" HorizontalAlignment="Center" />
+        <TextBlock Classes="muted" Text="{Binding Summary}" HorizontalAlignment="Center" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+        <ToggleButton Classes="filter" Content="Unread only" IsChecked="{Binding OnlyUnread}" />
+        <Button Classes="ghost compact" Content="Mark all read" Command="{Binding MarkAllReadCommand}" />
+        <Button Classes="ghost compact" Content="Clear history" Command="{Binding ClearCommand}" />
+      </StackPanel>
+      <TextBlock Classes="muted" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" />
+
+      <ItemsControl ItemsSource="{Binding Days}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:NotificationDayViewModel">
+            <StackPanel Spacing="10" Margin="0,6,0,0">
+              <Grid ColumnDefinitions="Auto,*">
+                <Border Background="{DynamicResource ChipBrush}" CornerRadius="999" Padding="12,4">
+                  <TextBlock Text="{Binding Header}" FontSize="12" FontWeight="Bold" Foreground="White" />
+                </Border>
+                <Border Grid.Column="1" Height="1" Background="{DynamicResource LineBrush}" VerticalAlignment="Center"
+                        Margin="10,0,0,0" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:NotificationItemViewModel">
+                    <!-- Timeline rail like the pull request timeline: time, dot in the notification's colour, then a compact card -->
+                    <Grid ColumnDefinitions="52,26,*">
+                      <TextBlock Text="{Binding Time}" Classes="muted" FontSize="12" Margin="0,11,0,0" HorizontalAlignment="Right" />
+                      <Border Grid.Column="1" Width="2" Background="{DynamicResource LineBrush}" HorizontalAlignment="Center" />
+                      <Ellipse Grid.Column="1" Width="12" Height="12" VerticalAlignment="Top" Margin="0,13,0,0"
+                               Fill="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}" />
+                      <Border Grid.Column="2" Classes="noteRow" Classes.unread="{Binding IsUnread}" CornerRadius="12" Margin="6,0,0,10"
+                              Padding="12,9" Background="{DynamicResource Surface2Brush}">
+                        <Grid ColumnDefinitions="Auto,*">
+                          <Panel Width="40" Height="38" VerticalAlignment="Top">
+                            <Border Width="32" Height="32" CornerRadius="10" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                    Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                              <PathIcon Data="{StaticResource IconPullRequest}" Width="15" Height="15" Foreground="#0B0D14" />
+                            </Border>
+                            <Border IsVisible="{Binding HasActor}" Width="19" Height="19" CornerRadius="10" ClipToBounds="True"
+                                    HorizontalAlignment="Right" VerticalAlignment="Bottom" BorderThickness="2"
+                                    BorderBrush="{DynamicResource Surface2Brush}" Background="{DynamicResource SurfaceBrush}">
+                              <c:AvatarImage Url="{Binding AvatarUrl}" Stretch="UniformToFill" />
+                            </Border>
+                          </Panel>
+                          <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="3">
+                            <Grid ColumnDefinitions="*,Auto">
+                              <StackPanel Orientation="Horizontal" Spacing="7">
+                                <Ellipse Width="8" Height="8" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"
+                                         IsVisible="{Binding IsUnread}" ToolTip.Tip="Unread" />
+                                <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextBrush}" />
+                              </StackPanel>
+                              <Border Grid.Column="1" CornerRadius="5" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Top"
+                                      Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                                <TextBlock Text="{Binding Category}" FontSize="9.5" FontWeight="Bold" Foreground="#0B0D14" />
+                              </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding Message}" Classes="muted" FontSize="11.5" TextWrapping="Wrap" />
+
+                            <!-- Folded away until asked for: label on the left, value on the right -->
+                            <Border IsVisible="{Binding ShowDetails}" Background="{DynamicResource SurfaceBrush}" CornerRadius="8"
+                                    Padding="12,8" Margin="0,4,0,0">
+                              <ItemsControl ItemsSource="{Binding DetailRows}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:NotificationDetailRow">
+                                    <Grid ColumnDefinitions="130,*" Margin="0,1">
+                                      <TextBlock Text="{Binding Label}" Classes="muted" FontSize="11.5" FontWeight="SemiBold"
+                                                 TextTrimming="CharacterEllipsis" />
+                                      <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource TextBrush}" />
+                                    </Grid>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                            </Border>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,0,0">
+                              <Button Classes="ghost compact" Content="{Binding ActionText}" Command="{Binding OpenCommand}" />
+                              <Button Classes="ghost compact" Content="{Binding DetailsText}" Command="{Binding ToggleDetailsCommand}"
+                                      IsVisible="{Binding HasDetail}" />
+                              <Button Classes="ghost compact" Content="Mark as read" Command="{Binding MarkReadCommand}"
+                                      IsVisible="{Binding IsUnread}" />
+                              <TextBlock Text="{Binding Stamp}" Classes="muted" FontSize="10.5" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            </StackPanel>
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

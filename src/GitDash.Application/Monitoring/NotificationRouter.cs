@@ -20,7 +20,31 @@ public sealed class NotificationRouter(SettingsService settings, IToastPresenter
                 _ => ToastTone.Merged,
             },
             notification.PullRequest.Url,
-            ActorOf(notification)), ct);
+            ActorOf(notification),
+            DetailOf(notification),
+            ToastTarget.PullRequest), ct);
+
+    private static string DetailOf(PullRequestNotification n)
+    {
+        var pr = n.PullRequest;
+        // One "Label: value" per line; the notification history shows them as a small table.
+        var lines = new List<string>
+        {
+            $"Repository: {pr.Repository.FullName}",
+            $"Pull request: #{pr.Number} {pr.Title}",
+            $"Author: {pr.Author}",
+            $"Opened: {pr.CreatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
+            $"State: {(pr.State == GitDash.Domain.PullRequests.PullRequestState.Open ? (pr.IsDraft ? "Draft" : "Open") : pr.State.ToString())}",
+        };
+        if (pr.Assignees.Count > 0) lines.Add("Assigned to: " + string.Join(", ", pr.Assignees));
+        if (pr.RequestedReviewers.Count > 0) lines.Add("Review requested from: " + string.Join(", ", pr.RequestedReviewers));
+        if (pr.MergedBy is not null) lines.Add("Merged by: " + pr.MergedBy);
+        lines.Add($"Conversation: {pr.TotalComments} comments, {pr.UnresolvedThreads} unresolved");
+        lines.Add($"Changes: {pr.CommitCount} commits, {pr.ChangedFiles} files, +{pr.Additions} -{pr.Deletions}");
+        if (pr.HasMergeConflict || pr.PipelineFailed)
+            lines.Add("Needs attention: " + string.Join(" and ", new[] { pr.HasMergeConflict ? "merge conflict" : null, pr.PipelineFailed ? "failing pipeline" : null }.OfType<string>()));
+        return string.Join('\n', lines);
+    }
 
     /// <summary>The person a notification is about, so their picture can be shown with it.</summary>
     private static string? ActorOf(PullRequestNotification n) => n.Kind switch

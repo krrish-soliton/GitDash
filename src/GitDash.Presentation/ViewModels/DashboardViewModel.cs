@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using GitDash.Application.Abstractions;
 using GitDash.Application.Monitoring;
+using GitDash.Domain.Insights;
 using GitDash.Domain.Notifications;
 using GitDash.Presentation.Mvvm;
 
@@ -50,7 +51,7 @@ public sealed record ActivityItemViewModel(string Title, string Message, string 
 public sealed class DashboardViewModel : PageViewModel
 {
     private readonly TimeProvider _time;
-    private int _totalOpen, _assignedToMe, _needsMyApproval;
+    private int _totalOpen, _assignedToMe, _needsMyApproval, _readyToMerge;
     private bool _isEmpty = true, _hasActivity, _deskIsEmpty = true;
     private string _deskSummary = string.Empty, _oldestAssignedOnDesk = string.Empty, _oldestReviewOnDesk = string.Empty;
     private int _deskOverflow;
@@ -118,6 +119,8 @@ public sealed class DashboardViewModel : PageViewModel
     public int TotalOpen { get => _totalOpen; private set => Set(ref _totalOpen, value); }
     public int AssignedToMe { get => _assignedToMe; private set => Set(ref _assignedToMe, value); }
     public int NeedsMyApproval { get => _needsMyApproval; private set => Set(ref _needsMyApproval, value); }
+    /// <summary>My own pull requests that are approved, green and can be merged now.</summary>
+    public int ReadyToMerge { get => _readyToMerge; private set => Set(ref _readyToMerge, value); }
 
     /// <summary>No repositories are being monitored yet.</summary>
     public bool IsEmpty { get => _isEmpty; private set => Set(ref _isEmpty, value); }
@@ -148,6 +151,7 @@ public sealed class DashboardViewModel : PageViewModel
         TotalOpen = state.Summary.TotalOpen;
         AssignedToMe = state.Summary.AssignedToMe;
         NeedsMyApproval = state.Summary.NeedsMyApproval;
+        ReadyToMerge = StatusCounter.Count(StatusKind.ReadyToMerge, state.Open.GroupBy(p => p.Id).Select(g => g.First()));
         IsEmpty = state.RepositoryCount == 0;
 
         var rows = state.Open

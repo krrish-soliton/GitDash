@@ -49,7 +49,7 @@ public sealed class IslandNote(ToastRequest request, bool autoClose) : Observabl
 
 public partial class IslandWindow : FloatingWindow
 {
-    private const double CompactWidth = 230, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
+    private const double CompactWidth = 264, CompactHeight = 36, WideWidth = 430, NoteHeight = 56, HoverHeight = 74;
     private const double CompactRowHeight = 34, ExpandSlack = 14, MinOpenWidth = 300;
     private const int MaxVisibleNotes = 4, MaxWaiting = 20;
     private const double WindowPadX = 10, WindowPadY = 12, TimerRowHeight = 38;
@@ -438,6 +438,14 @@ public partial class IslandWindow : FloatingWindow
         }
 
         _activated(null);
+    }
+
+    /// <summary>The bell with unread notifications: opens the app on the Notifications page.</summary>
+    private void OnBellClick(object? sender, RoutedEventArgs e)
+    {
+        if (!IsLocked) return; // unlocked: the island is being dragged, not clicked
+        _activated(null);
+        (DataContext as ShellViewModel)?.NotificationCenter.ShowAllCommand.Execute(null);
     }
 
     private void OnNoteCloseClick(object? sender, RoutedEventArgs e)

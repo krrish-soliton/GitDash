@@ -216,7 +216,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Humanize.Format = settings.Current.TimeFormat;
 
         Updates = new UpdateViewModel(updates, launcher, ui);
-        NotificationCenter = new NotificationCenterViewModel(notificationHistory, ui, time, OpenPullRequest);
+        Notifications = new NotificationsViewModel(notificationHistory, ui, time, OpenTarget);
+        NotificationCenter = new NotificationCenterViewModel(notificationHistory, ui, time, OpenTarget, () => Navigate(Notifications));
         AiTools = new AiToolsViewModel(settings, notifications, alarm, ui, time);
         Settings = new SettingsViewModel(settings, accounts, notifications, launcher, ui) { AiTools = AiTools, Alarm = alarm, Updates = Updates };
         Home = new HomeViewModel(settings, accounts, launcher, ui, time);
@@ -239,7 +240,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Home.PullRequestOpener = OpenPullRequest;
         Dashboard.PullRequestOpener = OpenPullRequest;
         People.PullRequestOpener = OpenPullRequest;
-        Pages = [Home, Dashboard, People, MyPullRequests, Timers, Settings, About];
+        Pages = [Home, Dashboard, People, MyPullRequests, Timers, Notifications, Settings, About];
         _currentPage = Home;
         Home.IsSelected = true;
 
@@ -257,6 +258,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _settings.Changed += OnSettingsChanged;
     }
 
+    public NotificationsViewModel Notifications { get; }
     public HomeViewModel Home { get; }
     public AiToolsViewModel AiTools { get; }
     public DashboardViewModel Dashboard { get; }
@@ -304,7 +306,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public string RepositorySummary { get => _repositorySummary; private set => Set(ref _repositorySummary, value); }
 
     /// <summary>The filter is shown on the pages that list pull requests.</summary>
-    public bool ShowRepositoryFilter => CurrentPage is not (TimersViewModel or SettingsViewModel or AboutViewModel);
+    public bool ShowRepositoryFilter => CurrentPage is not (TimersViewModel or SettingsViewModel or AboutViewModel or NotificationsViewModel);
 
     private bool IsSelected(string repository) =>
         _selectedRepositories.Count == 0 || _selectedRepositories.Contains(repository);
@@ -441,6 +443,30 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (!MyPullRequests.ShowPullRequest(url)) _launcher.Open(url);
     }
 
+    /// <summary>
+    /// Takes the user to what a notification is about, inside the app: its pull request (on the Actions tab for a failed
+    /// pipeline), the timers or the settings. Nothing opens in the browser unless the pull request is not in the loaded list.
+    /// </summary>
+    public void OpenTarget(ToastRequest request)
+    {
+        switch (request.Target)
+        {
+            case ToastTarget.Timers:
+                Navigate(Timers);
+                break;
+            case ToastTarget.Settings:
+                Navigate(Settings);
+                break;
+            case ToastTarget.PullRequestActions when !string.IsNullOrEmpty(request.Url):
+                Navigate(MyPullRequests);
+                if (!MyPullRequests.ShowPullRequest(request.Url, MyPullRequestsViewModel.ActionsTab)) _launcher.Open(request.Url);
+                break;
+            default:
+                if (!string.IsNullOrEmpty(request.Url)) OpenPullRequest(request.Url);
+                break;
+        }
+    }
+
     public void Navigate(PageViewModel page)
     {
         if (ReferenceEquals(page, CurrentPage)) return;
@@ -486,7 +512,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Status = state switch
         {
             { LastCheckedAt: { } at } =>
-                $"Live · {Humanize.Time(at, seconds: true)} · " +
+                $"Live · {Humanize.Time(at)} · " +
                 $"{state.RepositoryCount} {(state.RepositoryCount == 1 ? "repo" : "repos")}",
             { IsSyncing: true } => "Connecting…",
             { LastSyncedAt: { } saved } =>

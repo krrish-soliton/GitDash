@@ -40,7 +40,7 @@
     </Style>
   </Window.Styles>
 
-  <Border x:Name="Pill" Width="230" Height="36" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
+  <Border x:Name="Pill" Width="264" Height="36" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
           CornerRadius="22" Background="#F00B0D14" BorderBrush="#33FFFFFF" BorderThickness="1" ClipToBounds="True"
           BoxShadow="0 8 24 0 #66000000"
           PointerPressed="OnPressed" Cursor="Hand">
@@ -48,7 +48,7 @@
 
       <!-- Compact row plus one line per running timer: always visible -->
       <StackPanel>
-        <Grid MinHeight="34" ColumnDefinitions="Auto,*" Margin="14,0">
+        <Grid MinHeight="34" ColumnDefinitions="Auto,*,Auto" Margin="14,0">
           <Ellipse x:Name="StatusDot" Classes="live" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
                    VerticalAlignment="Center" />
           <!-- The configured counters: two at a time (rotating) while compact, all of them while expanded -->
@@ -66,6 +66,20 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <!-- No unread notifications: just a dim bell, which lets the mouse pass through when click-through is on -->
+          <PathIcon Grid.Column="2" Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#A0A8C0"
+                    VerticalAlignment="Center" IsVisible="{Binding !NotificationCenter.HasUnread}" />
+          <!-- Unread notifications: bell and count are a button that opens the app (class "hit" keeps it clickable
+               while the island is click-through; it disappears with the last unread notification) -->
+          <Button Grid.Column="2" Classes="hit" Background="Transparent" BorderThickness="0" MinHeight="0" MinWidth="0"
+                  Padding="6,4" VerticalAlignment="Center" Cursor="Hand" Click="OnBellClick"
+                  IsVisible="{Binding NotificationCenter.HasUnread}" ToolTip.Tip="Unread notifications: open GitDash">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <PathIcon Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#FBBF24" />
+              <TextBlock Text="{Binding NotificationCenter.BadgeText}" FontSize="12" FontWeight="Bold" Foreground="White"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
         </Grid>
         <ItemsControl ItemsSource="{Binding Timers.VisibleTimers}" Margin="16,0,16,0">
           <ItemsControl.ItemTemplate>

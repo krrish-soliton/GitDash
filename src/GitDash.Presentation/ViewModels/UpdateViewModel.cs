@@ -85,6 +85,9 @@ public sealed class UpdateViewModel : ObservableObject
     };
 
     public bool HasSidebarText => SidebarText.Length > 0;
+
+    /// <summary>The same text in braces, to sit on the right of the version: "(Up to date)".</summary>
+    public string SidebarBracedText => HasSidebarText ? $"({SidebarText})" : string.Empty;
     public bool SidebarIsAction => Stage == UpdateStage.Available;
 
     // ----- Settings -----
@@ -126,7 +129,7 @@ public sealed class UpdateViewModel : ObservableObject
                  {
                      nameof(Stage), nameof(IsBusy), nameof(ShowBanner), nameof(IsReady), nameof(IsDownloading), nameof(BannerTitle),
                      nameof(BannerDetail), nameof(Percent), nameof(ProgressValue), nameof(IsIndeterminate), nameof(SidebarText),
-                     nameof(HasSidebarText), nameof(SidebarIsAction), nameof(StatusText), nameof(HasError), nameof(CanInstallUpdate),
+                     nameof(HasSidebarText), nameof(SidebarBracedText), nameof(SidebarIsAction), nameof(StatusText), nameof(HasError), nameof(CanInstallUpdate),
                  })
         {
             Raise(name);

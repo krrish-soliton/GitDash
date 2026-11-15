@@ -165,7 +165,7 @@ public sealed class AiToolsViewModel : ObservableObject, IDisposable
         });
         foreach (var tool in due)
             _ = _notifications.PublishAsync(new ToastRequest(
-                $"{tool.Name} is ready", "Your usage limit has reset — you can use it again.", ToastTone.Timer));
+                $"{tool.Name} is ready", "Your usage limit has reset — you can use it again.", ToastTone.Timer, Target: ToastTarget.Settings));
         _alarm.Play();
     }
 

@@ -11,6 +11,10 @@
         <GradientStop Color="#0E5C73" Offset="0" />
         <GradientStop Color="#141F33" Offset="1" />
       </LinearGradientBrush>
+      <LinearGradientBrush x:Key="GreenCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#0F6246" Offset="0" />
+        <GradientStop Color="#13241F" Offset="1" />
+      </LinearGradientBrush>
       <LinearGradientBrush x:Key="AmberCard" StartPoint="0%,0%" EndPoint="100%,100%">
         <GradientStop Color="#7A4A12" Offset="0" />
         <GradientStop Color="#231C24" Offset="1" />
@@ -47,6 +51,10 @@
       <LinearGradientBrush x:Key="CyanCard" StartPoint="0%,0%" EndPoint="100%,100%">
         <GradientStop Color="#CBEEF8" Offset="0" />
         <GradientStop Color="#EBF8FC" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="GreenCard" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#C6F0DB" Offset="0" />
+        <GradientStop Color="#EAF9F2" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="AmberCard" StartPoint="0%,0%" EndPoint="100%,100%">
         <GradientStop Color="#FFE3B5" Offset="0" />
