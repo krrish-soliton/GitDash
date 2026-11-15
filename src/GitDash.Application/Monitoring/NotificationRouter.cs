@@ -20,7 +20,25 @@ public sealed class NotificationRouter(SettingsService settings, IToastPresenter
                 _ => ToastTone.Merged,
             },
             notification.PullRequest.Url,
-            ActorOf(notification)), ct);
+            ActorOf(notification),
+            DetailOf(notification),
+            ToastTarget.PullRequest), ct);
+
+    private static string DetailOf(PullRequestNotification n)
+    {
+        var pr = n.PullRequest;
+        var lines = new List<string>
+        {
+            $"{pr.Repository.FullName} #{pr.Number}: {pr.Title}",
+            $"Opened by {pr.Author} on {pr.CreatedAt.ToLocalTime():d MMM yyyy, HH:mm}",
+        };
+        if (pr.Assignees.Count > 0) lines.Add("Assigned to " + string.Join(", ", pr.Assignees));
+        if (pr.RequestedReviewers.Count > 0) lines.Add("Review requested from " + string.Join(", ", pr.RequestedReviewers));
+        lines.Add($"{pr.TotalComments} comments, {pr.UnresolvedThreads} unresolved · {pr.CommitCount} commits · +{pr.Additions} -{pr.Deletions} in {pr.ChangedFiles} files");
+        if (pr.HasMergeConflict) lines.Add("Has a merge conflict");
+        if (pr.PipelineFailed) lines.Add("Its pipeline is failing");
+        return string.Join('\n', lines);
+    }
 
     /// <summary>The person a notification is about, so their picture can be shown with it.</summary>
     private static string? ActorOf(PullRequestNotification n) => n.Kind switch

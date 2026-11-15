@@ -19,6 +19,33 @@ public sealed class NotificationItemViewModel(
     public string Tone => _entry.Tone.ToString();
     public string? Url => _entry.Url;
     public string WhenText => whenText;
+    public ToastRequest Request => _entry.ToRequest();
+
+    // ----- What the notification history page shows on top of the short popup row -----
+    public string Detail => _entry.Detail ?? string.Empty;
+    public bool HasDetail => !string.IsNullOrWhiteSpace(_entry.Detail);
+    /// <summary>The full date and time it arrived.</summary>
+    public string Stamp => Humanize.Stamp(_entry.At);
+    public string Category => _entry.Tone switch
+    {
+        ToastTone.Assigned => "Assigned to you",
+        ToastTone.Review => "Review requested",
+        ToastTone.Comment => "New comment",
+        ToastTone.Merged => "Merged / update",
+        ToastTone.Removed => "Removed",
+        ToastTone.Failed => "Pipeline failed",
+        _ => "Timer",
+    };
+    public string ActionText => _entry.Target switch
+    {
+        ToastTarget.PullRequestActions => "Open its runs",
+        ToastTarget.Timers => "Open timers",
+        ToastTarget.Settings => "Open settings",
+        _ when !string.IsNullOrEmpty(_entry.Url) => "Open pull request",
+        _ => "Open GitDash",
+    };
+    public string ActorName => _entry.Actor ?? string.Empty;
+    public bool HasActor => !string.IsNullOrEmpty(_entry.Actor);
     public bool IsUnread => !_entry.Read;
     /// <summary>Picture of the person involved; null when there is none or it is not known yet.</summary>
     public string? AvatarUrl => AvatarDirectory.UrlFor(_entry.Actor);
@@ -39,22 +66,32 @@ public sealed class NotificationItemViewModel(
     private RelayCommand? _open, _markRead;
 }
 
-/// <summary>The bell in the title bar: unread count, the last 50 notifications, mark as read.</summary>
+/// <summary>The bell in the title bar: unread count and the latest unread notifications (the full history has its own page).</summary>
 public sealed class NotificationCenterViewModel : ObservableObject
 {
     private readonly NotificationHistory? _history;
     private readonly IUiDispatcher _ui;
     private readonly TimeProvider _time;
-    private readonly Action<string> _openUrl;
+    private readonly Action<ToastRequest> _open;
+    private readonly Action _showAll;
     private bool _isOpen;
 
+    /// <summary>The popup lists at most this many notifications, the newest unread ones.</summary>
+    public const int PopupLimit = 10;
+
     public NotificationCenterViewModel(
-        NotificationHistory? history, IUiDispatcher ui, TimeProvider time, Action<string> openUrl)
+        NotificationHistory? history, IUiDispatcher ui, TimeProvider time, Action<ToastRequest> open, Action showAll)
     {
         _history = history;
         _ui = ui;
         _time = time;
-        _openUrl = openUrl;
+        _open = open;
+        _showAll = showAll;
+        ShowAllCommand = new RelayCommand(() =>
+        {
+            IsOpen = false;
+            _showAll();
+        });
         ToggleCommand = new RelayCommand(() => IsOpen = !IsOpen);
         CloseCommand = new RelayCommand(() => IsOpen = false);
         MarkAllReadCommand = new RelayCommand(() => _history?.MarkAllRead(), () => HasUnread);
@@ -77,7 +114,10 @@ public sealed class NotificationCenterViewModel : ObservableObject
     public bool IsEmpty => !HasItems;
     /// <summary>"9+" keeps the badge small.</summary>
     public string BadgeText => UnreadCount > 9 ? "9+" : UnreadCount.ToString();
-    public string Summary => HasUnread ? $"{UnreadCount} unread" : "All caught up";
+    public string Summary => HasUnread
+        ? UnreadCount > PopupLimit ? $"{UnreadCount} unread · showing the latest {PopupLimit}" : $"{UnreadCount} unread"
+        : "All caught up";
+    public ICommand ShowAllCommand { get; }
 
     public ICommand ToggleCommand { get; }
     public ICommand CloseCommand { get; }
@@ -86,7 +126,7 @@ public sealed class NotificationCenterViewModel : ObservableObject
 
     private void Refresh()
     {
-        var entries = _history?.Entries.ToList() ?? [];
+        var entries = _history?.Entries.Where(e => !e.Read).Take(PopupLimit).ToList() ?? [];
         if (entries.Count == Items.Count && entries.Select(e => e.Id).SequenceEqual(Items.Select(i => i.Id)))
         {
             // Same list, only read marks or pictures changed: update the rows in place so the list neither jumps nor resizes.
@@ -109,22 +149,21 @@ public sealed class NotificationCenterViewModel : ObservableObject
         ((RelayCommand)ClearCommand).RaiseCanExecuteChanged();
     }
 
-    /// <summary>Opening a notification marks it read and, when it is about a pull request, shows that pull request.</summary>
+    /// <summary>Opening a notification marks it read and takes the user to what it is about, inside the app.</summary>
     private void OnOpen(NotificationItemViewModel item)
     {
         _history?.MarkRead(item.Id);
-        if (!string.IsNullOrEmpty(item.Url))
-        {
-            IsOpen = false;
-            _openUrl(item.Url);
-        }
+        IsOpen = false;
+        _open(item.Request);
     }
 
+    public string WhenText(DateTimeOffset at) => WhenText(at, _time.GetLocalNow().DateTime);
+
     /// <summary>"Today 14:32", "Yesterday 09:05", "Mon 16:20", then "12 Nov 16:20".</summary>
-    public string WhenText(DateTimeOffset at)
+    public static string WhenText(DateTimeOffset at, DateTime localToday)
     {
         var local = at.ToLocalTime();
-        var today = _time.GetLocalNow().Date;
+        var today = localToday.Date;
         var clock = local.ToString("HH:mm", System.Globalization.CultureInfo.CurrentCulture);
         var days = (today - local.Date).Days;
         return days switch

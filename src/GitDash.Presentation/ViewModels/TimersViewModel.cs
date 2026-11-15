@@ -325,7 +325,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
     {
         if (item.FirstStartedAt is { } started && item.Total is { } total)
             Save(new TimerSession(Guid.NewGuid(), TimerKind.Countdown, item.Name, started, total));
-        _ = _notifications.PublishAsync(new ToastRequest("Countdown finished", item.Title, ToastTone.Timer));
+        _ = _notifications.PublishAsync(new ToastRequest("Countdown finished", item.Title, ToastTone.Timer, Target: ToastTarget.Timers));
         _alarm.Play();
     }
 
@@ -395,13 +395,13 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
         });
         foreach (var alarm in due)
             _ = _notifications.PublishAsync(new ToastRequest(
-                "Alarm", string.IsNullOrWhiteSpace(alarm.Label) ? alarm.At.ToString("t") : alarm.Label, ToastTone.Timer));
+                "Alarm", string.IsNullOrWhiteSpace(alarm.Label) ? alarm.At.ToString("t") : alarm.Label, ToastTone.Timer, Target: ToastTarget.Timers));
         _alarm.Play();
     }
 
     /// <summary>Timer events are notifications too, so they also appear on the dynamic island.</summary>
     private void Announce(string title, string message) =>
-        _ = _notifications.PublishAsync(new ToastRequest(title, message, ToastTone.Timer));
+        _ = _notifications.PublishAsync(new ToastRequest(title, message, ToastTone.Timer, Target: ToastTarget.Timers));
 
     private string TaskTitle => string.IsNullOrWhiteSpace(TaskName) ? "Task" : TaskName.Trim();
 
@@ -473,7 +473,7 @@ public sealed class TimersViewModel : PageViewModel, IDisposable
             var (title, message) = finished == Domain.Timers.PomodoroPhase.Focus
                 ? ("Focus session complete", "Nice work. Time for a break.")
                 : ("Break is over", "Ready for the next focus session?");
-            _ = _notifications.PublishAsync(new ToastRequest(title, message, ToastTone.Timer));
+            _ = _notifications.PublishAsync(new ToastRequest(title, message, ToastTone.Timer, Target: ToastTarget.Timers));
             _alarm.Play();
         }
 

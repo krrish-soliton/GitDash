@@ -89,8 +89,9 @@ public sealed class IslandController(
     private void OnActivated(ToastRequest? request)
     {
         showMainWindow();
-        if (request is not null) Acknowledged?.Invoke(request);
-        if (request?.Url is { } url) shell.OpenPullRequest(url);
+        if (request is null) return;
+        Acknowledged?.Invoke(request);
+        shell.OpenTarget(request);
     }
 
     public void Dispose()

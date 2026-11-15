@@ -64,8 +64,8 @@
         </StackPanel>
       </Border>
 
-      <!-- The three headline numbers -->
-      <Grid ColumnDefinitions="*,20,*,20,*">
+      <!-- The headline numbers -->
+      <Grid ColumnDefinitions="*,16,*,16,*,16,*">
         <Panel Grid.Column="0" Classes="enter1">
           <Border Classes="card lift" Background="{DynamicResource VioletCard}">
             <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
@@ -99,6 +99,18 @@
               </Border>
               <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding NeedsMyApproval}" />
               <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="Your review was requested" />
+            </Grid>
+          </Border>
+        </Panel>
+        <Panel Grid.Column="6" Classes="enter3">
+          <Border Classes="card lift" Background="{DynamicResource GreenCard}">
+            <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+              <TextBlock Classes="label" Text="Ready To Merge" />
+              <Border Grid.Column="1" Width="38" Height="38" CornerRadius="12" Background="{DynamicResource IconTileBrush}">
+                <PathIcon Data="{StaticResource IconCheck}" Width="18" Height="18" Foreground="{DynamicResource IconTileFgBrush}" />
+              </Border>
+              <c:CountUpText Grid.Row="1" Grid.ColumnSpan="2" Classes="big" Value="{Binding ReadyToMerge}" />
+              <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="muted" Text="Yours: approved and passing" />
             </Grid>
           </Border>
         </Panel>
@@ -205,13 +217,11 @@
                                 <TextBlock Classes="muted" FontSize="11.5">
                                   <Run Text="{Binding Repository}" /><Run Text="  ·  " /><Run Text="{Binding Number}" /><Run Text="  ·  " /><Run Text="{Binding Waiting}" />
                                 </TextBlock>
-                                <c:UserChip Login="{Binding Author}" />
                                 <c:PullRequestTagStrip DataContext="{Binding Tags}" />
                               </StackPanel>
+                              <!-- The author sits where the "Approve" tag used to be -->
                               <StackPanel Grid.Column="2" Spacing="3" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <Border Padding="7,1" CornerRadius="7" Background="{StaticResource AmberBrush}" IsVisible="{Binding NeedsApproval}">
-                                  <TextBlock Text="Approve" FontSize="9" FontWeight="Bold" Foreground="#0B0D14" />
-                                </Border>
+                                <c:UserChip Login="{Binding Author}" />
                               </StackPanel>
                             </Grid>
                           </Border>

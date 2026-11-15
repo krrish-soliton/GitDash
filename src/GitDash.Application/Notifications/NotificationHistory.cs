@@ -4,7 +4,12 @@ namespace GitDash.Application.Notifications;
 
 /// <summary>One notification that was shown, kept so it can be read again later.</summary>
 public sealed record NotificationEntry(
-    Guid Id, DateTimeOffset At, string Title, string Message, ToastTone Tone, string? Url, string? Actor, bool Read);
+    Guid Id, DateTimeOffset At, string Title, string Message, ToastTone Tone, string? Url, string? Actor, bool Read,
+    string? Detail = null, ToastTarget Target = ToastTarget.Auto)
+{
+    /// <summary>The notification as it was first shown, so the same click target can be used again from the history.</summary>
+    public ToastRequest ToRequest() => new(Title, Message, Tone, Url, Actor, Detail, Target);
+}
 
 /// <summary>
 /// The last <see cref="Capacity"/> notifications, newest first, with a read flag. Saved after every change so the
@@ -50,7 +55,8 @@ public sealed class NotificationHistory(INotificationStore store, TimeProvider t
     public void Record(ToastRequest request)
     {
         var entry = new NotificationEntry(
-            Guid.NewGuid(), time.GetUtcNow(), request.Title, request.Message, request.Tone, request.Url, request.Actor, Read: false);
+            Guid.NewGuid(), time.GetUtcNow(), request.Title, request.Message, request.Tone, request.Url, request.Actor, Read: false,
+            request.Detail, request.Target);
         lock (_gate)
         {
             _entries.Insert(0, entry);

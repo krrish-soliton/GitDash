@@ -40,7 +40,7 @@
     </Style>
   </Window.Styles>
 
-  <Border x:Name="Pill" Width="230" Height="36" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
+  <Border x:Name="Pill" Width="264" Height="36" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"
           CornerRadius="22" Background="#F00B0D14" BorderBrush="#33FFFFFF" BorderThickness="1" ClipToBounds="True"
           BoxShadow="0 8 24 0 #66000000"
           PointerPressed="OnPressed" Cursor="Hand">
@@ -48,7 +48,7 @@
 
       <!-- Compact row plus one line per running timer: always visible -->
       <StackPanel>
-        <Grid MinHeight="34" ColumnDefinitions="Auto,*" Margin="14,0">
+        <Grid MinHeight="34" ColumnDefinitions="Auto,*,Auto" Margin="14,0">
           <Ellipse x:Name="StatusDot" Classes="live" Width="9" Height="9" Fill="{StaticResource Accent2Brush}"
                    VerticalAlignment="Center" />
           <!-- The configured counters: two at a time (rotating) while compact, all of them while expanded -->
@@ -66,6 +66,16 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          <!-- Unread notifications: a bell with the count beside it -->
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                      ToolTip.Tip="Unread notifications">
+            <PathIcon Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#A0A8C0"
+                      IsVisible="{Binding !NotificationCenter.HasUnread}" />
+            <PathIcon Data="{StaticResource IconBell}" Width="13" Height="13" Foreground="#FBBF24"
+                      IsVisible="{Binding NotificationCenter.HasUnread}" />
+            <TextBlock Text="{Binding NotificationCenter.BadgeText}" FontSize="12" FontWeight="Bold" Foreground="White"
+                       IsVisible="{Binding NotificationCenter.HasUnread}" VerticalAlignment="Center" />
+          </StackPanel>
         </Grid>
         <ItemsControl ItemsSource="{Binding Timers.VisibleTimers}" Margin="16,0,16,0">
           <ItemsControl.ItemTemplate>

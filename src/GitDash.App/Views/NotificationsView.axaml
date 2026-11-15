@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitDash.Presentation.ViewModels"
+             xmlns:c="using:GitDash.App.Controls"
+             xmlns:conv="using:GitDash.App.Converters"
+             x:Class="GitDash.App.Views.NotificationsView"
+             x:DataType="vm:NotificationsViewModel">
+  <DockPanel Margin="36,30,36,0">
+    <StackPanel DockPanel.Dock="Top" Classes="enter" Spacing="4" Margin="0,0,0,16">
+      <TextBlock Classes="h1" Text="Notifications" />
+      <TextBlock Classes="muted" Text="{Binding Summary}" />
+    </StackPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,14">
+      <ToggleButton Classes="filter" Content="Unread only" IsChecked="{Binding OnlyUnread}" />
+      <Button Classes="ghost compact" Content="Mark all read" Command="{Binding MarkAllReadCommand}" />
+      <Button Classes="ghost compact" Content="Clear history" Command="{Binding ClearCommand}" />
+    </StackPanel>
+    <TextBlock DockPanel.Dock="Top" Classes="muted" Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Items}" Margin="0,0,14,30" MaxWidth="820" HorizontalAlignment="Left">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:NotificationItemViewModel">
+            <Border Classes="card" Margin="0,0,0,12" Padding="16,14">
+              <Grid ColumnDefinitions="Auto,*">
+                <Border Width="40" Height="40" CornerRadius="12" VerticalAlignment="Top"
+                        Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                  <PathIcon Data="{StaticResource IconPullRequest}" Width="18" Height="18" Foreground="#0B0D14" />
+                </Border>
+                <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Ellipse Width="9" Height="9" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"
+                               IsVisible="{Binding IsUnread}" ToolTip.Tip="Unread" />
+                      <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource TextBrush}" />
+                    </StackPanel>
+                    <Border Grid.Column="1" CornerRadius="5" Padding="7,2" VerticalAlignment="Top" Margin="10,0,0,0"
+                            Background="{Binding Tone, Converter={x:Static conv:ToneBrushConverter.Instance}}">
+                      <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="Bold" Foreground="#0B0D14" />
+                    </Border>
+                  </Grid>
+                  <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" FontSize="13" />
+                  <Border IsVisible="{Binding HasDetail}" Background="{DynamicResource Surface2Brush}" CornerRadius="10"
+                          Padding="12,9">
+                    <SelectableTextBlock Text="{Binding Detail}" Classes="muted" FontSize="12" TextWrapping="Wrap" />
+                  </Border>
+                  <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,2,0,0">
+                    <c:UserChip Login="{Binding ActorName}" IsVisible="{Binding HasActor}" />
+                    <TextBlock Text="{Binding Stamp}" Classes="muted" FontSize="11.5" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                    <Button Classes="ghost compact" Content="{Binding ActionText}" Command="{Binding OpenCommand}" />
+                    <Button Classes="ghost compact" Content="Mark as read" Command="{Binding MarkReadCommand}"
+                            IsVisible="{Binding IsUnread}" />
+                  </StackPanel>
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

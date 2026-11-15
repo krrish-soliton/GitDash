@@ -167,6 +167,9 @@
     <DataTemplate DataType="vm:SettingsViewModel">
       <views:SettingsView />
     </DataTemplate>
+    <DataTemplate DataType="vm:NotificationsViewModel">
+      <views:NotificationsView />
+    </DataTemplate>
     <DataTemplate DataType="vm:AboutViewModel">
       <views:AboutView />
     </DataTemplate>
@@ -291,11 +294,11 @@
           <!-- Version number, and what the updater is doing -->
           <!-- Open: the version once, with an icon button beside it while an update is waiting -->
           <Grid Classes="hv" ColumnDefinitions="*,Auto" Margin="6,2,0,0">
-            <StackPanel Spacing="1" VerticalAlignment="Center" IsVisible="{Binding Updates.HasVersion}">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding Updates.HasVersion}">
               <TextBlock Text="{Binding Updates.VersionText}" FontSize="11.5" FontWeight="SemiBold"
                          Foreground="{DynamicResource TextBrush}" ToolTip.Tip="The version of GitDash you are running" />
-              <TextBlock Classes="muted" FontSize="10.5" Text="{Binding Updates.SidebarText}"
-                         IsVisible="{Binding Updates.HasSidebarText}" />
+              <TextBlock Classes="muted" FontSize="10.5" Text="{Binding Updates.SidebarBracedText}"
+                         IsVisible="{Binding Updates.HasSidebarText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             </StackPanel>
             <Button Grid.Column="1" Classes="round" Width="28" Height="28" VerticalAlignment="Center"
                     Command="{Binding Updates.PrimaryActionCommand}" IsVisible="{Binding Updates.SidebarIsAction}"
@@ -408,7 +411,9 @@
             <PathIcon Data="{StaticResource IconClose}" Width="9" Height="9" />
           </Button>
         </Grid>
-        <TextBlock DockPanel.Dock="Top" Classes="muted" Text="Nothing yet. New pull request activity shows up here."
+        <Button DockPanel.Dock="Bottom" Classes="ghost" Content="View all notifications" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center" Margin="10,0,10,10" Command="{Binding NotificationCenter.ShowAllCommand}" />
+        <TextBlock DockPanel.Dock="Top" Classes="muted" Text="No unread notifications. Everything is kept under Notifications."
                    Margin="16,6,16,20" TextWrapping="Wrap" IsVisible="{Binding NotificationCenter.IsEmpty}" />
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="500">
           <ItemsControl ItemsSource="{Binding NotificationCenter.Items}" Margin="8,0,8,10">

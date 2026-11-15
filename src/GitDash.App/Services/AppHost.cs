@@ -33,6 +33,7 @@ public sealed class AppHost : IDisposable
     private readonly HttpClient? _http;
     private readonly TimerHistory _history;
     private readonly ActionsMonitor _actions;
+    private readonly PipelineFailureNotifier _failureNotifier;
     private readonly WidgetController _widget;
     private readonly IslandController _island;
     private readonly TrayController _tray;
@@ -102,6 +103,7 @@ public sealed class AppHost : IDisposable
 
         Monitor = new PullRequestMonitor(Settings, accounts, gitHub, notifications, time, stateCache);
         _actions = new ActionsMonitor(Settings, accounts, gitHub, time);
+        _failureNotifier = new PipelineFailureNotifier(_actions, Monitor, notifications);
         _history = new TimerHistory(sessionStore);
 
         if (demo)
@@ -120,7 +122,7 @@ public sealed class AppHost : IDisposable
             new PersonActivityService(Settings, accounts, gitHub, time), launcher, new SystemAlarm(Settings), ui, time, _actions, _updates, notificationHistory);
         _widget = new WidgetController(Shell, Settings, showMainWindow);
         _island = new IslandController(Shell, Settings, showMainWindow);
-        toasts.OpenPullRequest = Shell.OpenPullRequest;
+        toasts.OpenTarget = Shell.OpenTarget;
         toasts.Island = _island.TryShow;
         // Closing a notification on one surface closes the same notification on the other.
         toasts.Closed += _island.CloseFor;

@@ -38,7 +38,7 @@ public sealed class ToneBrushConverter : IValueConverter
         "added" => "#60A5FA",
         "open" or "reopened" => "#2DD4BF",
         "changesrequested" => "#FB923C",
-        "removed" or "closed" or "reviewrequestremoved" or "unassigned" or "reviewdismissed" or "red" => "#FB7185",
+        "removed" or "closed" or "reviewrequestremoved" or "unassigned" or "reviewdismissed" or "failed" or "red" => "#FB7185",
         "commit" or "forcepushed" or "task" => "#60A5FA",
         "merged" or "opened" or "violet" => "#A78BFA",
         "comment" or "reviewed" or "cyan" => "#22D3EE",
